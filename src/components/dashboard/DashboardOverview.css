@@ -96,10 +96,25 @@
   justify-content: center;
 }
 
-.icon-indigo { background: var(--primary-light); color: var(--primary); }
-.icon-cyan { background: var(--cyan-light); color: var(--cyan); }
-.icon-amber { background: var(--warning-bg); color: var(--warning); }
-.icon-emerald { background: var(--success-bg); color: var(--success); }
+.icon-indigo {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.icon-cyan {
+  background: var(--cyan-light);
+  color: var(--cyan);
+}
+
+.icon-amber {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.icon-emerald {
+  background: var(--success-bg);
+  color: var(--success);
+}
 
 .kpi-value {
   font-size: 2.1rem;
@@ -124,6 +139,70 @@
 .warning-text {
   color: var(--warning);
 }
+
+
+/* Event Registration Summary */
+
+.event-summary-card {
+  margin-top: 24px;
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+}
+
+.event-summary-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.event-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.event-summary-table th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--bg-card-hover);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.event-summary-table td {
+  padding: 16px 20px;
+  color: var(--text-main);
+  font-size: 0.875rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.event-summary-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.event-summary-table tbody tr:hover {
+  background: var(--bg-card-hover);
+}
+
+.event-summary-table th:nth-child(2),
+.event-summary-table th:nth-child(3),
+.event-summary-table td:nth-child(2),
+.event-summary-table td:nth-child(3) {
+  text-align: center;
+}
+
+.event-summary-table td:nth-child(2),
+.event-summary-table td:nth-child(3) {
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+
+/* Quick API Endpoints */
 
 .endpoints-grid {
   display: grid;
@@ -158,10 +237,29 @@
   flex-shrink: 0;
 }
 
-.post-method { background: var(--success-bg); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
-.put-method { background: var(--warning-bg); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); }
-.get-method { background: var(--cyan-light); color: var(--cyan); border: 1px solid rgba(6, 182, 212, 0.3); }
-.delete-method { background: var(--danger-bg); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+.post-method {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.put-method {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.get-method {
+  background: var(--cyan-light);
+  color: var(--cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.delete-method {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
 
 .endpoint-info {
   display: flex;
