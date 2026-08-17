@@ -1,0 +1,108 @@
+/* Event Management CSS */
+
+.events-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.events-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+.event-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.event-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.category-pill {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cyan);
+  background: var(--cyan-light);
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+}
+
+.status-toggle.active {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-toggle.draft {
+  background: var(--badge-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.event-title {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.event-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.meta-icon {
+  color: var(--primary);
+}
+
+.event-card-footer {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.coordinators-list {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.785rem;
+}
+
+.coord-label {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.coord-names {
+  color: var(--text-main);
+  font-weight: 600;
+}
