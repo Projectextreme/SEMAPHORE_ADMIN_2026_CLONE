@@ -1,13 +1,35 @@
 // Service module mapping to all Semaphore 2026 Admin API Endpoints
 
 import { API_BASE_URL, getAuthHeader } from './apiConfig';
-import { initialAdmins, initialUsers, generateMockJWT } from '../mock/mockDatabase';
+import { initialAdmins, initialUsers, initialEvents, generateMockJWT } from '../mock/mockDatabase';
 
 // In-memory state for mock fallback mode
 let mockAdmins = [...initialAdmins];
 let mockUsers = [...initialUsers];
 
-// Helper to make API requests with fallback to local mock storage if backend is unreachable
+const getStoredEvents = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_events');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading stored events, resetting to initial dataset:', e);
+  }
+  localStorage.setItem('semaphore_events', JSON.stringify(initialEvents));
+  return [...initialEvents];
+};
+
+const saveEvents = (events) => {
+  localStorage.setItem('semaphore_events', JSON.stringify(events));
+};
+
+let mockEvents = getStoredEvents();
+
+// Helper to make API requests with fallback to local mock storage if backend is unreachable or endpoint not implemented
 async function apiRequest(endpoint, options = {}) {
   const token = localStorage.getItem('semaphore_admin_token');
   const headers = {
@@ -21,23 +43,18 @@ async function apiRequest(endpoint, options = {}) {
       ...options,
       headers
     });
-    const data = await response.json();
     if (!response.ok) {
-      const error = new Error(data.message || 'API request failed');
-      error.status = response.status;
-      error.data = data;
-      throw error;
-    }
-    return data;
-  } catch (err) {
-    // If backend is not available (TypeError network error) or failed fetch, log warning and use mock engine
-    if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
-      console.warn(`Backend at ${API_BASE_URL} unavailable. Using live mock engine for ${endpoint}.`);
+      console.warn(`Backend at ${API_BASE_URL} returned status ${response.status} for ${endpoint}. Falling back to live mock engine.`);
       return mockFallbackHandler(endpoint, options);
     }
-    throw err;
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.warn(`Backend at ${API_BASE_URL} unavailable for ${endpoint}. Using live mock engine.`, err);
+    return mockFallbackHandler(endpoint, options);
   }
 }
+
 
 // Handler for mock fallback requests matching backend contracts exactly
 function mockFallbackHandler(endpoint, options) {
@@ -212,6 +229,62 @@ function mockFallbackHandler(endpoint, options) {
     };
   }
 
+  // 10. GET /api/admin/events
+  if (endpoint === '/api/admin/events' && method === 'GET') {
+    return mockEvents;
+  }
+
+  // 11. POST /api/admin/events
+  if (endpoint === '/api/admin/events' && method === 'POST') {
+    const newId = body.id || `EVT-${String(mockEvents.length + 1).padStart(2, '0')}`;
+    const createdEvent = {
+      id: newId,
+      title: body.title,
+      category: body.category || 'Coding & Hackathon',
+      fee: body.fee ? (body.fee.startsWith('₹') ? body.fee : `₹ ${body.fee}`) : '₹ 500',
+      maxTeamsPerCollege: Number(body.maxTeamsPerCollege) || 2,
+      maxTeamMembers: Number(body.maxTeamMembers) || 4,
+      venue: body.venue || 'Main Auditorium',
+      status: body.status || 'Active',
+      coordinators: Array.isArray(body.coordinators)
+        ? body.coordinators
+        : (typeof body.coordinators === 'string' && body.coordinators.trim()
+            ? body.coordinators.split(',').map(c => c.trim())
+            : ['Admin Assigned'])
+    };
+    mockEvents.push(createdEvent);
+    saveEvents(mockEvents);
+    return createdEvent;
+  }
+
+  // 12. PUT /api/admin/events/:id
+  if (endpoint.startsWith('/api/admin/events/') && method === 'PUT') {
+    const id = endpoint.split('/')[4];
+    const index = mockEvents.findIndex(evt => evt.id === id);
+    if (index === -1) {
+      const error = new Error('Event not found');
+      error.status = 404;
+      throw error;
+    }
+    mockEvents[index] = { ...mockEvents[index], ...body };
+    saveEvents(mockEvents);
+    return mockEvents[index];
+  }
+
+  // 13. DELETE /api/admin/events/:id
+  if (endpoint.startsWith('/api/admin/events/') && method === 'DELETE') {
+    const id = endpoint.split('/')[4];
+    const index = mockEvents.findIndex(evt => evt.id === id);
+    if (index === -1) {
+      const error = new Error('Event not found');
+      error.status = 404;
+      throw error;
+    }
+    mockEvents.splice(index, 1);
+    saveEvents(mockEvents);
+    return { message: 'Event deleted successfully', id };
+  }
+
   throw new Error(`Endpoint ${endpoint} not found`);
 }
 
@@ -292,6 +365,34 @@ export const apiService = {
     return await apiRequest(`/api/admin/users/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // 10. Events Management
+  getAllEvents: async () => {
+    return await apiRequest('/api/admin/events', {
+      method: 'GET'
+    });
+  },
+
+  addEvent: async (eventData) => {
+    return await apiRequest('/api/admin/events', {
+      method: 'POST',
+      body: JSON.stringify(eventData)
+    });
+  },
+
+  editEvent: async (id, eventData) => {
+    return await apiRequest(`/api/admin/events/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(eventData)
+    });
+  },
+
+  deleteEvent: async (id) => {
+    return await apiRequest(`/api/admin/events/${id}`, {
+      method: 'DELETE'
+    });
   }
 };
+
 

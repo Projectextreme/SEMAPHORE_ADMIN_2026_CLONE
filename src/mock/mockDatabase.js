@@ -75,7 +75,44 @@ export const initialUsers = [
   }
 ];
 
+export const initialEvents = [
+  {
+    id: 'EVT-01',
+    title: 'CodeFest 2026',
+    category: 'Coding & Hackathon',
+    fee: '₹ 500',
+    maxTeamsPerCollege: 2,
+    maxTeamMembers: 4,
+    venue: 'Lab 301, Main Block',
+    status: 'Active',
+    coordinators: ['Havyas', 'Shashidhara']
+  },
+  {
+    id: 'EVT-02',
+    title: 'RoboWars Arena',
+    category: 'Robotics',
+    fee: '₹ 750',
+    maxTeamsPerCollege: 2,
+    maxTeamMembers: 5,
+    venue: 'Auditorium Quadrangle',
+    status: 'Active',
+    coordinators: ['Swasthik']
+  },
+  {
+    id: 'EVT-03',
+    title: 'WebCrafters',
+    category: 'Web Development',
+    fee: '₹ 400',
+    maxTeamsPerCollege: 2,
+    maxTeamMembers: 3,
+    venue: 'Lab 202',
+    status: 'Draft',
+    coordinators: ['Hanson', 'Dheemanth']
+  }
+];
+
 export const generateMockJWT = (admin) => {
+
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const payload = btoa(JSON.stringify({ id: admin._id, email: admin.email, role: admin.role, exp: Date.now() + 86400000 }));
   const signature = btoa("semaphore2026_secret_sig");
