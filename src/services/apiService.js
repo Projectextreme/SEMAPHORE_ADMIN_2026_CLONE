@@ -23,12 +23,15 @@ async function apiRequest(endpoint, options = {}) {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+      const error = new Error(data.message || 'API request failed');
+      error.status = response.status;
+      error.data = data;
+      throw error;
     }
     return data;
   } catch (err) {
-    // If backend is not available (TypeError network error) or returns server error, log warning and use mock engine
-    if (err.name === 'TypeError' || err.message.includes('Failed to fetch')) {
+    // If backend is not available (TypeError network error) or failed fetch, log warning and use mock engine
+    if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
       console.warn(`Backend at ${API_BASE_URL} unavailable. Using live mock engine for ${endpoint}.`);
       return mockFallbackHandler(endpoint, options);
     }
@@ -78,7 +81,9 @@ function mockFallbackHandler(endpoint, options) {
     }
     const existing = mockAdmins.find(a => a.email.toLowerCase() === body.email.toLowerCase());
     if (existing) {
-      throw new Error('Admin with this email already exists');
+      const error = new Error('Admin with this email already exists');
+      error.status = 400;
+      throw error;
     }
     const newAdmin = {
       _id: '67b0' + Math.random().toString(16).substr(2, 20),
@@ -110,7 +115,9 @@ function mockFallbackHandler(endpoint, options) {
     }
 
     if (!target) {
-      throw new Error('Admin user not found');
+      const error = new Error('Admin user not found');
+      error.status = 404;
+      throw error;
     }
 
     target.role = body.role || 'superadmin';
@@ -168,17 +175,24 @@ function mockFallbackHandler(endpoint, options) {
       error.status = 404;
       throw error;
     }
-    user.name = body.name || user.name;
-    user.email = body.email || user.email;
-    user.role = body.role || user.role;
-    user.collegeName = body.collegeName || user.collegeName;
+    user.name = body.name !== undefined ? body.name : user.name;
+    user.email = body.email !== undefined ? body.email : user.email;
+    user.role = body.role !== undefined ? body.role : user.role;
+    user.collegeName = body.collegeName !== undefined ? body.collegeName : user.collegeName;
     if (user.college) {
       user.college.collegeName = user.collegeName;
     }
     user.updatedAt = new Date().toISOString();
     return {
       message: 'User updated successfully',
-      user
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        collegeName: user.collegeName,
+        updatedAt: user.updatedAt
+      }
     };
   }
 
@@ -211,8 +225,7 @@ export const apiService = {
         body: JSON.stringify(credentials)
       });
     } catch (err) {
-      // If live backend rejects demo account john@example.com, fallback to mock engine for standard admin UI demo
-      if (credentials.email?.toLowerCase() === 'john@example.com') {
+      if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || credentials.email?.toLowerCase() === 'john@example.com') {
         return mockFallbackHandler('/api/admin/login', {
           method: 'POST',
           body: JSON.stringify(credentials)
@@ -281,3 +294,4 @@ export const apiService = {
     });
   }
 };
+
