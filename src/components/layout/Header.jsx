@@ -1,25 +1,82 @@
+import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon } from 'lucide-react';
+import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette } from 'lucide-react';
 import './Header.css';
 
 export const Header = () => {
   const { admin, logout, isSuperAdmin } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, colorPreset, changeColorPreset } = useTheme();
+  const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const presets = [
+    { id: 'indigo', name: 'Indigo Cobalt', color: '#6366f1' },
+    { id: 'emerald', name: 'Emerald Mint', color: '#10b981' },
+    { id: 'violet', name: 'Royal Violet', color: '#8b5cf6' },
+    { id: 'amber', name: 'Sunset Amber', color: '#f59e0b' },
+    { id: 'cyan', name: 'Electric Cyan', color: '#06b6d4' }
+  ];
 
   return (
     <header className="main-header">
       <div className="header-brand">
         <div className="header-logo">
-          <ShieldCheck size={22} className="brand-icon" />
+          <ShieldCheck size={20} className="brand-icon" />
+          <span className="logo-beacon"></span>
         </div>
         <div className="brand-text">
-          <span className="brand-name">SEMAPHORE 2026</span>
-          <span className="brand-tag">ADMIN PORTAL</span>
+          <div className="brand-title-row">
+            <span className="brand-name">SEMAPHORE</span>
+            <span className="brand-year">2026</span>
+          </div>
+          <span className="brand-tag">ADMIN CONTROL SUITE</span>
+        </div>
+      </div>
+
+      <div className="header-center-info">
+        <div className="api-status-badge">
+          <span className="pulse-dot"></span>
+          <span className="status-text">REST Engine Live</span>
         </div>
       </div>
 
       <div className="header-actions">
+        {/* Color Palette Switcher */}
+        <div className="color-picker-wrapper">
+          <button 
+            className="theme-palette-btn" 
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            title="Choose Theme Accent Color"
+            aria-label="Color Palette"
+          >
+            <Palette size={15} />
+            <span className="color-dot-indicator" style={{ background: presets.find(p => p.id === colorPreset)?.color || '#6366f1' }}></span>
+          </button>
+
+          {showColorPicker && (
+            <div className="color-palette-popover">
+              <div className="palette-title">Accent Palette</div>
+              <div className="palette-options">
+                {presets.map((p) => (
+                  <button
+                    key={p.id}
+                    className={`palette-chip ${colorPreset === p.id ? 'active' : ''}`}
+                    onClick={() => {
+                      changeColorPreset(p.id);
+                      setShowColorPicker(false);
+                    }}
+                    title={p.name}
+                  >
+                    <span className="chip-circle" style={{ background: p.color }}></span>
+                    <span className="chip-label">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Theme Toggle Button */}
         <button 
           onClick={toggleTheme} 
           className="theme-toggle-btn" 
@@ -28,29 +85,30 @@ export const Header = () => {
         >
           {theme === 'dark' ? (
             <>
-              <Sun size={18} className="theme-icon sun-icon" />
-              <span className="theme-toggle-label">Light Mode</span>
+              <Sun size={15} className="theme-icon sun-icon" />
+              <span className="theme-toggle-label">Light</span>
             </>
           ) : (
             <>
-              <Moon size={18} className="theme-icon moon-icon" />
-              <span className="theme-toggle-label">Dark Mode</span>
+              <Moon size={15} className="theme-icon moon-icon" />
+              <span className="theme-toggle-label">Dark</span>
             </>
           )}
         </button>
 
+        {/* Profile Chip */}
         <div className="admin-profile-badge">
           <div className="avatar-circle">
-            {isSuperAdmin ? <Crown size={16} className="crown-icon" /> : <User size={16} />}
+            {isSuperAdmin ? <Crown size={14} className="crown-icon" /> : <User size={14} />}
           </div>
           <div className="admin-info">
-            <span className="admin-name">{admin?.name || 'Admin User'}</span>
-            <span className="admin-email">{admin?.email}</span>
+            <span className="admin-name">{admin?.name || 'Administrator'}</span>
+            <span className="admin-email">{admin?.email || 'admin@semaphore.com'}</span>
           </div>
           <span className={`role-badge ${admin?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
             {admin?.role === 'superadmin' ? (
               <>
-                <Key size={11} /> Super Admin
+                <Key size={10} /> Superadmin
               </>
             ) : (
               'Admin'
@@ -58,12 +116,12 @@ export const Header = () => {
           </span>
         </div>
 
+        {/* Logout Button */}
         <button onClick={logout} className="btn-logout" title="Sign Out">
-          <LogOut size={18} />
-          <span>Logout</span>
+          <LogOut size={16} />
+          <span className="logout-text">Logout</span>
         </button>
       </div>
     </header>
   );
 };
-

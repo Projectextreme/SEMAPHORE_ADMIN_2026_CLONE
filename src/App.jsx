@@ -10,6 +10,8 @@ import { UserManagement } from './components/users/UserManagement';
 import { PaymentApprovals } from './components/payments/PaymentApprovals';
 import { RegistrationList } from './components/registrations/RegistrationList';
 import { EventManagement } from './components/events/EventManagement';
+import { CoordinatorManagement } from './components/coordinators/CoordinatorManagement';
+import { SlotManagement } from './components/slots/SlotManagement';
 import './App.css';
 
 function AdminPortalContent() {
@@ -44,14 +46,11 @@ function AdminPortalContent() {
       case 'events':
         return <EventManagement />;
       case 'coordinators':
+        return <CoordinatorManagement />;
       case 'slots':
+        return <SlotManagement />;
       default:
-        return (
-          <div className="section-placeholder">
-            <h3>{activeTab.toUpperCase()} Module Active</h3>
-            <p>Integrated in Semaphore 2026 Admin Dashboard. Select Admins, Users, Registrations, or Events tabs to test.</p>
-          </div>
-        );
+        return <DashboardOverview setActiveTab={setActiveTab} />;
     }
   };
 
@@ -77,4 +76,3 @@ export default function App() {
     </ThemeProvider>
   );
 }
-

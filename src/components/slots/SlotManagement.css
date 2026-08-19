@@ -1,0 +1,140 @@
+/* Slot Management CSS */
+
+.slots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.timeline-item {
+  display: flex;
+  gap: 1.25rem;
+  position: relative;
+}
+
+.timeline-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+}
+
+.timeline-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 3px solid var(--bg-surface);
+  box-shadow: 0 0 10px var(--primary);
+  margin-top: 1.25rem;
+  z-index: 2;
+}
+
+.timeline-line {
+  width: 2px;
+  flex: 1;
+  background: var(--border-strong);
+  margin: 0.25rem 0;
+}
+
+.timeline-card {
+  flex: 1;
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.slot-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.slot-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.slot-date-tag {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.slot-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.slot-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.slot-round {
+  font-size: 0.85rem;
+  color: var(--cyan);
+  font-weight: 600;
+  margin: 0;
+}
+
+.slot-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.chip-icon {
+  color: var(--text-dim);
+}
+
+.slot-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.slot-id {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}

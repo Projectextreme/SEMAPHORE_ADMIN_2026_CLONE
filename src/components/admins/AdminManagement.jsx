@@ -1,7 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { apiService } from '../../services/apiService';
-import { ShieldCheck, UserPlus, UserCheck, ShieldAlert, Key, Mail, User, RefreshCw, AlertCircle, CheckCircle2, Crown } from 'lucide-react';
+import { 
+  ShieldCheck, 
+  UserPlus, 
+  UserCheck, 
+  ShieldAlert, 
+  Key, 
+  Mail, 
+  User, 
+  RefreshCw, 
+  AlertCircle, 
+  CheckCircle2, 
+  Crown,
+  Copy,
+  Check
+} from 'lucide-react';
 import './AdminManagement.css';
 
 export const AdminManagement = () => {
@@ -12,6 +26,7 @@ export const AdminManagement = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [copiedId, setCopiedId] = useState(false);
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -38,11 +53,9 @@ export const AdminManagement = () => {
     setLoading(true);
     setErrorMsg('');
     try {
-      // 1. Get Current Admin Profile (GET /api/admin/me)
       const profile = await apiService.getAdminProfile();
       setMyProfile(profile);
 
-      // 2. Get All Admins (GET /api/admin/all) - Superadmin authorized
       if (isSuperAdmin || profile.role === 'superadmin') {
         const allAdmins = await apiService.getAllAdmins();
         setAdminsList(allAdmins);
@@ -57,6 +70,12 @@ export const AdminManagement = () => {
   useEffect(() => {
     fetchAdminData();
   }, [isSuperAdmin]);
+
+  const handleCopyId = (id) => {
+    navigator.clipboard.writeText(id);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
+  };
 
   // Handle Add Admin Submit (POST /api/admin/addadmin)
   const handleAddAdminSubmit = async (e) => {
@@ -116,20 +135,20 @@ export const AdminManagement = () => {
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <ShieldCheck className="title-icon" /> Admin Security & Role Management
+            <ShieldCheck className="title-icon" /> Administrator & Security Access
           </h2>
           <p className="page-description">
-            Manage system administrators, create new admin credentials, and assign role privileges.
+            Manage system administrators, provision new admin accounts, and assign role privileges.
           </p>
         </div>
 
         <div className="header-button-group">
           <button onClick={fetchAdminData} className="btn btn-secondary" title="Refresh Data">
-            <RefreshCw size={16} className={loading ? 'spin-icon' : ''} /> Refresh
+            <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
           </button>
           {isSuperAdmin && (
             <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-              <UserPlus size={16} /> Add New Admin
+              <UserPlus size={15} /> Add New Admin
             </button>
           )}
         </div>
@@ -138,31 +157,43 @@ export const AdminManagement = () => {
       {/* Notifications */}
       {errorMsg && (
         <div className="alert alert-error">
-          <AlertCircle size={18} />
+          <AlertCircle size={17} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
         <div className="alert alert-success">
-          <CheckCircle2 size={18} />
+          <CheckCircle2 size={17} />
           <span>{successMsg}</span>
         </div>
       )}
 
-      {/* Profile Overview Card (GET /api/admin/me) */}
+      {/* Profile Overview Card */}
       <div className="card profile-card">
         <div className="card-header">
-          <h3 className="card-title">
-            <User size={18} /> Current Authenticated Profile (GET /api/admin/me)
-          </h3>
-          <span className="endpoint-badge">GET /api/admin/me</span>
+          <div>
+            <h3 className="card-title">
+              <User size={17} /> Current Active Session
+            </h3>
+            <p className="card-subtitle">Authenticated Admin Profile Details</p>
+          </div>
+          <span className="endpoint-badge">Session Verified</span>
         </div>
 
         <div className="profile-details-grid">
           <div className="profile-field">
             <span className="field-label">Admin ID</span>
-            <span className="field-value code-font">{myProfile?._id || currentAdmin?._id || '—'}</span>
+            <div className="field-copy-row">
+              <span className="field-value code-font">{myProfile?._id || currentAdmin?._id || '—'}</span>
+              <button 
+                className="copy-btn" 
+                onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)}
+                title="Copy ID"
+              >
+                {copiedId ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+              </button>
+            </div>
           </div>
 
           <div className="profile-field">
@@ -177,37 +208,39 @@ export const AdminManagement = () => {
 
           <div className="profile-field">
             <span className="field-label">Assigned Role</span>
-            <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-              {myProfile?.role === 'superadmin' ? <Crown size={12} /> : <UserCheck size={12} />}
-              {myProfile?.role || currentAdmin?.role || 'admin'}
-            </span>
+            <div>
+              <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
+                {myProfile?.role === 'superadmin' ? <Crown size={12} /> : <UserCheck size={12} />}
+                {myProfile?.role || currentAdmin?.role || 'admin'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* All Admins Table (GET /api/admin/all) */}
+      {/* All Admins Table */}
       <div className="card table-card">
         <div className="card-header">
           <div>
             <h3 className="card-title">
-              <Key size={18} /> System Administrators List (GET /api/admin/all)
+              <Key size={17} /> System Administrators List
             </h3>
             <p className="card-subtitle">
               {isSuperAdmin
-                ? 'Authorized view of all system admins and role permissions'
+                ? 'Authorized view of all system administrators and roles'
                 : 'Requires Superadmin privileges to view and manage full list'}
             </p>
           </div>
 
-          <span className="endpoint-badge">GET /api/admin/all</span>
+          <span className="endpoint-badge">Access Control</span>
         </div>
 
         {!isSuperAdmin ? (
           <div className="restricted-notice">
-            <ShieldAlert size={32} className="warning-icon" />
+            <ShieldAlert size={28} className="warning-icon" />
             <div>
               <h4>Restricted Superadmin View</h4>
-              <p>Only administrators with the <code>superadmin</code> role can query all administrators and promote/demote user roles.</p>
+              <p>Only administrators with the <code>superadmin</code> role can query all administrators and update user roles.</p>
             </div>
           </div>
         ) : loading ? (
@@ -220,9 +253,8 @@ export const AdminManagement = () => {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>ADMIN ID</th>
-                  <th>NAME</th>
-                  <th>EMAIL</th>
+                  <th>ADMIN USER</th>
+                  <th>ID</th>
                   <th>ROLE</th>
                   <th>CREATED AT</th>
                   <th>ACTIONS</th>
@@ -231,18 +263,27 @@ export const AdminManagement = () => {
               <tbody>
                 {adminsList.map((adm) => (
                   <tr key={adm._id} className={adm._id === currentAdmin?._id ? 'highlight-row' : ''}>
-                    <td className="code-font">{adm._id}</td>
-                    <td className="font-semibold">
-                      {adm.name} {adm._id === currentAdmin?._id && <span className="you-tag">(You)</span>}
+                    <td>
+                      <div className="admin-user-cell">
+                        <div className="admin-avatar">
+                          {adm.name?.charAt(0).toUpperCase() || 'A'}
+                        </div>
+                        <div className="admin-user-info">
+                          <span className="admin-user-name">
+                            {adm.name} {adm._id === currentAdmin?._id && <span className="you-tag">(You)</span>}
+                          </span>
+                          <span className="admin-user-email">{adm.email}</span>
+                        </div>
+                      </div>
                     </td>
-                    <td>{adm.email}</td>
+                    <td className="code-font">{adm._id}</td>
                     <td>
                       <span className={`role-badge ${adm.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
                         {adm.role === 'superadmin' ? <Crown size={12} /> : null}
                         {adm.role}
                       </span>
                     </td>
-                    <td className="date-text">{new Date(adm.createdAt).toLocaleString()}</td>
+                    <td className="date-text">{new Date(adm.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td>
                       <button
                         onClick={() => openRoleModalForAdmin(adm)}
@@ -265,7 +306,7 @@ export const AdminManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><UserPlus size={20} /> Add New Admin Account</h3>
+              <h3><UserPlus size={19} /> Add New Administrator</h3>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
             </div>
             <p className="modal-subtitle">
@@ -276,11 +317,11 @@ export const AdminManagement = () => {
               <div className="form-group">
                 <label className="form-label">Full Name</label>
                 <div className="input-wrapper">
-                  <User className="input-icon" />
+                  <User className="input-icon" size={16} />
                   <input
                     type="text"
                     className="form-input"
-                    placeholder="e.g. John Doe"
+                    placeholder="e.g. Swasthik Lead"
                     value={newAdmin.name}
                     onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
                     required
@@ -291,11 +332,11 @@ export const AdminManagement = () => {
               <div className="form-group">
                 <label className="form-label">Email Address</label>
                 <div className="input-wrapper">
-                  <Mail className="input-icon" />
+                  <Mail className="input-icon" size={16} />
                   <input
                     type="email"
                     className="form-input"
-                    placeholder="e.g. john@example.com"
+                    placeholder="e.g. swasthik@semaphore.com"
                     value={newAdmin.email}
                     onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
                     required
@@ -306,7 +347,7 @@ export const AdminManagement = () => {
               <div className="form-group">
                 <label className="form-label">Password</label>
                 <div className="input-wrapper">
-                  <Key className="input-icon" />
+                  <Key className="input-icon" size={16} />
                   <input
                     type="password"
                     className="form-input"
@@ -335,7 +376,7 @@ export const AdminManagement = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Creating...' : 'Create Admin'}
+                  {actionLoading ? 'Creating...' : 'Create Admin Account'}
                 </button>
               </div>
             </form>
@@ -348,7 +389,7 @@ export const AdminManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Key size={20} /> Change Admin Role</h3>
+              <h3><Key size={19} /> Modify Admin Role</h3>
               <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
             </div>
             <p className="modal-subtitle">
@@ -368,7 +409,7 @@ export const AdminManagement = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Target Admin ID (Optional Payload Field)</label>
+                <label className="form-label">Target Admin ID</label>
                 <input
                   type="text"
                   className="form-input code-font"
@@ -378,14 +419,14 @@ export const AdminManagement = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">New Target Role</label>
+                <label className="form-label">New Assigned Role</label>
                 <select
                   className="form-select"
                   value={roleForm.role}
                   onChange={(e) => setRoleForm({ ...roleForm, role: e.target.value })}
                 >
-                  <option value="superadmin">superadmin</option>
-                  <option value="admin">admin</option>
+                  <option value="superadmin">superadmin (Full Privileges)</option>
+                  <option value="admin">admin (Standard Moderator)</option>
                 </select>
               </div>
 
@@ -394,7 +435,7 @@ export const AdminManagement = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-warning" disabled={actionLoading}>
-                  {actionLoading ? 'Updating Role...' : 'Update Admin Role'}
+                  {actionLoading ? 'Updating Role...' : 'Save Role Change'}
                 </button>
               </div>
             </form>

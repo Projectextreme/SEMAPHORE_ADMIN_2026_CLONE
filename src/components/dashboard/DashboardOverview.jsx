@@ -7,8 +7,14 @@ import {
   CreditCard,
   Calendar,
   ArrowUpRight,
-  Award,
-  Zap
+  Zap,
+  TrendingUp,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  Layers
 } from 'lucide-react';
 import './DashboardOverview.css';
 
@@ -20,27 +26,29 @@ export const DashboardOverview = ({ setActiveTab }) => {
     totalUsers: 3,
     pendingPayments: 2,
     approvedPayments: 12,
-    activeEvents: 8,
-    totalColleges: 5
+    activeEvents: 3,
+    totalColleges: 3
   });
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const users = await apiService.getAllUsers();
+        const events = await apiService.getAllEvents();
 
         if (isSuperAdmin) {
           const admins = await apiService.getAllAdmins();
-
           setStats((prev) => ({
             ...prev,
             totalUsers: users.length,
-            totalAdmins: admins.length
+            totalAdmins: admins.length,
+            activeEvents: events.length
           }));
         } else {
           setStats((prev) => ({
             ...prev,
-            totalUsers: users.length
+            totalUsers: users.length,
+            activeEvents: events.length
           }));
         }
       } catch (err) {
@@ -51,352 +59,269 @@ export const DashboardOverview = ({ setActiveTab }) => {
     loadStats();
   }, [isSuperAdmin]);
 
+  const kpis = [
+    {
+      id: 'admins',
+      title: 'Administrators',
+      value: stats.totalAdmins,
+      subtext: isSuperAdmin ? 'Full Access Granted' : 'Role: Admin',
+      icon: ShieldCheck,
+      colorClass: 'indigo',
+      trend: '+1 This Week',
+      tab: 'admins'
+    },
+    {
+      id: 'users',
+      title: 'Registered Users',
+      value: stats.totalUsers,
+      subtext: '3 Colleges Enrolled',
+      icon: Users,
+      colorClass: 'cyan',
+      trend: '+100% Verified',
+      tab: 'users'
+    },
+    {
+      id: 'payments',
+      title: 'Pending UTRs',
+      value: stats.pendingPayments,
+      subtext: 'Needs Scan & Pay check',
+      icon: CreditCard,
+      colorClass: 'amber',
+      trend: 'Action Required',
+      tab: 'payments'
+    },
+    {
+      id: 'events',
+      title: 'Active Events',
+      value: stats.activeEvents,
+      subtext: 'Tech & Non-Tech Arena',
+      icon: Calendar,
+      colorClass: 'emerald',
+      trend: 'Live Rules',
+      tab: 'events'
+    }
+  ];
+
   return (
     <div className="dashboard-container">
-
       {/* Welcome Banner */}
       <div className="welcome-banner">
         <div className="welcome-content">
-
-          <span className="welcome-badge">
-            <Zap size={14} /> Semaphore 2026 Admin Hub
-          </span>
+          <div className="welcome-top-row">
+            <span className="welcome-badge">
+              <Zap size={13} /> Semaphore 2026 Admin Hub
+            </span>
+            <span className="event-date-pill">
+              <Clock size={13} /> Fest Status: Registration Open
+            </span>
+          </div>
 
           <h2>
-            Welcome back, {admin?.name || 'Admin'}!
+            Welcome back, {admin?.name || 'Admin'}! 👋
           </h2>
 
           <p>
-            You are logged in as{' '}
-            <strong className="highlight-text">
-              {admin?.role}
-            </strong>{' '}
-            ({admin?.email}). Overview of registration quotas,
-            UTR payment verifications, and system admins below.
+            Logged in as <strong className="highlight-text">{admin?.role}</strong> ({admin?.email}).
+            Real-time overview of registration quotas, UTR payment verifications, and system access.
           </p>
+        </div>
 
+        <div className="banner-quick-stats">
+          <div className="banner-stat-chip">
+            <span className="chip-num">2 / 2</span>
+            <span className="chip-lbl">Max Teams / College</span>
+          </div>
+          <div className="banner-stat-chip">
+            <span className="chip-num">₹ 1,750</span>
+            <span className="chip-lbl">Total Volume</span>
+          </div>
         </div>
       </div>
-
 
       {/* KPI Cards Grid */}
       <div className="kpi-grid">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <div
+              key={kpi.id}
+              className="kpi-card"
+              onClick={() => setActiveTab(kpi.tab)}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="kpi-card-inner">
+                <div className="kpi-header">
+                  <span className="kpi-title">{kpi.title}</span>
+                  <div className={`kpi-icon-wrapper icon-${kpi.colorClass}`}>
+                    <Icon size={18} />
+                  </div>
+                </div>
 
-        {/* Total Administrators */}
-        <div
-          className="kpi-card"
-          onClick={() => setActiveTab('admins')}
-        >
-          <div className="kpi-header">
+                <div className="kpi-value-row">
+                  <div className="kpi-value">{kpi.value}</div>
+                  <span className={`kpi-trend-pill trend-${kpi.colorClass}`}>
+                    {kpi.trend}
+                  </span>
+                </div>
 
-            <span className="kpi-title">
-              Total Administrators
-            </span>
-
-            <div className="kpi-icon-wrapper icon-indigo">
-              <ShieldCheck size={20} />
+                <div className="kpi-footer">
+                  <span className="kpi-subtext">{kpi.subtext}</span>
+                  <span className="kpi-arrow">
+                    <ArrowUpRight size={14} />
+                  </span>
+                </div>
+              </div>
             </div>
-
-          </div>
-
-          <div className="kpi-value">
-            {stats.totalAdmins}
-          </div>
-
-          <div className="kpi-footer">
-            <span className="kpi-link">
-              GET /api/admin/all
-              <ArrowUpRight size={14} />
-            </span>
-          </div>
-        </div>
-
-
-        {/* Registered Users */}
-        <div
-          className="kpi-card"
-          onClick={() => setActiveTab('users')}
-        >
-          <div className="kpi-header">
-
-            <span className="kpi-title">
-              Registered Users
-            </span>
-
-            <div className="kpi-icon-wrapper icon-cyan">
-              <Users size={20} />
-            </div>
-
-          </div>
-
-          <div className="kpi-value">
-            {stats.totalUsers}
-          </div>
-
-          <div className="kpi-footer">
-            <span className="kpi-link">
-              GET /api/admin/users
-              <ArrowUpRight size={14} />
-            </span>
-          </div>
-        </div>
-
-
-        {/* Pending Payments */}
-        <div
-          className="kpi-card"
-          onClick={() => setActiveTab('payments')}
-        >
-          <div className="kpi-header">
-
-            <span className="kpi-title">
-              Pending Payment UTRs
-            </span>
-
-            <div className="kpi-icon-wrapper icon-amber">
-              <CreditCard size={20} />
-            </div>
-
-          </div>
-
-          <div className="kpi-value">
-            {stats.pendingPayments}
-          </div>
-
-          <div className="kpi-footer warning-text">
-            <span>
-              Needs Scan & Pay verification
-            </span>
-          </div>
-        </div>
-
-
-        {/* Active Events */}
-        <div
-          className="kpi-card"
-          onClick={() => setActiveTab('events')}
-        >
-          <div className="kpi-header">
-
-            <span className="kpi-title">
-              Active Fest Events
-            </span>
-
-            <div className="kpi-icon-wrapper icon-emerald">
-              <Calendar size={20} />
-            </div>
-
-          </div>
-
-          <div className="kpi-value">
-            {stats.activeEvents}
-          </div>
-
-          <div className="kpi-footer">
-            <span className="kpi-link">
-              Tech & Non-Tech events
-            </span>
-          </div>
-        </div>
-
+          );
+        })}
       </div>
 
+      {/* Two Column Grid: Event Registration & College Breakdown */}
+      <div className="dashboard-grid-2col">
+        {/* Event Registration Summary */}
+        <div className="card event-summary-card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">
+                <Calendar size={17} /> Event Registration Breakdown
+              </h3>
+              <p className="card-subtitle">Active team capacity and attendee enrollments</p>
+            </div>
+            <button
+              onClick={() => setActiveTab('events')}
+              className="btn btn-xs btn-secondary"
+            >
+              View All <ArrowUpRight size={12} />
+            </button>
+          </div>
 
-      {/* Event Registration Summary */}
-      <div className="card event-summary-card">
-
-        <div className="card-header">
-          <h3 className="card-title">
-            <Calendar size={18} />
-            Event Registration Summary
-          </h3>
+          <div className="table-responsive">
+            <table className="dashboard-table">
+              <thead>
+                <tr>
+                  <th>EVENT</th>
+                  <th>TEAMS</th>
+                  <th>PARTICIPANTS</th>
+                  <th>CAPACITY</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div className="event-cell-title">
+                      <strong>CodeFest 2026</strong>
+                      <span>Coding & Hackathon</span>
+                    </div>
+                  </td>
+                  <td><span className="num-pill cyan">1 Team</span></td>
+                  <td><strong>4 Members</strong></td>
+                  <td>
+                    <div className="progress-bar-container">
+                      <div className="progress-bar-fill" style={{ width: '50%' }}></div>
+                      <span>50%</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div className="event-cell-title">
+                      <strong>RoboWars Arena</strong>
+                      <span>Robotics Flagship</span>
+                    </div>
+                  </td>
+                  <td><span className="num-pill cyan">1 Team</span></td>
+                  <td><strong>3 Members</strong></td>
+                  <td>
+                    <div className="progress-bar-container">
+                      <div className="progress-bar-fill" style={{ width: '50%' }}></div>
+                      <span>50%</span>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div className="event-cell-title">
+                      <strong>WebCrafters</strong>
+                      <span>Web Development</span>
+                    </div>
+                  </td>
+                  <td><span className="num-pill cyan">1 Team</span></td>
+                  <td><strong>2 Members</strong></td>
+                  <td>
+                    <div className="progress-bar-container">
+                      <div className="progress-bar-fill" style={{ width: '35%' }}></div>
+                      <span>35%</span>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="event-summary-table-wrapper">
+        {/* Participating Colleges & Quotas */}
+        <div className="card colleges-summary-card">
+          <div className="card-header">
+            <div>
+              <h3 className="card-title">
+                <Building2 size={17} /> College Quotas (Max 2 Teams)
+              </h3>
+              <p className="card-subtitle">Enforcement of 2 teams per college rule</p>
+            </div>
+            <button
+              onClick={() => setActiveTab('registrations')}
+              className="btn btn-xs btn-secondary"
+            >
+              Quotas <ArrowUpRight size={12} />
+            </button>
+          </div>
 
-          <table className="event-summary-table">
+          <div className="colleges-quota-list">
+            <div className="college-quota-item">
+              <div className="college-info">
+                <span className="college-name">MIT Tech</span>
+                <span className="quota-status-tag full">Quota Reached</span>
+              </div>
+              <div className="quota-bar-wrapper">
+                <div className="quota-bar full" style={{ width: '100%' }}></div>
+              </div>
+              <div className="quota-labels">
+                <span>Teams Registered</span>
+                <strong>2 / 2 Teams</strong>
+              </div>
+            </div>
 
-            <thead>
-              <tr>
-                <th>EVENT</th>
-                <th>TEAMS REGISTERED</th>
-                <th>PARTICIPANTS</th>
-              </tr>
-            </thead>
+            <div className="college-quota-item">
+              <div className="college-info">
+                <span className="college-name">RV College of Engineering</span>
+                <span className="quota-status-tag full">Quota Reached</span>
+              </div>
+              <div className="quota-bar-wrapper">
+                <div className="quota-bar full" style={{ width: '100%' }}></div>
+              </div>
+              <div className="quota-labels">
+                <span>Teams Registered</span>
+                <strong>2 / 2 Teams</strong>
+              </div>
+            </div>
 
-            <tbody>
-
-              <tr>
-                <td>CodeFest Hackathon</td>
-                <td>1</td>
-                <td>4</td>
-              </tr>
-
-              <tr>
-                <td>RoboWars</td>
-                <td>1</td>
-                <td>3</td>
-              </tr>
-
-              <tr>
-                <td>WebCrafters</td>
-                <td>1</td>
-                <td>2</td>
-              </tr>
-
-            </tbody>
-
-          </table>
-
+            <div className="college-quota-item">
+              <div className="college-info">
+                <span className="college-name">NMAM Institute of Technology</span>
+                <span className="quota-status-tag open">1 Slot Left</span>
+              </div>
+              <div className="quota-bar-wrapper">
+                <div className="quota-bar open" style={{ width: '50%' }}></div>
+              </div>
+              <div className="quota-labels">
+                <span>Teams Registered</span>
+                <strong>1 / 2 Teams</strong>
+              </div>
+            </div>
+          </div>
         </div>
-
       </div>
-
-
-      {/* Quick API Action Launchers */}
-      <div className="card api-endpoints-card">
-
-        <div className="card-header">
-
-          <h3 className="card-title">
-            <Award size={18} />
-            Configured REST API Endpoints Quick Access
-          </h3>
-
-        </div>
-
-
-        <div className="endpoints-grid">
-
-          {/* Login */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('admins')}
-          >
-            <span className="method-badge post-method">
-              POST
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/login
-              </span>
-
-              <span className="endpoint-desc">
-                Admin authentication with JWT generation
-              </span>
-            </div>
-          </div>
-
-
-          {/* Add Admin */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('admins')}
-          >
-            <span className="method-badge post-method">
-              POST
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/addadmin
-              </span>
-
-              <span className="endpoint-desc">
-                Add new admin (Superadmin authorization)
-              </span>
-            </div>
-          </div>
-
-
-          {/* Make Admin */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('admins')}
-          >
-            <span className="method-badge put-method">
-              PUT
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/makeadmin
-              </span>
-
-              <span className="endpoint-desc">
-                Update admin role to superadmin
-              </span>
-            </div>
-          </div>
-
-
-          {/* Current Admin */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('admins')}
-          >
-            <span className="method-badge get-method">
-              GET
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/me
-              </span>
-
-              <span className="endpoint-desc">
-                Fetch current admin profile token details
-              </span>
-            </div>
-          </div>
-
-
-          {/* Users */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('users')}
-          >
-            <span className="method-badge get-method">
-              GET
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/users
-              </span>
-
-              <span className="endpoint-desc">
-                Retrieve all registered users and colleges
-              </span>
-            </div>
-          </div>
-
-
-          {/* Edit User */}
-          <div
-            className="endpoint-item"
-            onClick={() => setActiveTab('users')}
-          >
-            <span className="method-badge put-method">
-              PUT
-            </span>
-
-            <div className="endpoint-info">
-              <span className="endpoint-path">
-                /api/admin/users/:id
-              </span>
-
-              <span className="endpoint-desc">
-                Edit user profile, role or college details
-              </span>
-            </div>
-          </div>
-
-        </div>
-
-      </div>
-
     </div>
   );
 };

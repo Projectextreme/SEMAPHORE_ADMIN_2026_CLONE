@@ -12,7 +12,9 @@ import {
   Search,
   AlertCircle,
   Check,
-  Loader2
+  Loader2,
+  Tag,
+  UserCheck
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import './EventManagement.css';
@@ -164,66 +166,69 @@ export const EventManagement = () => {
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <Calendar className="title-icon" /> Fest Event Management
+            <Calendar className="title-icon" /> Festival Events & Competition Rules
           </h2>
           <p className="page-description">
-            Configure Semaphore 2026 events, maximum team bounds, venue allocations, and registration status.
+            Configure Semaphore 2026 events, maximum team capacities, venue schedules, and registration states.
           </p>
         </div>
 
         <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-          <Plus size={16} /> Create New Event
+          <Plus size={15} /> Create New Event
         </button>
       </div>
 
       {/* Alert Notification */}
       {alert && (
         <div className={`alert alert-${alert.type}`}>
-          {alert.type === 'success' ? <Check size={18} /> : <AlertCircle size={18} />}
+          {alert.type === 'success' ? <Check size={17} /> : <AlertCircle size={17} />}
           <span>{alert.message}</span>
         </div>
       )}
 
       {/* Toolbar Filter & Search */}
-      <div className="events-toolbar">
-        <div className="search-filter-group">
-          <div className="search-input-wrapper">
-            <Search size={16} className="search-icon" />
+      <div className="card events-toolbar-card">
+        <div className="events-toolbar-inner">
+          <div className="search-bar-wrapper">
+            <Search size={15} className="search-icon" />
             <input
               type="text"
-              placeholder="Search event title, category or venue..."
+              className="search-input"
+              placeholder="Search by event title, category or venue..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: '180px' }}
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-          >
-            <option value="All">All Categories</option>
-            <option value="Coding & Hackathon">Coding & Hackathon</option>
-            <option value="Robotics">Robotics</option>
-            <option value="Web Development">Web Development</option>
-            <option value="Gaming">Gaming & Esports</option>
-            <option value="Flagship">Flagship Event</option>
-          </select>
+          <div className="category-filter-wrapper">
+            <Tag size={14} className="filter-icon" />
+            <select
+              className="form-select select-compact"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              <option value="All">All Categories</option>
+              <option value="Coding & Hackathon">Coding & Hackathon</option>
+              <option value="Robotics">Robotics</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Gaming">Gaming & Esports</option>
+              <option value="Flagship">Flagship Event</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Events Grid */}
       {loading ? (
         <div className="empty-state">
-          <Loader2 size={24} className="spin-icon" style={{ animation: 'spin 1s linear infinite' }} />
+          <Loader2 size={24} className="spin-icon" />
           <p>Loading Semaphore Events...</p>
         </div>
       ) : filteredEvents.length === 0 ? (
         <div className="empty-state">
           <Calendar size={36} />
           <h3>No events found</h3>
-          <p>No events match your current filter criteria.</p>
+          <p>No events match your search or category filter.</p>
         </div>
       ) : (
         <div className="events-grid">
@@ -231,38 +236,47 @@ export const EventManagement = () => {
             <div key={evt.id} className="card event-card">
               <div className="event-card-header">
                 <span className="category-pill">{evt.category}</span>
-                <div className="header-right-actions">
-                  <button
-                    onClick={() => toggleEventStatus(evt)}
-                    className={`status-toggle ${evt.status.toLowerCase()}`}
-                    title="Toggle Active / Draft"
-                  >
-                    {evt.status === 'Active' ? <CheckCircle2 size={13} /> : <XCircle size={13} />}
-                    {evt.status}
-                  </button>
-                </div>
+                <button
+                  onClick={() => toggleEventStatus(evt)}
+                  className={`status-toggle ${evt.status.toLowerCase()}`}
+                  title="Click to Toggle Active / Draft"
+                >
+                  {evt.status === 'Active' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                  <span>{evt.status}</span>
+                </button>
               </div>
 
               <h3 className="event-title">{evt.title}</h3>
 
-              <div className="event-meta">
+              <div className="event-meta-grid">
                 <div className="meta-item">
-                  <DollarSign size={15} className="meta-icon" />
-                  <span>Fee: <strong>{evt.fee}</strong></span>
+                  <DollarSign size={14} className="meta-icon text-success" />
+                  <div className="meta-text">
+                    <span className="meta-lbl">Registration Fee</span>
+                    <strong>{evt.fee}</strong>
+                  </div>
                 </div>
+
                 <div className="meta-item">
-                  <Users size={15} className="meta-icon" />
-                  <span>Max Teams/College: <strong>{evt.maxTeamsPerCollege}</strong> (Max {evt.maxTeamMembers || 4} members/team)</span>
+                  <Users size={14} className="meta-icon text-cyan" />
+                  <div className="meta-text">
+                    <span className="meta-lbl">Team Size Limit</span>
+                    <strong>Max {evt.maxTeamMembers || 4} / Team ({evt.maxTeamsPerCollege}/College)</strong>
+                  </div>
                 </div>
-                <div className="meta-item">
-                  <MapPin size={15} className="meta-icon" />
-                  <span>{evt.venue}</span>
+
+                <div className="meta-item full-width">
+                  <MapPin size={14} className="meta-icon text-primary" />
+                  <div className="meta-text">
+                    <span className="meta-lbl">Venue Location</span>
+                    <span>{evt.venue}</span>
+                  </div>
                 </div>
               </div>
 
               <div className="event-card-footer">
                 <div className="coordinators-list">
-                  <span className="coord-label">Coordinators:</span>
+                  <UserCheck size={13} className="coord-icon" />
                   <span className="coord-names">
                     {Array.isArray(evt.coordinators)
                       ? evt.coordinators.join(', ')
@@ -272,21 +286,21 @@ export const EventManagement = () => {
 
                 <div className="card-action-btns">
                   <button
-                    className="btn-icon"
+                    className="btn-icon btn-edit"
                     title="Edit Event"
                     onClick={() => setEditingEvent({
                       ...evt,
                       coordinators: Array.isArray(evt.coordinators) ? evt.coordinators.join(', ') : evt.coordinators
                     })}
                   >
-                    <Edit2 size={14} />
+                    <Edit2 size={13} />
                   </button>
                   <button
-                    className="btn-icon danger"
+                    className="btn-icon btn-delete"
                     title="Delete Event"
                     onClick={() => setDeletingEvent(evt)}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
@@ -300,9 +314,10 @@ export const EventManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Plus size={20} /> Create New Semaphore Event</h3>
+              <h3><Plus size={19} /> Create New Semaphore Event</h3>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
             </div>
+            <p className="modal-subtitle">Configure festival event schedule and registration caps</p>
 
             <form onSubmit={handleCreateEvent} className="modal-form">
               <div className="form-group">
@@ -402,8 +417,8 @@ export const EventManagement = () => {
                   value={newEvent.status}
                   onChange={(e) => setNewEvent({ ...newEvent, status: e.target.value })}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
+                  <option value="Active">Active (Open for registrations)</option>
+                  <option value="Draft">Draft (Hidden)</option>
                 </select>
               </div>
 
@@ -412,7 +427,7 @@ export const EventManagement = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving...' : 'Save Event'}
+                  {submitting ? 'Saving...' : 'Create Event'}
                 </button>
               </div>
             </form>
@@ -425,9 +440,10 @@ export const EventManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Edit2 size={20} /> Edit Semaphore Event</h3>
+              <h3><Edit2 size={19} /> Modify Event Details</h3>
               <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
             </div>
+            <p className="modal-subtitle">Update parameters for {editingEvent.title}</p>
 
             <form onSubmit={handleUpdateEvent} className="modal-form">
               <div className="form-group">
@@ -533,7 +549,7 @@ export const EventManagement = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Updating...' : 'Update Event'}
+                  {submitting ? 'Saving Changes...' : 'Save Changes'}
                 </button>
               </div>
             </form>
@@ -546,12 +562,12 @@ export const EventManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={20} /> Delete Event</h3>
+              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Delete Event</h3>
               <button className="modal-close" onClick={() => setDeletingEvent(null)}>&times;</button>
             </div>
 
-            <p style={{ marginTop: '0.5rem', color: 'var(--text-main)' }}>
-              Are you sure you want to delete event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id})? This action cannot be undone.
+            <p className="delete-warning-text">
+              Are you sure you want to remove event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id})? This will unassign any scheduled slots.
             </p>
 
             <div className="modal-actions">

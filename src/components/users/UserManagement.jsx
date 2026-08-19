@@ -1,12 +1,27 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../../services/apiService';
-import { Users, Search, Edit2, Trash2, Eye, RefreshCw, AlertCircle, CheckCircle2, Building2, Mail, ShieldCheck } from 'lucide-react';
+import { 
+  Users, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Eye, 
+  RefreshCw, 
+  AlertCircle, 
+  CheckCircle2, 
+  Building2, 
+  Mail, 
+  ShieldCheck,
+  Filter,
+  UserCheck
+} from 'lucide-react';
 import './UserManagement.css';
 
 export const UserManagement = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -95,12 +110,13 @@ export const UserManagement = () => {
 
   const filteredUsers = users.filter((u) => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       u.name?.toLowerCase().includes(term) ||
       u.email?.toLowerCase().includes(term) ||
       u.collegeName?.toLowerCase().includes(term) ||
-      u._id?.toLowerCase().includes(term)
-    );
+      u._id?.toLowerCase().includes(term);
+    const matchesRole = selectedRoleFilter === 'All' || u.role === selectedRoleFilter;
+    return matchesSearch && matchesRole;
   });
 
   return (
@@ -109,16 +125,16 @@ export const UserManagement = () => {
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <Users className="title-icon" /> User & College Registration Management
+            <Users className="title-icon" /> User & Participant Directory
           </h2>
           <p className="page-description">
-            View registered participants, filter by college, modify user profiles, and manage active accounts.
+            Inspect registered student leaders, filter colleges, modify user profiles, and manage active accounts.
           </p>
         </div>
 
         <div className="header-button-group">
           <button onClick={fetchUsers} className="btn btn-secondary" title="Refresh List">
-            <RefreshCw size={16} className={loading ? 'spin-icon' : ''} /> Refresh
+            <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
           </button>
         </div>
       </div>
@@ -126,33 +142,47 @@ export const UserManagement = () => {
       {/* Notifications */}
       {errorMsg && (
         <div className="alert alert-error">
-          <AlertCircle size={18} />
+          <AlertCircle size={17} />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
         <div className="alert alert-success">
-          <CheckCircle2 size={18} />
+          <CheckCircle2 size={17} />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* User Table Card */}
       <div className="card table-card">
-        <div className="card-header border-none">
+        <div className="card-header border-none user-toolbar">
           <div className="search-bar-wrapper">
-            <Search className="search-icon" size={18} />
+            <Search className="search-icon" size={16} />
             <input
               type="text"
               className="search-input"
-              placeholder="Search users by Name, Email, College, or User ID..."
+              placeholder="Search by name, email, college, or user ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <span className="endpoint-badge">GET /api/admin/users</span>
+          <div className="user-filter-group">
+            <div className="role-filter-wrapper">
+              <Filter size={14} className="filter-icon" />
+              <select
+                className="form-select select-compact"
+                value={selectedRoleFilter}
+                onChange={(e) => setSelectedRoleFilter(e.target.value)}
+              >
+                <option value="All">All Roles</option>
+                <option value="user">Participants (user)</option>
+                <option value="coordinator">Coordinators</option>
+              </select>
+            </div>
+            <span className="endpoint-badge">{filteredUsers.length} Users Listed</span>
+          </div>
         </div>
 
         {loading ? (
@@ -169,20 +199,29 @@ export const UserManagement = () => {
             <table className="user-table">
               <thead>
                 <tr>
-                  <th>USER ID</th>
-                  <th>NAME</th>
-                  <th>EMAIL</th>
+                  <th>USER PROFILE</th>
+                  <th>ID</th>
                   <th>COLLEGE NAME</th>
-                  <th>TEAMS REGISTERED</th>
+                  <th>TEAMS ENROLLED</th>
+                  <th>ROLE</th>
                   <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user._id}>
+                    <td>
+                      <div className="user-profile-cell">
+                        <div className="user-avatar">
+                          {user.name?.charAt(0).toUpperCase() || 'U'}
+                        </div>
+                        <div className="user-cell-info">
+                          <span className="user-cell-name">{user.name}</span>
+                          <span className="user-cell-email">{user.email}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td className="code-font">{user._id}</td>
-                    <td className="font-semibold">{user.name}</td>
-                    <td>{user.email}</td>
                     <td>
                       <span className="college-tag">
                         <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}
@@ -194,27 +233,32 @@ export const UserManagement = () => {
                       </span>
                     </td>
                     <td>
+                      <span className="role-badge badge-user">
+                        <UserCheck size={11} /> {user.role || 'user'}
+                      </span>
+                    </td>
+                    <td>
                       <div className="action-buttons">
                         <button
                           onClick={() => handleViewUser(user._id)}
                           className="btn-icon btn-view"
-                          title="Retrieve Single User (GET /api/admin/users/:id)"
+                          title="Inspect User (GET /api/admin/users/:id)"
                         >
-                          <Eye size={15} />
+                          <Eye size={14} />
                         </button>
                         <button
                           onClick={() => handleOpenEdit(user)}
                           className="btn-icon btn-edit"
                           title="Edit User Details (PUT /api/admin/users/:id)"
                         >
-                          <Edit2 size={15} />
+                          <Edit2 size={14} />
                         </button>
                         <button
                           onClick={() => setDeleteUserId(user._id)}
                           className="btn-icon btn-delete"
                           title="Delete User (DELETE /api/admin/users/:id)"
                         >
-                          <Trash2 size={15} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -231,7 +275,7 @@ export const UserManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Eye size={20} /> User Details Inspection</h3>
+              <h3><Eye size={19} /> User Profile Inspection</h3>
               <button className="modal-close" onClick={() => setSelectedUserView(null)}>&times;</button>
             </div>
             <p className="modal-subtitle">
@@ -240,32 +284,32 @@ export const UserManagement = () => {
 
             <div className="user-detail-card">
               <div className="detail-row">
-                <span className="detail-label">User ID:</span>
+                <span className="detail-label">User ID</span>
                 <span className="code-font">{selectedUserView._id}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Full Name:</span>
+                <span className="detail-label">Full Name</span>
                 <span className="font-bold">{selectedUserView.name}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Email Address:</span>
+                <span className="detail-label">Email Address</span>
                 <span>{selectedUserView.email}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Assigned Role:</span>
-                <span className="badge-user">{selectedUserView.role}</span>
+                <span className="detail-label">Assigned Role</span>
+                <span className="role-badge badge-user">{selectedUserView.role || 'user'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">College Name:</span>
-                <span>{selectedUserView.collegeName || selectedUserView.college?.collegeName}</span>
+                <span className="detail-label">College Name</span>
+                <span>{selectedUserView.collegeName || selectedUserView.college?.collegeName || 'N/A'}</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Registered Teams:</span>
-                <span>{selectedUserView.college?.totalTeams || 1} team(s)</span>
+                <span className="detail-label">Registered Teams</span>
+                <span className="teams-count-badge">{selectedUserView.college?.totalTeams || 1} team(s)</span>
               </div>
               <div className="detail-row">
-                <span className="detail-label">Created At:</span>
-                <span className="date-text">{new Date(selectedUserView.createdAt).toLocaleString()}</span>
+                <span className="detail-label">Created At</span>
+                <span className="date-text">{new Date(selectedUserView.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
               </div>
             </div>
 
@@ -283,7 +327,7 @@ export const UserManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Edit2 size={20} /> Edit User Details</h3>
+              <h3><Edit2 size={19} /> Edit User Details</h3>
               <button className="modal-close" onClick={() => setEditUserData(null)}>&times;</button>
             </div>
             <p className="modal-subtitle">
@@ -331,8 +375,8 @@ export const UserManagement = () => {
                   value={editUserData.role}
                   onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
                 >
-                  <option value="user">user</option>
-                  <option value="coordinator">coordinator</option>
+                  <option value="user">user (Participant)</option>
+                  <option value="coordinator">coordinator (Event Organizer)</option>
                 </select>
               </div>
 
@@ -341,7 +385,7 @@ export const UserManagement = () => {
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save Changes'}
+                  {actionLoading ? 'Saving...' : 'Save User Changes'}
                 </button>
               </div>
             </form>
@@ -354,7 +398,7 @@ export const UserManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3><Trash2 size={20} className="text-red" /> Confirm User Deletion</h3>
+              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm User Deletion</h3>
               <button className="modal-close" onClick={() => setDeleteUserId(null)}>&times;</button>
             </div>
             <p className="modal-subtitle">
@@ -362,7 +406,7 @@ export const UserManagement = () => {
             </p>
 
             <p className="delete-warning-text">
-              Are you sure you want to permanently delete user <code className="code-font">{deleteUserId}</code>? This action cannot be undone.
+              Are you sure you want to permanently delete user account <code className="code-font">{deleteUserId}</code>? This action cannot be reversed.
             </p>
 
             <div className="modal-actions">
@@ -370,7 +414,7 @@ export const UserManagement = () => {
                 Cancel
               </button>
               <button className="btn btn-danger" onClick={handleConfirmDelete} disabled={actionLoading}>
-                {actionLoading ? 'Deleting...' : 'Delete User'}
+                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
               </button>
             </div>
           </div>

@@ -4,24 +4,46 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('semaphore_admin_theme');
-    if (savedTheme) {
-      return savedTheme;
+    try {
+      const savedTheme = localStorage.getItem('semaphore_admin_theme_v2');
+      if (savedTheme) {
+        return savedTheme;
+      }
+    } catch (e) {
+      console.warn(e);
     }
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    return 'light';
+  });
+
+  const [colorPreset, setColorPreset] = useState(() => {
+    try {
+      return localStorage.getItem('semaphore_admin_color_preset_v2') || 'indigo';
+    } catch (e) {
+      return 'indigo';
+    }
   });
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('semaphore_admin_theme', theme);
-  }, [theme]);
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.setAttribute('data-color', colorPreset);
+      localStorage.setItem('semaphore_admin_theme_v2', theme);
+      localStorage.setItem('semaphore_admin_color_preset_v2', colorPreset);
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [theme, colorPreset]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  const changeColorPreset = (preset) => {
+    setColorPreset(preset);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme, colorPreset, changeColorPreset }}>
       {children}
     </ThemeContext.Provider>
   );

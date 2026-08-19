@@ -1,47 +1,64 @@
-/* Sidebar CSS */
+/* Sidebar CSS - Modern & Refined */
 
 .main-sidebar {
   width: 260px;
   background: var(--bg-sidebar);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 1.25rem 0.85rem;
+  padding: 1.15rem 0.85rem;
   flex-shrink: 0;
+  overflow-y: auto;
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
-.sidebar-section-title {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  color: var(--text-dim);
-  margin: 0.5rem 0.75rem 0.75rem;
-}
-
-.sidebar-nav {
+.sidebar-nav-container {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 1.25rem;
+}
+
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.sidebar-section-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  padding: 0 0.75rem;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+.sidebar-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.85rem;
-  border-radius: 10px;
+  gap: 0.7rem;
+  padding: 0.58rem 0.75rem;
+  border-radius: 9px;
   background: transparent;
   border: 1px solid transparent;
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.16s ease;
   width: 100%;
   text-align: left;
+  font-family: var(--font-sans);
 }
 
 .nav-item:hover {
@@ -53,6 +70,8 @@
   background: var(--nav-active-bg);
   border: 1px solid var(--nav-active-border);
   color: var(--nav-active-text);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
 }
 
 .nav-active .nav-icon {
@@ -61,43 +80,71 @@
 
 .nav-badge {
   margin-left: auto;
-  font-family: monospace;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   background: var(--primary-light);
   color: var(--primary);
-  padding: 0.15rem 0.45rem;
-  border-radius: 6px;
+  border: 1px solid var(--primary-border);
+  padding: 0.1rem 0.45rem;
+  border-radius: 5px;
 }
 
 .nav-count {
   margin-left: auto;
-  font-size: 0.7rem;
-  font-weight: 700;
-  background: var(--danger-bg);
-  color: var(--danger);
-  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+  padding: 0.08rem 0.48rem;
   border-radius: 12px;
 }
 
 .sidebar-footer {
-  padding: 0.75rem;
+  padding-top: 1rem;
+  margin-top: 1rem;
   border-top: 1px solid var(--border-color);
 }
 
-.sidebar-status-pill {
+.sidebar-system-card {
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 600;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
-.status-dot {
-  width: 8px;
-  height: 8px;
-  background: var(--success);
-  border-radius: 50%;
-  box-shadow: 0 0 8px var(--success);
+.system-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.db-icon {
+  color: var(--cyan);
+}
+
+.system-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.system-live-pill {
+  margin-left: auto;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.system-desc {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  padding-left: 1.25rem;
 }

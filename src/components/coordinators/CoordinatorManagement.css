@@ -1,0 +1,115 @@
+/* Coordinator Management CSS */
+
+.coord-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+}
+
+.toolbar-card {
+  padding: 0.85rem 1.15rem;
+}
+
+.coords-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.15rem;
+}
+
+.coord-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.85rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.coord-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.coord-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.coord-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.coord-name-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.coord-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.coord-id {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+.coord-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem;
+  border-radius: 9px;
+}
+
+.coord-event-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--cyan);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.coord-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.contact-icon {
+  color: var(--text-dim);
+}
+
+.coord-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.dept-tag {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}

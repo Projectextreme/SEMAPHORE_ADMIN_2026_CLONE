@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, Lock, Mail, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import './LoginView.css';
 
 export const LoginView = () => {
@@ -47,28 +47,32 @@ export const LoginView = () => {
   return (
     <div className="login-container">
       <div className="login-background-glow"></div>
+      <div className="login-secondary-glow"></div>
 
       <div className="login-card">
         {/* Header */}
         <div className="login-header">
           <div className="login-logo-badge">
-            <ShieldCheck className="logo-icon" />
+            <ShieldCheck className="logo-icon" size={28} />
           </div>
-          <h1 className="login-title">SEMAPHORE 2026</h1>
-          <p className="login-subtitle">Admin Control Portal</p>
+          <div className="login-title-row">
+            <h1 className="login-title">SEMAPHORE</h1>
+            <span className="login-year-tag">2026</span>
+          </div>
+          <p className="login-subtitle">National Level IT Fest • Admin Console</p>
         </div>
 
         {/* Error / Success Banners */}
         {errorMessage && (
           <div className="alert alert-error">
-            <AlertCircle className="alert-icon" />
+            <AlertCircle size={16} className="alert-icon" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {successMsg && (
           <div className="alert alert-success">
-            <CheckCircle2 className="alert-icon" />
+            <CheckCircle2 size={16} className="alert-icon" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -76,14 +80,14 @@ export const LoginView = () => {
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label className="form-label" htmlFor="admin-email">Email Address</label>
+            <label className="form-label" htmlFor="admin-email">Administrator Email</label>
             <div className="input-wrapper">
-              <Mail className="input-icon" />
+              <Mail className="input-icon" size={17} />
               <input
                 id="admin-email"
                 type="email"
                 className="form-input"
-                placeholder="admin@semaphore.com"
+                placeholder="name@semaphore.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -93,9 +97,11 @@ export const LoginView = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="admin-password">Password</label>
+            <div className="password-label-row">
+              <label className="form-label" htmlFor="admin-password">Password</label>
+            </div>
             <div className="input-wrapper">
-              <Lock className="input-icon" />
+              <Lock className="input-icon" size={17} />
               <input
                 id="admin-password"
                 type={showPassword ? 'text' : 'password'}
@@ -112,7 +118,7 @@ export const LoginView = () => {
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
           </div>
@@ -124,10 +130,13 @@ export const LoginView = () => {
           >
             {loading ? (
               <span className="spinner-wrapper">
-                <span className="spinner"></span> Authenticating...
+                <span className="spinner"></span> Verifying Credentials...
               </span>
             ) : (
-              'Sign In to Dashboard'
+              <>
+                <span>Sign In to Dashboard</span>
+                <ArrowRight size={16} />
+              </>
             )}
           </button>
         </form>
@@ -135,29 +144,37 @@ export const LoginView = () => {
         {/* Quick Demo Fill Buttons */}
         <div className="quick-fill-section">
           <div className="quick-fill-title">
-            <Sparkles size={14} /> Quick Auto-Fill Demo Credentials
+            <Sparkles size={13} /> Quick Access Preset Logins
           </div>
           <div className="quick-fill-buttons">
             <button
               type="button"
-              className="btn btn-sm btn-outline-cyan"
+              className="quick-chip-btn chip-superadmin"
               onClick={handleQuickFillSuperAdmin}
             >
-              Super Admin (semaphore2026@gmail.com)
+              <div className="chip-content">
+                <span className="chip-role">Super Admin</span>
+                <span className="chip-email">semaphore2026@gmail.com</span>
+              </div>
+              <span className="chip-tag">All Access</span>
             </button>
             <button
               type="button"
-              className="btn btn-sm btn-outline-purple"
+              className="quick-chip-btn chip-admin"
               onClick={handleQuickFillAdmin}
             >
-              Standard Admin (john@example.com)
+              <div className="chip-content">
+                <span className="chip-role">Standard Admin</span>
+                <span className="chip-email">john@example.com</span>
+              </div>
+              <span className="chip-tag">Moderator</span>
             </button>
           </div>
         </div>
 
         {/* Footer info */}
         <div className="login-footer">
-          <span>Protected Route • Authorization & Security Strict Mode</span>
+          <span>Protected Route • REST API JWT Security Guard</span>
         </div>
       </div>
     </div>

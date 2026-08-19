@@ -1,10 +1,40 @@
-/* Payment Approvals CSS */
+/* Payment Approvals CSS - Modern & Clean */
 
 .payments-container {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.25rem;
   padding: 1.5rem;
+}
+
+.payment-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.payment-metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metric-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .filter-header {
@@ -12,16 +42,16 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1.15rem;
   flex-wrap: wrap;
 }
 
 .tab-group {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.3rem;
   background: var(--bg-input);
   padding: 0.25rem;
-  border-radius: 10px;
+  border-radius: 9px;
   border: 1px solid var(--border-color);
 }
 
@@ -29,53 +59,107 @@
   background: transparent;
   border: none;
   color: var(--text-muted);
-  padding: 0.4rem 0.85rem;
-  border-radius: 8px;
-  font-size: 0.825rem;
+  padding: 0.38rem 0.75rem;
+  border-radius: 7px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease;
+  font-family: var(--font-sans);
+}
+
+.tab-btn:hover {
+  color: var(--text-main);
+}
+
+.tab-counter {
+  font-size: 0.68rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(148, 163, 184, 0.15);
 }
 
 .tab-active {
   background: var(--primary);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.tab-active .tab-counter {
+  background: rgba(255, 255, 255, 0.25);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
 }
 
-.payments-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  font-size: 0.875rem;
+.utr-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
 }
 
-.payments-table th {
-  padding: 0.85rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+.utr-text {
+  color: var(--cyan);
+}
+
+.btn-copy-mini {
+  background: transparent;
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--table-border);
-  background: var(--table-header-bg);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.payments-table td {
-  padding: 0.95rem 1rem;
-  border-bottom: 1px solid var(--table-row-border);
-  color: var(--text-main);
+.btn-copy-mini:hover {
+  background: var(--nav-hover-bg);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.team-college-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-title {
+  font-weight: 700;
+  color: var(--text-heading);
+  font-size: 0.86rem;
+}
+
+.college-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.event-pill {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .amount-text {
-  font-weight: 700;
-  color: var(--success);
+  font-weight: 800;
+  color: var(--text-heading);
+  font-size: 0.9rem;
 }
 
 .status-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  padding: 0.2rem 0.6rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 20px;
   display: inline-block;
 }
@@ -83,19 +167,19 @@
 .status-pending {
   background: var(--warning-bg);
   color: var(--warning);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid var(--warning-border);
 }
 
 .status-approved {
   background: var(--success-bg);
   color: var(--success);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid var(--success-border);
 }
 
 .status-rejected {
   background: var(--danger-bg);
   color: var(--danger);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border: 1px solid var(--danger-border);
 }
 
 .btn-approve:hover {
@@ -113,50 +197,89 @@
 .payment-receipt-view {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
 }
 
-.receipt-field {
+.receipt-card {
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.receipt-row {
   display: flex;
   justify-content: space-between;
-  font-size: 0.9rem;
+  align-items: center;
+  font-size: 0.85rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.receipt-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.receipt-lbl {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.receipt-val {
   color: var(--text-main);
+  font-weight: 600;
+}
+
+.receipt-copy-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.utr-highlight {
+  color: var(--cyan);
+}
+
+.amount-highlight {
+  font-size: 1.05rem;
+  color: var(--success);
+  font-weight: 800;
 }
 
 .proof-placeholder {
-  margin-top: 1rem;
-}
-
-.proof-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .proof-box {
   background: var(--bg-input);
-  border: 2px dashed var(--border-strong);
+  border: 1px dashed var(--border-strong);
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
-  color: var(--text-dim);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.35rem;
 }
 
 .proof-icon {
   color: var(--primary);
+  margin-bottom: 0.25rem;
 }
 
-.btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
+.proof-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-heading);
 }
 
-.btn-success:hover {
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+.proof-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
 }

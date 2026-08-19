@@ -1,5 +1,18 @@
 import { useState } from 'react';
-import { CreditCard, CheckCircle2, XCircle, Eye, Search, AlertCircle } from 'lucide-react';
+import { 
+  CreditCard, 
+  CheckCircle2, 
+  XCircle, 
+  Eye, 
+  Search, 
+  AlertCircle, 
+  Check, 
+  Copy,
+  Receipt,
+  Building2,
+  DollarSign,
+  TrendingUp
+} from 'lucide-react';
 import './PaymentApprovals.css';
 
 export const PaymentApprovals = () => {
@@ -42,6 +55,13 @@ export const PaymentApprovals = () => {
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [copiedUtr, setCopiedUtr] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   const handleStatusChange = (id, newStatus) => {
     setPayments((prev) =>
@@ -50,6 +70,13 @@ export const PaymentApprovals = () => {
     if (selectedPayment?.id === id) {
       setSelectedPayment((prev) => ({ ...prev, status: newStatus }));
     }
+    showToast(`Payment ${id} marked as ${newStatus}`);
+  };
+
+  const handleCopyUtr = (utr) => {
+    navigator.clipboard.writeText(utr);
+    setCopiedUtr(true);
+    setTimeout(() => setCopiedUtr(false), 2000);
   };
 
   const filteredPayments = payments.filter((p) => {
@@ -62,17 +89,45 @@ export const PaymentApprovals = () => {
     return matchesFilter && matchesSearch;
   });
 
+  const pendingCount = payments.filter((p) => p.status === 'Pending').length;
+  const approvedCount = payments.filter((p) => p.status === 'Approved').length;
+  const rejectedCount = payments.filter((p) => p.status === 'Rejected').length;
+
   return (
     <div className="payments-container">
       {/* Page Header */}
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <CreditCard className="title-icon" /> Scan & Pay + UTR Payment Approvals
+            <CreditCard className="title-icon" /> UTR & Scan & Pay Verification Hub
           </h2>
           <p className="page-description">
-            Verify submitted UTR numbers and transaction receipts for festival event registrations.
+            Audit submitted UPI transaction UTR reference codes, verify fee receipts, and approve college team registrations.
           </p>
+        </div>
+      </div>
+
+      {/* Toast Feedback */}
+      {toastMessage && (
+        <div className="alert alert-success">
+          <CheckCircle2 size={16} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Quick Summary Metric Cards */}
+      <div className="payment-summary-strip">
+        <div className="payment-metric-card">
+          <span className="metric-label">Total Verified Volume</span>
+          <span className="metric-val text-success">₹ 1,750</span>
+        </div>
+        <div className="payment-metric-card">
+          <span className="metric-label">Pending Verification</span>
+          <span className="metric-val text-warning">{pendingCount} Entries</span>
+        </div>
+        <div className="payment-metric-card">
+          <span className="metric-label">Approved Registrations</span>
+          <span className="metric-val text-cyan">{approvedCount} Teams</span>
         </div>
       </div>
 
@@ -80,19 +135,25 @@ export const PaymentApprovals = () => {
       <div className="card filter-card">
         <div className="filter-header">
           <div className="tab-group">
-            {['All', 'Pending', 'Approved', 'Rejected'].map((tab) => (
+            {[
+              { label: 'All', count: payments.length },
+              { label: 'Pending', count: pendingCount },
+              { label: 'Approved', count: approvedCount },
+              { label: 'Rejected', count: rejectedCount }
+            ].map((tab) => (
               <button
-                key={tab}
-                className={`tab-btn ${activeFilter === tab ? 'tab-active' : ''}`}
-                onClick={() => setActiveFilter(tab)}
+                key={tab.label}
+                className={`tab-btn ${activeFilter === tab.label ? 'tab-active' : ''}`}
+                onClick={() => setActiveFilter(tab.label)}
               >
-                {tab}
+                <span>{tab.label}</span>
+                <span className="tab-counter">{tab.count}</span>
               </button>
             ))}
           </div>
 
           <div className="search-bar-wrapper">
-            <Search className="search-icon" size={16} />
+            <Search className="search-icon" size={15} />
             <input
               type="text"
               className="search-input"
@@ -109,9 +170,9 @@ export const PaymentApprovals = () => {
             <thead>
               <tr>
                 <th>PAYMENT ID</th>
-                <th>UTR NUMBER</th>
-                <th>TEAM NAME</th>
-                <th>COLLEGE</th>
+                <th>UTR REFERENCE</th>
+                <th>TEAM & COLLEGE</th>
+                <th>EVENT</th>
                 <th>AMOUNT</th>
                 <th>STATUS</th>
                 <th>ACTIONS</th>
@@ -121,9 +182,27 @@ export const PaymentApprovals = () => {
               {filteredPayments.map((p) => (
                 <tr key={p.id}>
                   <td className="code-font">{p.id}</td>
-                  <td className="code-font font-bold">{p.utr}</td>
-                  <td className="font-semibold">{p.teamName}</td>
-                  <td>{p.collegeName}</td>
+                  <td>
+                    <div className="utr-cell">
+                      <span className="code-font font-bold utr-text">{p.utr}</span>
+                      <button 
+                        onClick={() => handleCopyUtr(p.utr)}
+                        className="btn-copy-mini"
+                        title="Copy UTR Code"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div className="team-college-cell">
+                      <span className="team-title">{p.teamName}</span>
+                      <span className="college-sub">{p.collegeName}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className="event-pill">{p.event}</span>
+                  </td>
                   <td className="amount-text">{p.amount}</td>
                   <td>
                     <span className={`status-badge status-${p.status.toLowerCase()}`}>
@@ -137,7 +216,7 @@ export const PaymentApprovals = () => {
                         className="btn-icon btn-view"
                         title="View UTR Receipt Proof"
                       >
-                        <Eye size={15} />
+                        <Eye size={14} />
                       </button>
 
                       {p.status !== 'Approved' && (
@@ -146,7 +225,7 @@ export const PaymentApprovals = () => {
                           className="btn-icon btn-approve"
                           title="Approve Payment"
                         >
-                          <CheckCircle2 size={15} />
+                          <CheckCircle2 size={14} />
                         </button>
                       )}
 
@@ -156,7 +235,7 @@ export const PaymentApprovals = () => {
                           className="btn-icon btn-reject"
                           title="Reject Payment"
                         >
-                          <XCircle size={15} />
+                          <XCircle size={14} />
                         </button>
                       )}
                     </div>
@@ -173,29 +252,58 @@ export const PaymentApprovals = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>UTR Verification Details ({selectedPayment.id})</h3>
+              <h3><Receipt size={19} /> UTR Verification Audit</h3>
               <button className="modal-close" onClick={() => setSelectedPayment(null)}>&times;</button>
             </div>
+            <p className="modal-subtitle">
+              Audit Payment ID: <code>{selectedPayment.id}</code>
+            </p>
 
             <div className="payment-receipt-view">
-              <div className="receipt-field">
-                <span>Submitted UTR:</span>
-                <strong className="code-font">{selectedPayment.utr}</strong>
-              </div>
-              <div className="receipt-field">
-                <span>Team & College:</span>
-                <span>{selectedPayment.teamName} ({selectedPayment.collegeName})</span>
-              </div>
-              <div className="receipt-field">
-                <span>Event & Amount:</span>
-                <span>{selectedPayment.event} — <strong>{selectedPayment.amount}</strong></span>
+              <div className="receipt-card">
+                <div className="receipt-row">
+                  <span className="receipt-lbl">UTR Reference Code</span>
+                  <div className="receipt-copy-row">
+                    <strong className="code-font utr-highlight">{selectedPayment.utr}</strong>
+                    <button className="btn-copy-mini" onClick={() => handleCopyUtr(selectedPayment.utr)}>
+                      {copiedUtr ? <Check size={12} /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="receipt-row">
+                  <span className="receipt-lbl">Team Name</span>
+                  <strong className="receipt-val">{selectedPayment.teamName}</strong>
+                </div>
+
+                <div className="receipt-row">
+                  <span className="receipt-lbl">College Institute</span>
+                  <span className="receipt-val">{selectedPayment.collegeName}</span>
+                </div>
+
+                <div className="receipt-row">
+                  <span className="receipt-lbl">Registered Event</span>
+                  <span className="event-pill">{selectedPayment.event}</span>
+                </div>
+
+                <div className="receipt-row">
+                  <span className="receipt-lbl">Verified Amount</span>
+                  <strong className="amount-highlight">{selectedPayment.amount}</strong>
+                </div>
+
+                <div className="receipt-row">
+                  <span className="receipt-lbl">Current Audit Status</span>
+                  <span className={`status-badge status-${selectedPayment.status.toLowerCase()}`}>
+                    {selectedPayment.status}
+                  </span>
+                </div>
               </div>
 
               <div className="proof-placeholder">
-                <div className="proof-label">Scan & Pay Payment Proof Verification</div>
                 <div className="proof-box">
-                  <CreditCard size={48} className="proof-icon" />
-                  <p>Verified UTR Transaction Tagged: {selectedPayment.utr}</p>
+                  <CreditCard size={36} className="proof-icon" />
+                  <span className="proof-title">Scan & Pay Digital Transaction Record</span>
+                  <span className="proof-sub">Attached to UTR: {selectedPayment.utr}</span>
                 </div>
               </div>
             </div>
@@ -212,7 +320,7 @@ export const PaymentApprovals = () => {
                   className="btn btn-success"
                   onClick={() => handleStatusChange(selectedPayment.id, 'Approved')}
                 >
-                  Approve Payment
+                  <CheckCircle2 size={14} /> Approve Payment
                 </button>
               )}
             </div>

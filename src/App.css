@@ -1,4 +1,4 @@
-/* Main App CSS Layout */
+/* Main App Layout Styles */
 
 .admin-app-layout {
   min-height: 100vh;
@@ -6,13 +6,14 @@
   flex-direction: column;
   background-color: var(--bg-dark);
   color: var(--text-main);
-  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  font-family: var(--font-sans);
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 .admin-body {
   display: flex;
   flex: 1;
+  height: calc(100vh - 64px);
   overflow: hidden;
 }
 
@@ -20,6 +21,8 @@
   flex: 1;
   overflow-y: auto;
   background: var(--main-gradient);
+  padding: 0;
+  position: relative;
 }
 
 .full-screen-loader {
@@ -28,41 +31,49 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 1.25rem;
   background: var(--bg-dark);
   color: var(--text-muted);
   font-size: 0.95rem;
+  font-weight: 500;
 }
 
-.spinner {
-  width: 32px;
-  height: 32px;
+.full-screen-loader .spinner {
+  width: 36px;
+  height: 36px;
   border: 3px solid var(--border-color);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .section-placeholder {
-  padding: 3rem;
+  padding: 4rem 2rem;
   text-align: center;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   margin: 2rem;
   box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .section-placeholder h3 {
   color: var(--cyan);
-  font-size: 1.25rem;
-  margin-bottom: 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0;
 }
 
 .section-placeholder p {
   color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 480px;
+  line-height: 1.5;
 }
