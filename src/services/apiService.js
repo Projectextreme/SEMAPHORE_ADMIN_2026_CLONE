@@ -229,13 +229,13 @@ function mockFallbackHandler(endpoint, options) {
     };
   }
 
-  // 10. GET /api/admin/events
-  if (endpoint === '/api/admin/events' && method === 'GET') {
+  // 10. GET /api/events or /api/admin/events
+  if ((endpoint === '/api/events' || endpoint === '/api/admin/events') && method === 'GET') {
     return mockEvents;
   }
 
-  // 11. POST /api/admin/events
-  if (endpoint === '/api/admin/events' && method === 'POST') {
+  // 11. POST /api/events or /api/admin/events
+  if ((endpoint === '/api/events' || endpoint === '/api/admin/events') && method === 'POST') {
     const newId = body.id || `EVT-${String(mockEvents.length + 1).padStart(2, '0')}`;
     const createdEvent = {
       id: newId,
@@ -257,9 +257,9 @@ function mockFallbackHandler(endpoint, options) {
     return createdEvent;
   }
 
-  // 12. PUT /api/admin/events/:id
-  if (endpoint.startsWith('/api/admin/events/') && method === 'PUT') {
-    const id = endpoint.split('/')[4];
+  // 12. PUT /api/events/:id or /api/admin/events/:id
+  if ((endpoint.startsWith('/api/events/') || endpoint.startsWith('/api/admin/events/')) && method === 'PUT') {
+    const id = endpoint.split('/')[3] || endpoint.split('/')[4];
     const index = mockEvents.findIndex(evt => evt.id === id);
     if (index === -1) {
       const error = new Error('Event not found');
@@ -271,9 +271,9 @@ function mockFallbackHandler(endpoint, options) {
     return mockEvents[index];
   }
 
-  // 13. DELETE /api/admin/events/:id
-  if (endpoint.startsWith('/api/admin/events/') && method === 'DELETE') {
-    const id = endpoint.split('/')[4];
+  // 13. DELETE /api/events/:id or /api/admin/events/:id
+  if ((endpoint.startsWith('/api/events/') || endpoint.startsWith('/api/admin/events/')) && method === 'DELETE') {
+    const id = endpoint.split('/')[3] || endpoint.split('/')[4];
     const index = mockEvents.findIndex(evt => evt.id === id);
     if (index === -1) {
       const error = new Error('Event not found');
@@ -369,27 +369,30 @@ export const apiService = {
 
   // 10. Events Management
   getAllEvents: async () => {
-    return await apiRequest('/api/admin/events', {
+    const data = await apiRequest('/api/events', {
       method: 'GET'
     });
+    return Array.isArray(data) ? data : (data?.events || []);
   },
 
   addEvent: async (eventData) => {
-    return await apiRequest('/api/admin/events', {
+    const data = await apiRequest('/api/events', {
       method: 'POST',
       body: JSON.stringify(eventData)
     });
+    return data?.event || data;
   },
 
   editEvent: async (id, eventData) => {
-    return await apiRequest(`/api/admin/events/${id}`, {
+    const data = await apiRequest(`/api/events/${id}`, {
       method: 'PUT',
       body: JSON.stringify(eventData)
     });
+    return data?.event || data;
   },
 
   deleteEvent: async (id) => {
-    return await apiRequest(`/api/admin/events/${id}`, {
+    return await apiRequest(`/api/events/${id}`, {
       method: 'DELETE'
     });
   }

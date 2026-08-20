@@ -70,10 +70,11 @@ export const EventManagement = () => {
 
   const toggleEventStatus = async (evt) => {
     const updatedStatus = evt.status === 'Active' ? 'Draft' : 'Active';
+    const eventId = evt._id || evt.id;
     try {
-      await apiService.editEvent(evt.id, { status: updatedStatus });
+      await apiService.editEvent(eventId, { status: updatedStatus });
       setEvents((prev) =>
-        prev.map((e) => (e.id === evt.id ? { ...e, status: updatedStatus } : e))
+        prev.map((e) => ((e._id || e.id) === eventId ? { ...e, status: updatedStatus } : e))
       );
       showAlert('success', `Event "${evt.title}" status changed to ${updatedStatus}.`);
     } catch (err) {
@@ -104,7 +105,7 @@ export const EventManagement = () => {
         coordinators: '',
         status: 'Active'
       });
-      showAlert('success', `Event "${created.title}" created successfully!`);
+      showAlert('success', `Event "${created.title || newEvent.title}" created successfully!`);
     } catch (err) {
       console.error('Error creating event:', err);
       showAlert('error', err.message || 'Failed to create event.');
@@ -122,12 +123,13 @@ export const EventManagement = () => {
       return;
     }
 
+    const eventId = editingEvent._id || editingEvent.id;
     setSubmitting(true);
     try {
-      const updated = await apiService.editEvent(editingEvent.id, editingEvent);
-      setEvents((prev) => prev.map((e) => (e.id === updated.id ? updated : e)));
+      const updated = await apiService.editEvent(eventId, editingEvent);
+      setEvents((prev) => prev.map((e) => ((e._id || e.id) === eventId ? { ...e, ...updated } : e)));
       setEditingEvent(null);
-      showAlert('success', `Event "${updated.title}" updated successfully!`);
+      showAlert('success', `Event "${editingEvent.title}" updated successfully!`);
     } catch (err) {
       console.error('Error updating event:', err);
       showAlert('error', err.message || 'Failed to update event.');
@@ -140,7 +142,7 @@ export const EventManagement = () => {
     setSubmitting(true);
     try {
       await apiService.deleteEvent(id);
-      setEvents((prev) => prev.filter((e) => e.id !== id));
+      setEvents((prev) => prev.filter((e) => (e._id || e.id) !== id));
       setDeletingEvent(null);
       showAlert('success', 'Event removed successfully.');
     } catch (err) {
@@ -233,7 +235,7 @@ export const EventManagement = () => {
       ) : (
         <div className="events-grid">
           {filteredEvents.map((evt) => (
-            <div key={evt.id} className="card event-card">
+            <div key={evt._id || evt.id} className="card event-card">
               <div className="event-card-header">
                 <span className="category-pill">{evt.category}</span>
                 <button
@@ -567,7 +569,7 @@ export const EventManagement = () => {
             </div>
 
             <p className="delete-warning-text">
-              Are you sure you want to remove event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id})? This will unassign any scheduled slots.
+              Are you sure you want to remove event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id || deletingEvent._id})? This will unassign any scheduled slots.
             </p>
 
             <div className="modal-actions">
@@ -578,7 +580,7 @@ export const EventManagement = () => {
                 type="button"
                 className="btn btn-danger"
                 disabled={submitting}
-                onClick={() => handleDeleteEvent(deletingEvent.id)}
+                onClick={() => handleDeleteEvent(deletingEvent._id || deletingEvent.id)}
               >
                 {submitting ? 'Deleting...' : 'Confirm Delete'}
               </button>
