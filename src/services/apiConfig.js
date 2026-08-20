@@ -3,6 +3,9 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 
 export const getAuthHeader = () => {
-  const token = localStorage.getItem('semaphore_admin_token');
+  const token = localStorage.getItem('semaphore_admin_token') || 
+                localStorage.getItem('token') || 
+                localStorage.getItem('admin_token') || 
+                localStorage.getItem('jwt');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };

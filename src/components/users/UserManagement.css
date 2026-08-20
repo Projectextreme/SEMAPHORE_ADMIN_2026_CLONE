@@ -118,9 +118,13 @@
   border-radius: 6px;
   font-size: 0.78rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .teams-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--primary-light);
   color: var(--primary);
   border: 1px solid var(--primary-border);
@@ -128,6 +132,7 @@
   border-radius: 14px;
   font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .action-buttons {

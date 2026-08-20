@@ -11,7 +11,10 @@ export const AuthProvider = ({ children }) => {
   // Check existing token on initial load
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('semaphore_admin_token');
+      const token = localStorage.getItem('semaphore_admin_token') || 
+                    localStorage.getItem('token') || 
+                    localStorage.getItem('admin_token') || 
+                    localStorage.getItem('jwt');
       if (token) {
         try {
           const profile = await apiService.getAdminProfile();
@@ -19,6 +22,10 @@ export const AuthProvider = ({ children }) => {
         } catch (err) {
           console.error('Session expired or invalid token:', err);
           localStorage.removeItem('semaphore_admin_token');
+          localStorage.removeItem('token');
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('jwt');
+          localStorage.removeItem('semaphore_admin_user');
           setAdmin(null);
         }
       }
@@ -32,8 +39,14 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     try {
       const response = await apiService.loginAdmin({ email, password });
-      if (response.token) {
-        localStorage.setItem('semaphore_admin_token', response.token);
+      const token = response?.token || response?.jwt || response?.accessToken;
+      if (token) {
+        localStorage.setItem('semaphore_admin_token', token);
+        localStorage.setItem('token', token);
+        localStorage.setItem('admin_token', token);
+      }
+      if (response) {
+        localStorage.setItem('semaphore_admin_user', JSON.stringify(response));
       }
       setAdmin(response);
       return response;
@@ -46,6 +59,10 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('semaphore_admin_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('jwt');
+    localStorage.removeItem('semaphore_admin_user');
     setAdmin(null);
     setAuthError(null);
   };

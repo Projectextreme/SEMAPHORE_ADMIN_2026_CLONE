@@ -31,7 +31,10 @@ let mockEvents = getStoredEvents();
 
 // Helper to make API requests with fallback to local mock storage if backend is unreachable or endpoint not implemented
 async function apiRequest(endpoint, options = {}) {
-  const token = localStorage.getItem('semaphore_admin_token');
+  const token = localStorage.getItem('semaphore_admin_token') || 
+                localStorage.getItem('token') || 
+                localStorage.getItem('admin_token') || 
+                localStorage.getItem('jwt');
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -353,20 +356,33 @@ function mockFallbackHandler(endpoint, options) {
 export const apiService = {
   // 1. Admin Login
   loginAdmin: async (credentials) => {
+    let result;
     try {
-      return await apiRequest('/api/admin/login', {
+      result = await apiRequest('/api/admin/login', {
         method: 'POST',
         body: JSON.stringify(credentials)
       });
     } catch (err) {
       if (err.name === 'TypeError' || err.message?.includes('Failed to fetch') || credentials.email?.toLowerCase() === 'john@example.com') {
-        return mockFallbackHandler('/api/admin/login', {
+        result = mockFallbackHandler('/api/admin/login', {
           method: 'POST',
           body: JSON.stringify(credentials)
         });
+      } else {
+        throw err;
       }
-      throw err;
     }
+
+    const token = result?.token || result?.jwt || result?.accessToken;
+    if (token) {
+      localStorage.setItem('semaphore_admin_token', token);
+      localStorage.setItem('token', token);
+      localStorage.setItem('admin_token', token);
+    }
+    if (result) {
+      localStorage.setItem('semaphore_admin_user', JSON.stringify(result));
+    }
+    return result;
   },
 
   // 2. Add New Admin
@@ -470,11 +486,11 @@ export const apiService = {
         : (typeof eventData.coordinators === 'string' && eventData.coordinators.trim()
             ? eventData.coordinators.split(',').map(c => c.trim())
             : []),
-      timings: Array.isArray(eventData.timings) ? eventData.timings : [
+      timings: Array.isArray(eventData.timings) && eventData.timings.length > 0 ? eventData.timings : [
         {
           date: eventData.date || new Date().toISOString(),
-          startTime: eventData.startTime || '09:30 AM',
-          endTime: eventData.endTime || '01:30 PM'
+          startTime: eventData.startTime || '09:30',
+          endTime: eventData.endTime || '13:30'
         }
       ],
       category: eventData.category || 'Coding & Hackathon',
@@ -536,6 +552,25 @@ export const apiService = {
     return await apiRequest(`/api/events/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // 11. Colleges & Registrations Management
+  getColleges: async () => {
+    const data = await apiRequest('/api/colleges', {
+      method: 'GET'
+    });
+    return Array.isArray(data) ? data : (data?.colleges || []);
+  },
+
+  getRegistrations: async () => {
+    try {
+      const data = await apiRequest('/api/registrations', {
+        method: 'GET'
+      });
+      return Array.isArray(data) ? data : (data?.registrations || []);
+    } catch {
+      return [];
+    }
   }
 };
 

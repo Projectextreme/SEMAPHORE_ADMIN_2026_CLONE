@@ -140,14 +140,17 @@
 }
 
 .event-pill {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--primary-light);
   color: var(--primary);
   border: 1px solid var(--primary-border);
-  padding: 0.18rem 0.5rem;
+  padding: 0.22rem 0.6rem;
   border-radius: 6px;
   font-size: 0.76rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .amount-text {
