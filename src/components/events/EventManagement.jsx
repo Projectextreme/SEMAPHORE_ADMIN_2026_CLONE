@@ -31,11 +31,19 @@ export const EventManagement = () => {
   const [submitting, setSubmitting] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: '',
+    description: '',
     category: 'Coding & Hackathon',
-    fee: '₹ 500',
+    registrationFee: 200,
+    fee: '₹ 200',
+    location: 'Main Auditorium, Lab 2',
+    venue: 'Main Auditorium, Lab 2',
+    date: new Date().toISOString().split('T')[0],
+    capacity: 100,
+    minParticipants: 2,
+    maxParticipants: 4,
     maxTeamsPerCollege: 2,
     maxTeamMembers: 4,
-    venue: 'Main Auditorium',
+    image: '',
     coordinators: '',
     status: 'Active'
   });
@@ -85,8 +93,8 @@ export const EventManagement = () => {
   const handleCreateEvent = async (e) => {
     e.preventDefault();
 
-    if (!newEvent.title.trim() || !newEvent.fee.trim() || !newEvent.venue.trim()) {
-      showAlert('error', 'Please fill in all required fields.');
+    if (!newEvent.title.trim() || !newEvent.description.trim() || !(newEvent.location || newEvent.venue).trim()) {
+      showAlert('error', 'Please fill in Title, Description, and Location.');
       return;
     }
 
@@ -97,11 +105,19 @@ export const EventManagement = () => {
       setShowAddModal(false);
       setNewEvent({
         title: '',
+        description: '',
         category: 'Coding & Hackathon',
-        fee: '₹ 500',
+        registrationFee: 200,
+        fee: '₹ 200',
+        location: 'Main Auditorium, Lab 2',
+        venue: 'Main Auditorium, Lab 2',
+        date: new Date().toISOString().split('T')[0],
+        capacity: 100,
+        minParticipants: 2,
+        maxParticipants: 4,
         maxTeamsPerCollege: 2,
         maxTeamMembers: 4,
-        venue: 'Main Auditorium',
+        image: '',
         coordinators: '',
         status: 'Active'
       });
@@ -118,7 +134,7 @@ export const EventManagement = () => {
     e.preventDefault();
     if (!editingEvent) return;
 
-    if (!editingEvent.title.trim() || !editingEvent.fee.trim() || !editingEvent.venue.trim()) {
+    if (!editingEvent.title.trim() || !(editingEvent.location || editingEvent.venue).trim()) {
       showAlert('error', 'Please fill in all required fields.');
       return;
     }
@@ -154,10 +170,11 @@ export const EventManagement = () => {
   };
 
   const filteredEvents = events.filter((evt) => {
+    const venue = evt.location || evt.venue || '';
     const matchesSearch =
       evt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      evt.venue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      evt.category.toLowerCase().includes(searchTerm.toLowerCase());
+      venue.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (evt.category && evt.category.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'All' || evt.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -234,92 +251,111 @@ export const EventManagement = () => {
         </div>
       ) : (
         <div className="events-grid">
-          {filteredEvents.map((evt) => (
-            <div key={evt._id || evt.id} className="card event-card">
-              <div className="event-card-header">
-                <span className="category-pill">{evt.category}</span>
-                <button
-                  onClick={() => toggleEventStatus(evt)}
-                  className={`status-toggle ${evt.status.toLowerCase()}`}
-                  title="Click to Toggle Active / Draft"
-                >
-                  {evt.status === 'Active' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                  <span>{evt.status}</span>
-                </button>
-              </div>
+          {filteredEvents.map((evt) => {
+            const feeDisplay = evt.registrationFee !== undefined ? `₹ ${evt.registrationFee}` : (evt.fee || 'Free');
+            const locationDisplay = evt.location || evt.venue || 'TBA';
+            const teamSizeDisplay = `${evt.minParticipants || 1} - ${evt.maxParticipants || evt.maxTeamMembers || 4} Members`;
 
-              <h3 className="event-title">{evt.title}</h3>
-
-              <div className="event-meta-grid">
-                <div className="meta-item">
-                  <DollarSign size={14} className="meta-icon text-success" />
-                  <div className="meta-text">
-                    <span className="meta-lbl">Registration Fee</span>
-                    <strong>{evt.fee}</strong>
-                  </div>
-                </div>
-
-                <div className="meta-item">
-                  <Users size={14} className="meta-icon text-cyan" />
-                  <div className="meta-text">
-                    <span className="meta-lbl">Team Size Limit</span>
-                    <strong>Max {evt.maxTeamMembers || 4} / Team ({evt.maxTeamsPerCollege}/College)</strong>
-                  </div>
-                </div>
-
-                <div className="meta-item full-width">
-                  <MapPin size={14} className="meta-icon text-primary" />
-                  <div className="meta-text">
-                    <span className="meta-lbl">Venue Location</span>
-                    <span>{evt.venue}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="event-card-footer">
-                <div className="coordinators-list">
-                  <UserCheck size={13} className="coord-icon" />
-                  <span className="coord-names">
-                    {Array.isArray(evt.coordinators)
-                      ? evt.coordinators.join(', ')
-                      : evt.coordinators || 'Admin Assigned'}
-                  </span>
-                </div>
-
-                <div className="card-action-btns">
+            return (
+              <div key={evt._id || evt.id} className="card event-card">
+                <div className="event-card-header">
+                  <span className="category-pill">{evt.category || 'Event'}</span>
                   <button
-                    className="btn-icon btn-edit"
-                    title="Edit Event"
-                    onClick={() => setEditingEvent({
-                      ...evt,
-                      coordinators: Array.isArray(evt.coordinators) ? evt.coordinators.join(', ') : evt.coordinators
-                    })}
+                    onClick={() => toggleEventStatus(evt)}
+                    className={`status-toggle ${(evt.status || 'Active').toLowerCase()}`}
+                    title="Click to Toggle Active / Draft"
                   >
-                    <Edit2 size={13} />
-                  </button>
-                  <button
-                    className="btn-icon btn-delete"
-                    title="Delete Event"
-                    onClick={() => setDeletingEvent(evt)}
-                  >
-                    <Trash2 size={13} />
+                    {evt.status === 'Active' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                    <span>{evt.status || 'Active'}</span>
                   </button>
                 </div>
+
+                <h3 className="event-title">{evt.title}</h3>
+                {evt.description && (
+                  <p className="event-desc-snippet" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                    {evt.description}
+                  </p>
+                )}
+
+                <div className="event-meta-grid">
+                  <div className="meta-item">
+                    <DollarSign size={14} className="meta-icon text-success" />
+                    <div className="meta-text">
+                      <span className="meta-lbl">Registration Fee</span>
+                      <strong>{feeDisplay}</strong>
+                    </div>
+                  </div>
+
+                  <div className="meta-item">
+                    <Users size={14} className="meta-icon text-cyan" />
+                    <div className="meta-text">
+                      <span className="meta-lbl">Team Size</span>
+                      <strong>{teamSizeDisplay}</strong>
+                    </div>
+                  </div>
+
+                  <div className="meta-item full-width">
+                    <MapPin size={14} className="meta-icon text-primary" />
+                    <div className="meta-text">
+                      <span className="meta-lbl">Venue Location</span>
+                      <span>{locationDisplay}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="event-card-footer">
+                  <div className="coordinators-list">
+                    <UserCheck size={13} className="coord-icon" />
+                    <span className="coord-names">
+                      {Array.isArray(evt.coordinators) && evt.coordinators.length > 0
+                        ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c._id) : c).join(', ')
+                        : 'Admin Assigned'}
+                    </span>
+                  </div>
+
+                  <div className="card-action-btns">
+                    <button
+                      className="btn-icon btn-edit"
+                      title="Edit Event"
+                      onClick={() => setEditingEvent({
+                        ...evt,
+                        description: evt.description || '',
+                        location: evt.location || evt.venue || '',
+                        registrationFee: evt.registrationFee !== undefined ? evt.registrationFee : (typeof evt.fee === 'string' ? evt.fee.replace(/[^\d]/g, '') : evt.fee) || 0,
+                        capacity: evt.capacity || 100,
+                        minParticipants: evt.minParticipants || 1,
+                        maxParticipants: evt.maxParticipants || evt.maxTeamMembers || 4,
+                        coordinators: Array.isArray(evt.coordinators)
+                          ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c._id) : c).join(', ')
+                          : evt.coordinators || ''
+                      })}
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      className="btn-icon btn-delete"
+                      title="Delete Event"
+                      onClick={() => setDeletingEvent(evt)}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
       {/* Add Event Modal */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
               <h3><Plus size={19} /> Create New Semaphore Event</h3>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
             </div>
-            <p className="modal-subtitle">Configure festival event schedule and registration caps</p>
+            <p className="modal-subtitle">Configure festival event schedule, capacity, and rules</p>
 
             <form onSubmit={handleCreateEvent} className="modal-form">
               <div className="form-group">
@@ -327,9 +363,21 @@ export const EventManagement = () => {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. AI Prompt Challenge 2026"
+                  placeholder="e.g. Code Sprint 2026"
                   value={newEvent.title}
                   onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description *</label>
+                <textarea
+                  className="form-input"
+                  rows="3"
+                  placeholder="e.g. Annual competitive programming relay contest"
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                   required
                 />
               </div>
@@ -351,13 +399,14 @@ export const EventManagement = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Registration Fee *</label>
+                  <label className="form-label">Registration Fee (₹) *</label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
                     className="form-input"
-                    placeholder="e.g. ₹ 500"
-                    value={newEvent.fee}
-                    onChange={(e) => setNewEvent({ ...newEvent, fee: e.target.value })}
+                    placeholder="e.g. 200"
+                    value={newEvent.registrationFee}
+                    onChange={(e) => setNewEvent({ ...newEvent, registrationFee: e.target.value, fee: `₹ ${e.target.value}` })}
                     required
                   />
                 </div>
@@ -365,25 +414,50 @@ export const EventManagement = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Max Teams / College</label>
+                  <label className="form-label">Event Date *</label>
                   <input
-                    type="number"
-                    min="1"
+                    type="date"
                     className="form-input"
-                    value={newEvent.maxTeamsPerCollege}
-                    onChange={(e) => setNewEvent({ ...newEvent, maxTeamsPerCollege: e.target.value })}
+                    value={newEvent.date}
+                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Max Team Members</label>
+                  <label className="form-label">Capacity (Max Registrations)</label>
                   <input
                     type="number"
                     min="1"
                     className="form-input"
-                    value={newEvent.maxTeamMembers}
-                    onChange={(e) => setNewEvent({ ...newEvent, maxTeamMembers: e.target.value })}
+                    value={newEvent.capacity}
+                    onChange={(e) => setNewEvent({ ...newEvent, capacity: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Min Participants / Team</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={newEvent.minParticipants}
+                    onChange={(e) => setNewEvent({ ...newEvent, minParticipants: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Max Participants / Team</label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="form-input"
+                    value={newEvent.maxParticipants}
+                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
                     required
                   />
                 </div>
@@ -394,10 +468,21 @@ export const EventManagement = () => {
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Main Auditorium, Block B"
-                  value={newEvent.venue}
-                  onChange={(e) => setNewEvent({ ...newEvent, venue: e.target.value })}
+                  placeholder="e.g. Main Auditorium, Lab 2"
+                  value={newEvent.location}
+                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value, venue: e.target.value })}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Banner Image URL (Optional)</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  placeholder="https://example.com/images/code-sprint.jpg"
+                  value={newEvent.image}
+                  onChange={(e) => setNewEvent({ ...newEvent, image: e.target.value })}
                 />
               </div>
 
@@ -440,7 +525,7 @@ export const EventManagement = () => {
       {/* Edit Event Modal */}
       {editingEvent && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
               <h3><Edit2 size={19} /> Modify Event Details</h3>
               <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
@@ -459,12 +544,22 @@ export const EventManagement = () => {
                 />
               </div>
 
+              <div className="form-group">
+                <label className="form-label">Description *</label>
+                <textarea
+                  className="form-input"
+                  rows="3"
+                  value={editingEvent.description || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+                />
+              </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Category</label>
                   <select
                     className="form-select"
-                    value={editingEvent.category}
+                    value={editingEvent.category || 'Coding & Hackathon'}
                     onChange={(e) => setEditingEvent({ ...editingEvent, category: e.target.value })}
                   >
                     <option value="Coding & Hackathon">Coding & Hackathon</option>
@@ -476,12 +571,13 @@ export const EventManagement = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Registration Fee *</label>
+                  <label className="form-label">Registration Fee (₹) *</label>
                   <input
-                    type="text"
+                    type="number"
+                    min="0"
                     className="form-input"
-                    value={editingEvent.fee}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, fee: e.target.value })}
+                    value={editingEvent.registrationFee !== undefined ? editingEvent.registrationFee : (typeof editingEvent.fee === 'string' ? editingEvent.fee.replace(/[^\d]/g, '') : editingEvent.fee)}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, registrationFee: e.target.value, fee: `₹ ${e.target.value}` })}
                     required
                   />
                 </div>
@@ -489,25 +585,25 @@ export const EventManagement = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Max Teams / College</label>
+                  <label className="form-label">Capacity</label>
                   <input
                     type="number"
                     min="1"
                     className="form-input"
-                    value={editingEvent.maxTeamsPerCollege}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, maxTeamsPerCollege: e.target.value })}
+                    value={editingEvent.capacity || 100}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, capacity: e.target.value })}
                     required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Max Team Members</label>
+                  <label className="form-label">Max Participants</label>
                   <input
                     type="number"
                     min="1"
                     className="form-input"
-                    value={editingEvent.maxTeamMembers || 4}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, maxTeamMembers: e.target.value })}
+                    value={editingEvent.maxParticipants || editingEvent.maxTeamMembers || 4}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
                     required
                   />
                 </div>
@@ -518,9 +614,19 @@ export const EventManagement = () => {
                 <input
                   type="text"
                   className="form-input"
-                  value={editingEvent.venue}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, venue: e.target.value })}
+                  value={editingEvent.location || editingEvent.venue || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value, venue: e.target.value })}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Banner Image URL</label>
+                <input
+                  type="url"
+                  className="form-input"
+                  value={editingEvent.image || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, image: e.target.value })}
                 />
               </div>
 
@@ -529,7 +635,7 @@ export const EventManagement = () => {
                 <input
                   type="text"
                   className="form-input"
-                  value={editingEvent.coordinators}
+                  value={editingEvent.coordinators || ''}
                   onChange={(e) => setEditingEvent({ ...editingEvent, coordinators: e.target.value })}
                 />
               </div>
@@ -538,7 +644,7 @@ export const EventManagement = () => {
                 <label className="form-label">Status</label>
                 <select
                   className="form-select"
-                  value={editingEvent.status}
+                  value={editingEvent.status || 'Active'}
                   onChange={(e) => setEditingEvent({ ...editingEvent, status: e.target.value })}
                 >
                   <option value="Active">Active</option>

@@ -229,52 +229,113 @@ function mockFallbackHandler(endpoint, options) {
     };
   }
 
-  // 10. GET /api/events or /api/admin/events
-  if ((endpoint === '/api/events' || endpoint === '/api/admin/events') && method === 'GET') {
-    return mockEvents;
+  // 10. GET /api/events
+  if ((endpoint.startsWith('/api/events') || endpoint.startsWith('/api/admin/events')) && method === 'GET') {
+    const parts = endpoint.split('?')[0].split('/');
+    const id = parts[3] || parts[4];
+    if (id && id !== 'all' && id !== 'events') {
+      const found = mockEvents.find(evt => (evt._id === id || evt.id === id));
+      if (!found) {
+        const error = new Error('Event not found');
+        error.status = 404;
+        throw error;
+      }
+      return { success: true, event: found };
+    }
+    return { success: true, events: mockEvents };
   }
 
-  // 11. POST /api/events or /api/admin/events
+  // 11. POST /api/events (Create Event)
   if ((endpoint === '/api/events' || endpoint === '/api/admin/events') && method === 'POST') {
-    const newId = body.id || `EVT-${String(mockEvents.length + 1).padStart(2, '0')}`;
+    const newId = body._id || body.id || `65f1${Math.random().toString(16).substr(2, 20)}`;
     const createdEvent = {
+      _id: newId,
       id: newId,
-      title: body.title,
-      category: body.category || 'Coding & Hackathon',
-      fee: body.fee ? (body.fee.startsWith('₹') ? body.fee : `₹ ${body.fee}`) : '₹ 500',
+      title: body.title || 'Untitled Event',
+      description: body.description || '',
+      location: body.location || body.venue || 'Main Auditorium',
+      venue: body.location || body.venue || 'Main Auditorium',
+      date: body.date || new Date().toISOString(),
+      capacity: Number(body.capacity) || 100,
+      registrationFee: Number(body.registrationFee !== undefined ? body.registrationFee : (typeof body.fee === 'string' ? body.fee.replace(/[^\d]/g, '') : body.fee)) || 0,
+      fee: body.fee || `₹ ${body.registrationFee || 0}`,
+      minParticipants: Number(body.minParticipants) || 1,
+      maxParticipants: Number(body.maxParticipants || body.maxTeamMembers) || 4,
+      maxTeamMembers: Number(body.maxParticipants || body.maxTeamMembers) || 4,
       maxTeamsPerCollege: Number(body.maxTeamsPerCollege) || 2,
-      maxTeamMembers: Number(body.maxTeamMembers) || 4,
-      venue: body.venue || 'Main Auditorium',
+      category: body.category || 'Coding & Hackathon',
+      image: body.image || '',
       status: body.status || 'Active',
       coordinators: Array.isArray(body.coordinators)
         ? body.coordinators
         : (typeof body.coordinators === 'string' && body.coordinators.trim()
             ? body.coordinators.split(',').map(c => c.trim())
-            : ['Admin Assigned'])
+            : []),
+      timings: Array.isArray(body.timings) ? body.timings : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     mockEvents.push(createdEvent);
     saveEvents(mockEvents);
-    return createdEvent;
+    return { success: true, message: 'Event created successfully', event: createdEvent };
   }
 
-  // 12. PUT /api/events/:id or /api/admin/events/:id
-  if ((endpoint.startsWith('/api/events/') || endpoint.startsWith('/api/admin/events/')) && method === 'PUT') {
-    const id = endpoint.split('/')[3] || endpoint.split('/')[4];
-    const index = mockEvents.findIndex(evt => evt.id === id);
+  // 12. PATCH /api/events/:id/coordinators
+  if ((endpoint.includes('/coordinators')) && (method === 'PATCH' || method === 'PUT')) {
+    const parts = endpoint.split('/');
+    const id = parts[3];
+    const index = mockEvents.findIndex(evt => (evt._id === id || evt.id === id));
     if (index === -1) {
       const error = new Error('Event not found');
       error.status = 404;
       throw error;
     }
-    mockEvents[index] = { ...mockEvents[index], ...body };
+    mockEvents[index].coordinators = Array.isArray(body.coordinators) ? body.coordinators : [];
+    mockEvents[index].updatedAt = new Date().toISOString();
     saveEvents(mockEvents);
-    return mockEvents[index];
+    return { success: true, message: 'Coordinators updated successfully', event: mockEvents[index] };
   }
 
-  // 13. DELETE /api/events/:id or /api/admin/events/:id
+  // 13. PATCH /api/events/:id/timings
+  if ((endpoint.includes('/timings')) && (method === 'PATCH' || method === 'PUT')) {
+    const parts = endpoint.split('/');
+    const id = parts[3];
+    const index = mockEvents.findIndex(evt => (evt._id === id || evt.id === id));
+    if (index === -1) {
+      const error = new Error('Event not found');
+      error.status = 404;
+      throw error;
+    }
+    mockEvents[index].timings = Array.isArray(body.timings) ? body.timings : [];
+    mockEvents[index].updatedAt = new Date().toISOString();
+    saveEvents(mockEvents);
+    return { success: true, message: 'Timings updated successfully', event: mockEvents[index] };
+  }
+
+  // 14. PATCH / PUT /api/events/:id (Update Event)
+  if ((endpoint.startsWith('/api/events/') || endpoint.startsWith('/api/admin/events/')) && (method === 'PATCH' || method === 'PUT')) {
+    const id = endpoint.split('/')[3] || endpoint.split('/')[4];
+    const index = mockEvents.findIndex(evt => (evt._id === id || evt.id === id));
+    if (index === -1) {
+      const error = new Error('Event not found');
+      error.status = 404;
+      throw error;
+    }
+    mockEvents[index] = {
+      ...mockEvents[index],
+      ...body,
+      location: body.location || body.venue || mockEvents[index].location,
+      venue: body.location || body.venue || mockEvents[index].venue,
+      updatedAt: new Date().toISOString()
+    };
+    saveEvents(mockEvents);
+    return { success: true, message: 'Event updated successfully', event: mockEvents[index] };
+  }
+
+  // 15. DELETE /api/events/:id (Delete Event)
   if ((endpoint.startsWith('/api/events/') || endpoint.startsWith('/api/admin/events/')) && method === 'DELETE') {
     const id = endpoint.split('/')[3] || endpoint.split('/')[4];
-    const index = mockEvents.findIndex(evt => evt.id === id);
+    const index = mockEvents.findIndex(evt => (evt._id === id || evt.id === id));
     if (index === -1) {
       const error = new Error('Event not found');
       error.status = 404;
@@ -282,7 +343,7 @@ function mockFallbackHandler(endpoint, options) {
     }
     mockEvents.splice(index, 1);
     saveEvents(mockEvents);
-    return { message: 'Event deleted successfully', id };
+    return { success: true, message: 'Operation successful', id };
   }
 
   throw new Error(`Endpoint ${endpoint} not found`);
@@ -367,30 +428,110 @@ export const apiService = {
     });
   },
 
-  // 10. Events Management
-  getAllEvents: async () => {
-    const data = await apiRequest('/api/events', {
+  // 10. Events Management (Matching Events API Documentation)
+  // GET /api/events
+  getAllEvents: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', params.page);
+    if (params.limit) query.append('limit', params.limit);
+    if (params.upcoming !== undefined) query.append('upcoming', params.upcoming);
+    if (params.location) query.append('location', params.location);
+    if (params.date) query.append('date', params.date);
+
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    const data = await apiRequest(`/api/events${queryString}`, {
       method: 'GET'
     });
     return Array.isArray(data) ? data : (data?.events || []);
   },
 
+  // GET /api/events/:id
+  getEventById: async (id) => {
+    const data = await apiRequest(`/api/events/${id}`, {
+      method: 'GET'
+    });
+    return data?.event || data;
+  },
+
+  // POST /api/events
   addEvent: async (eventData) => {
+    const payload = {
+      title: eventData.title,
+      description: eventData.description || 'Semaphore 2026 Event',
+      location: eventData.location || eventData.venue || 'Main Auditorium',
+      date: eventData.date || new Date().toISOString(),
+      capacity: Number(eventData.capacity) || 100,
+      registrationFee: Number(eventData.registrationFee !== undefined ? eventData.registrationFee : (typeof eventData.fee === 'string' ? eventData.fee.replace(/[^\d]/g, '') : eventData.fee)) || 0,
+      minParticipants: Number(eventData.minParticipants) || 1,
+      maxParticipants: Number(eventData.maxParticipants || eventData.maxTeamMembers) || 4,
+      image: eventData.image || '',
+      coordinators: Array.isArray(eventData.coordinators)
+        ? eventData.coordinators
+        : (typeof eventData.coordinators === 'string' && eventData.coordinators.trim()
+            ? eventData.coordinators.split(',').map(c => c.trim())
+            : []),
+      timings: Array.isArray(eventData.timings) ? eventData.timings : [
+        {
+          date: eventData.date || new Date().toISOString(),
+          startTime: eventData.startTime || '09:30 AM',
+          endTime: eventData.endTime || '01:30 PM'
+        }
+      ],
+      category: eventData.category || 'Coding & Hackathon',
+      status: eventData.status || 'Active'
+    };
+
     const data = await apiRequest('/api/events', {
       method: 'POST',
-      body: JSON.stringify(eventData)
+      body: JSON.stringify(payload)
     });
     return data?.event || data;
   },
 
+  // PATCH /api/events/:id
   editEvent: async (id, eventData) => {
+    const payload = {
+      ...(eventData.title !== undefined && { title: eventData.title }),
+      ...(eventData.description !== undefined && { description: eventData.description }),
+      ...(eventData.location !== undefined || eventData.venue !== undefined) && { location: eventData.location || eventData.venue },
+      ...(eventData.date !== undefined && { date: eventData.date }),
+      ...(eventData.capacity !== undefined && { capacity: Number(eventData.capacity) }),
+      ...(eventData.registrationFee !== undefined || eventData.fee !== undefined) && {
+        registrationFee: Number(eventData.registrationFee !== undefined ? eventData.registrationFee : (typeof eventData.fee === 'string' ? eventData.fee.replace(/[^\d]/g, '') : eventData.fee)) || 0
+      },
+      ...(eventData.minParticipants !== undefined && { minParticipants: Number(eventData.minParticipants) }),
+      ...(eventData.maxParticipants !== undefined || eventData.maxTeamMembers !== undefined) && {
+        maxParticipants: Number(eventData.maxParticipants || eventData.maxTeamMembers)
+      },
+      ...(eventData.image !== undefined && { image: eventData.image }),
+      ...(eventData.status !== undefined && { status: eventData.status }),
+      ...(eventData.category !== undefined && { category: eventData.category })
+    };
+
     const data = await apiRequest(`/api/events/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(eventData)
+      method: 'PATCH',
+      body: JSON.stringify(payload)
     });
     return data?.event || data;
   },
 
+  // PATCH /api/events/:id/coordinators
+  updateCoordinators: async (id, coordinators) => {
+    return await apiRequest(`/api/events/${id}/coordinators`, {
+      method: 'PATCH',
+      body: JSON.stringify({ coordinators: Array.isArray(coordinators) ? coordinators : [coordinators] })
+    });
+  },
+
+  // PATCH /api/events/:id/timings
+  updateTimings: async (id, timings) => {
+    return await apiRequest(`/api/events/${id}/timings`, {
+      method: 'PATCH',
+      body: JSON.stringify({ timings: Array.isArray(timings) ? timings : [timings] })
+    });
+  },
+
+  // DELETE /api/events/:id
   deleteEvent: async (id) => {
     return await apiRequest(`/api/events/${id}`, {
       method: 'DELETE'
