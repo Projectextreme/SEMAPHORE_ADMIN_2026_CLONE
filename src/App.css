@@ -1,11 +1,8 @@
 /* Main App Layout Styles */
 
 .admin-app-layout {
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100vh;
-  max-height: 100dvh;
-  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -13,46 +10,87 @@
   color: var(--text-main);
   font-family: var(--font-sans);
   transition: background-color 0.25s ease, color 0.25s ease;
-  overflow: hidden;
   position: relative;
 }
 
 .main-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   flex-shrink: 0;
 }
 
-.admin-body {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  height: calc(100vh - 64px);
-  height: calc(100dvh - 64px);
-  overflow: hidden;
-  position: relative;
-  width: 100%;
-  min-width: 0;
-}
+/* Desktop layout (>= 993px): Pinned Header & Sidebar, isolated scrollable main viewport */
+@media (min-width: 993px) {
+  .admin-app-layout {
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
 
-.admin-main-content {
-  flex: 1;
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--main-gradient);
-  padding: 0;
-  position: relative;
-  width: 100%;
-  min-width: 0;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-  scroll-behavior: smooth;
-}
-
-@media (max-width: 992px) {
   .admin-body {
-    height: calc(100vh - 60px);
-    height: calc(100dvh - 60px);
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-main-content {
+    flex: 1;
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--main-gradient);
+    padding: 0;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    scroll-behavior: smooth;
+  }
+}
+
+/* Mobile & Tablet layout (<= 992px): Natural fluid touch momentum scrolling */
+@media (max-width: 992px) {
+  .admin-app-layout {
+    height: auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .admin-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: auto;
+    min-height: calc(100vh - 60px);
+    min-height: calc(100dvh - 60px);
+    overflow: visible;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-main-content {
+    flex: 1;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    background: var(--main-gradient);
+    padding: 0;
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
   }
 }
 

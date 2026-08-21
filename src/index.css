@@ -244,11 +244,10 @@
 }
 
 html, body {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
   background-color: var(--bg-dark);
   color: var(--text-main);
   font-family: var(--font-sans);
@@ -256,12 +255,15 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   transition: background-color 0.25s ease, color 0.25s ease;
+  overflow-x: hidden;
+  touch-action: manipulation;
 }
 
 #root {
-  height: 100%;
+  min-height: 100%;
   width: 100%;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Custom Scrollbars */
