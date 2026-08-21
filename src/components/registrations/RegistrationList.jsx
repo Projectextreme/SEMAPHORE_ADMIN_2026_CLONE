@@ -322,8 +322,8 @@ export const RegistrationList = () => {
           </div>
         </div>
 
-        {/* Registrations Table */}
-        <div className="table-responsive">
+        {/* Desktop Table View */}
+        <div className="table-responsive desktop-only">
           <table className="registrations-table">
             <thead>
               <tr>
@@ -459,6 +459,131 @@ export const RegistrationList = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="mobile-cards-list mobile-only" style={{ padding: '0.5rem' }}>
+          {filteredRegistrations.map((reg) => {
+            const regId = reg.id || reg._id;
+            const isApproved = reg.paymentStatus === 'Approved';
+
+            return (
+              <div key={regId} className="mobile-data-card">
+                {/* Header */}
+                <div className="mobile-card-header">
+                  <div>
+                    <strong className="team-highlight" style={{ fontSize: '1rem' }}>{reg.teamName}</strong>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Lead: {reg.leaderName}</div>
+                  </div>
+                  <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
+                    {reg.paymentStatus || 'Pending'}
+                  </span>
+                </div>
+
+                {/* Body Details */}
+                <div className="mobile-card-body">
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Registration ID:</span>
+                    <div className="mobile-id-badge">
+                      <span className="code-font">{regId}</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(regId);
+                          showToast('Registration ID copied!');
+                        }}
+                        className="btn-copy-mini"
+                        title="Copy Reg ID"
+                        aria-label="Copy Reg ID"
+                      >
+                        <Copy size={11} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Event:</span>
+                    <span className="event-tag">{reg.event}</span>
+                  </div>
+
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">College:</span>
+                    <span style={{ fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>{reg.collegeName}</span>
+                  </div>
+
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Team Members:</span>
+                    <span className="members-count-badge">
+                      <Users size={11} /> {reg.membersCount || (reg.members ? reg.members.length : 1)} Member(s)
+                    </span>
+                  </div>
+
+                  {reg.utr && (
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">UTR Ref:</span>
+                      <div className="mobile-id-badge">
+                        <span className="code-font">{reg.utr}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(reg.utr);
+                            showToast('UTR reference copied!');
+                          }}
+                          className="btn-copy-mini"
+                          title="Copy UTR"
+                          aria-label="Copy UTR"
+                        >
+                          <Copy size={11} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="mobile-card-actions">
+                  {!isApproved ? (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Approved')}
+                      className="btn btn-primary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <Check size={13} /> Approve
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Pending')}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <CheckCircle2 size={13} className="text-success" /> Approved
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setInspectingReg(reg)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <Eye size={13} /> Inspect
+                  </button>
+                  <button
+                    onClick={() => setEditingReg({ ...reg })}
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <Edit2 size={13} /> Edit
+                  </button>
+                  <button
+                    onClick={() => setDeletingReg(reg)}
+                    className="btn btn-danger btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <Trash2 size={13} /> Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

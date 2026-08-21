@@ -328,7 +328,8 @@ export const DashboardOverview = ({ setActiveTab }) => {
           </button>
         </div>
 
-        <div className="table-responsive">
+        {/* Desktop Table View */}
+        <div className="table-responsive desktop-only">
           <table className="dashboard-table">
             <thead>
               <tr>
@@ -459,6 +460,92 @@ export const DashboardOverview = ({ setActiveTab }) => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem 0.5rem' }}>
+          {latestRegistrations.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
+              No recent registrations recorded yet.
+            </div>
+          ) : (
+            latestRegistrations.map((reg) => {
+              const regId = reg.id || reg._id;
+              const status = reg.paymentStatus || 'Pending';
+              const isPending = status === 'Pending';
+              const isApproved = status === 'Approved';
+
+              return (
+                <div key={regId} className="mobile-data-card">
+                  <div className="mobile-card-header">
+                    <div className="participant-cell">
+                      <div className="user-avatar-sm">
+                        {(reg.leaderName || reg.name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="participant-info">
+                        <strong className="participant-name">{reg.leaderName || reg.name || 'Participant'}</strong>
+                        <span className="team-subtext">Team: {reg.teamName || 'Solo'}</span>
+                      </div>
+                    </div>
+                    <span className={`status-badge status-${status.toLowerCase()}`}>
+                      {status}
+                    </span>
+                  </div>
+
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">Email:</span>
+                      <span className="mobile-card-value" style={{ fontSize: '0.8rem' }}>{reg.email || 'N/A'}</span>
+                    </div>
+
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">Event:</span>
+                      <span className="event-tag">{reg.event || 'Semaphore 2026'}</span>
+                    </div>
+
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">College:</span>
+                      <span style={{ fontWeight: 600, color: 'var(--text-main)', textAlign: 'right' }}>{reg.collegeName || 'Institute'}</span>
+                    </div>
+
+                    {reg.utr && (
+                      <div className="mobile-card-row">
+                        <span className="mobile-card-label">UTR Ref:</span>
+                        <span className="code-font" style={{ fontSize: '0.75rem' }}>{reg.utr}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mobile-card-actions">
+                    {isPending && (
+                      <button
+                        onClick={() => handleApprovePayment(reg, 'Approved')}
+                        className="btn btn-primary btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                        disabled={actionLoading}
+                      >
+                        <Check size={13} /> Approve Payment
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setEditingReg({ ...reg })}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      <Edit2 size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => setDeletingReg(reg)}
+                      className="btn btn-danger btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

@@ -14,7 +14,8 @@ import {
   ShieldCheck, 
   Filter, 
   UserCheck,
-  X
+  X,
+  Copy
 } from 'lucide-react';
 import './UserManagement.css';
 
@@ -206,78 +207,165 @@ export const UserManagement = () => {
             <p>No user records found matching "{searchTerm}".</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="user-table">
-              <thead>
-                <tr>
-                  <th>USER PROFILE</th>
-                  <th>ID</th>
-                  <th>COLLEGE NAME</th>
-                  <th>TEAMS ENROLLED</th>
-                  <th>ROLE</th>
-                  <th>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsers.map((user) => (
-                  <tr key={user._id}>
-                    <td>
-                      <div className="user-profile-cell">
-                        <div className="user-avatar">
-                          {user.name?.charAt(0).toUpperCase() || 'U'}
+          <>
+            {/* Desktop Table View */}
+            <div className="table-responsive desktop-only">
+              <table className="user-table">
+                <thead>
+                  <tr>
+                    <th>USER PROFILE</th>
+                    <th>ID</th>
+                    <th>COLLEGE NAME</th>
+                    <th>TEAMS ENROLLED</th>
+                    <th>ROLE</th>
+                    <th>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.map((user) => (
+                    <tr key={user._id}>
+                      <td>
+                        <div className="user-profile-cell">
+                          <div className="user-avatar">
+                            {user.name?.charAt(0).toUpperCase() || 'U'}
+                          </div>
+                          <div className="user-cell-info">
+                            <span className="user-cell-name">{user.name}</span>
+                            <span className="user-cell-email">{user.email}</span>
+                          </div>
                         </div>
-                        <div className="user-cell-info">
-                          <span className="user-cell-name">{user.name}</span>
-                          <span className="user-cell-email">{user.email}</span>
+                      </td>
+                      <td className="code-font">{user._id}</td>
+                      <td>
+                        <span className="college-tag">
+                          <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="teams-count-badge">
+                          {user.college?.totalTeams || 1} Team(s)
+                        </span>
+                      </td>
+                      <td>
+                        <span className="role-badge badge-user">
+                          <UserCheck size={11} /> {user.role || 'user'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            onClick={() => handleViewUser(user._id)}
+                            className="btn-icon btn-view"
+                            title="Inspect User (GET /api/admin/users/:id)"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(user)}
+                            className="btn-icon btn-edit"
+                            title="Edit User Details (PUT /api/admin/users/:id)"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteUserObj(user)}
+                            className="btn-icon btn-delete"
+                            title="Delete User (DELETE /api/admin/users/:id)"
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="mobile-cards-list mobile-only">
+              {filteredUsers.map((user) => (
+                <div key={user._id} className="mobile-data-card">
+                  {/* Header */}
+                  <div className="mobile-card-header">
+                    <div className="user-profile-cell">
+                      <div className="user-avatar">
+                        {user.name?.charAt(0).toUpperCase() || 'U'}
                       </div>
-                    </td>
-                    <td className="code-font">{user._id}</td>
-                    <td>
+                      <div className="user-cell-info">
+                        <span className="user-cell-name">{user.name}</span>
+                        <span className="user-cell-email">{user.email}</span>
+                      </div>
+                    </div>
+                    <span className="role-badge badge-user">
+                      <UserCheck size={11} /> {user.role || 'user'}
+                    </span>
+                  </div>
+
+                  {/* Body Details */}
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">User ID:</span>
+                      <div className="mobile-id-badge">
+                        <span className="code-font">{user._id}</span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(user._id);
+                            setToastMsg('User ID copied to clipboard!');
+                            setTimeout(() => setToastMsg(null), 2500);
+                          }}
+                          className="btn-copy-mini"
+                          title="Copy User ID"
+                          aria-label="Copy User ID"
+                        >
+                          <Copy size={12} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">College:</span>
                       <span className="college-tag">
-                        <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}
+                        <Building2 size={12} /> {user.collegeName || user.college?.collegeName || 'N/A'}
                       </span>
-                    </td>
-                    <td>
+                    </div>
+
+                    <div className="mobile-card-row">
+                      <span className="mobile-card-label">Teams Enrolled:</span>
                       <span className="teams-count-badge">
                         {user.college?.totalTeams || 1} Team(s)
                       </span>
-                    </td>
-                    <td>
-                      <span className="role-badge badge-user">
-                        <UserCheck size={11} /> {user.role || 'user'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          onClick={() => handleViewUser(user._id)}
-                          className="btn-icon btn-view"
-                          title="Inspect User (GET /api/admin/users/:id)"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEdit(user)}
-                          className="btn-icon btn-edit"
-                          title="Edit User Details (PUT /api/admin/users/:id)"
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => setDeleteUserObj(user)}
-                          className="btn-icon btn-delete"
-                          title="Delete User (DELETE /api/admin/users/:id)"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mobile-card-actions">
+                    <button
+                      onClick={() => handleViewUser(user._id)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      <Eye size={13} /> View
+                    </button>
+                    <button
+                      onClick={() => handleOpenEdit(user)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      <Edit2 size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={() => setDeleteUserObj(user)}
+                      className="btn btn-danger btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                    >
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

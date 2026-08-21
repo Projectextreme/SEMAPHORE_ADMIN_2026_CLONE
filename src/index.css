@@ -807,6 +807,85 @@ table tbody tr:last-child td {
   animation: spin 0.9s linear infinite;
 }
 
+/* Responsive Visibility Utility Classes */
+.mobile-only {
+  display: none !important;
+}
+
+.desktop-only {
+  display: block;
+}
+
+/* Global Mobile Card Styling Standards */
+.mobile-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  width: 100%;
+}
+
+.mobile-data-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--card-shadow);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.mobile-data-card:hover {
+  border-color: var(--primary-border);
+}
+
+.mobile-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.mobile-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.mobile-card-label {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mobile-card-value {
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.mobile-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
 /* Global Comprehensive Media Queries */
 @media (max-width: 992px) {
   .page-title {
@@ -815,6 +894,14 @@ table tbody tr:last-child td {
 }
 
 @media (max-width: 768px) {
+  .mobile-only {
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .desktop-only {
+    display: none !important;
+  }
   .form-row {
     grid-template-columns: 1fr;
     gap: 0.75rem;

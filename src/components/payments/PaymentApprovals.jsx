@@ -222,7 +222,8 @@ export const PaymentApprovals = () => {
         </div>
 
         {/* Payments Table */}
-        <div className="table-responsive">
+        {/* Desktop Table View */}
+        <div className="table-responsive desktop-only">
           <table className="payments-table">
             <thead>
               <tr>
@@ -301,6 +302,78 @@ export const PaymentApprovals = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards View */}
+        <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem 0.5rem' }}>
+          {filteredPayments.map((p) => (
+            <div key={p.id} className="mobile-data-card">
+              <div className="mobile-card-header">
+                <div>
+                  <strong className="team-title" style={{ fontSize: '0.98rem' }}>{p.teamName}</strong>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{p.collegeName}</div>
+                </div>
+                <span className={`status-badge status-${p.status.toLowerCase()}`}>
+                  {p.status}
+                </span>
+              </div>
+
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">UTR Ref:</span>
+                  <div className="mobile-id-badge">
+                    <span className="code-font">{p.utr}</span>
+                    <button
+                      onClick={() => handleCopyUtr(p.utr)}
+                      className="btn-copy-mini"
+                      title="Copy UTR Code"
+                      aria-label="Copy UTR Code"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Event:</span>
+                  <span className="event-pill">{p.event}</span>
+                </div>
+
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Fee Amount:</span>
+                  <strong className="amount-text" style={{ fontSize: '1.05rem', color: 'var(--success)' }}>{p.amount}</strong>
+                </div>
+              </div>
+
+              <div className="mobile-card-actions">
+                <button
+                  onClick={() => setSelectedPayment(p)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
+                  <Eye size={13} /> View Receipt
+                </button>
+                {p.status !== 'Approved' && (
+                  <button
+                    onClick={() => handleStatusChange(p.id, 'Approved')}
+                    className="btn btn-primary btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <CheckCircle2 size={13} /> Approve
+                  </button>
+                )}
+                {p.status !== 'Rejected' && (
+                  <button
+                    onClick={() => handleStatusChange(p.id, 'Rejected')}
+                    className="btn btn-danger btn-sm"
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <XCircle size={13} /> Reject
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

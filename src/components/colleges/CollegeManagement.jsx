@@ -12,7 +12,8 @@ import {
   Users, 
   X,
   Filter,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import './CollegeManagement.css';
@@ -265,83 +266,177 @@ export const CollegeManagement = () => {
             <p>No college records found matching "{searchTerm}".</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="college-table">
-              <thead>
-                <tr>
-                  <th>INSTITUTION / COLLEGE</th>
-                  <th>COLLEGE ID</th>
-                  <th>ENROLLED TEAMS</th>
-                  <th>QUOTA STATUS</th>
-                  <th>REGISTERED ON</th>
-                  <th>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredColleges.map((college) => {
-                  const teams = Number(college.totalTeams) || 0;
-                  const isFull = teams >= 2;
-                  const collegeId = college._id || college.id;
+          <>
+            {/* Desktop Table View */}
+            <div className="table-responsive desktop-only">
+              <table className="college-table">
+                <thead>
+                  <tr>
+                    <th>INSTITUTION / COLLEGE</th>
+                    <th>COLLEGE ID</th>
+                    <th>ENROLLED TEAMS</th>
+                    <th>QUOTA STATUS</th>
+                    <th>REGISTERED ON</th>
+                    <th>ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredColleges.map((college) => {
+                    const teams = Number(college.totalTeams) || 0;
+                    const isFull = teams >= 2;
+                    const collegeId = college._id || college.id;
 
-                  return (
-                    <tr key={collegeId}>
-                      <td>
-                        <div className="college-title-cell">
-                          <div className="college-avatar">
-                            {college.collegeName?.charAt(0).toUpperCase() || 'C'}
+                    return (
+                      <tr key={collegeId}>
+                        <td>
+                          <div className="college-title-cell">
+                            <div className="college-avatar">
+                              {college.collegeName?.charAt(0).toUpperCase() || 'C'}
+                            </div>
+                            <div className="college-title-info">
+                              <span className="college-name-text">{college.collegeName}</span>
+                              <span className="college-subtext">Verified Institution</span>
+                            </div>
                           </div>
-                          <div className="college-title-info">
-                            <span className="college-name-text">{college.collegeName}</span>
-                            <span className="college-subtext">Verified Institution</span>
+                        </td>
+                        <td className="code-font">{collegeId}</td>
+                        <td>
+                          <div className="quota-bar-wrapper">
+                            <div className="quota-bar-bg">
+                              <div 
+                                className={`quota-bar-fill ${isFull ? 'fill-full' : teams === 1 ? 'fill-half' : 'fill-empty'}`}
+                                style={{ width: `${Math.min(100, (teams / 2) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="quota-bar-text">{teams} / 2 Teams</span>
                           </div>
+                        </td>
+                        <td>
+                          <span className={`quota-pill ${isFull ? 'pill-full' : teams === 1 ? 'pill-half' : 'pill-empty'}`}>
+                            {isFull ? 'Quota Full (2/2)' : teams === 1 ? '1 Slot Available' : '2 Slots Available'}
+                          </span>
+                        </td>
+                        <td className="date-text">
+                          {college.createdAt 
+                            ? new Date(college.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            : '—'}
+                        </td>
+                        <td>
+                          <div className="table-actions-cell">
+                            <button
+                              onClick={() => setEditingCollege({ ...college })}
+                              className="btn-icon btn-edit"
+                              title="Edit College (PUT /api/colleges/:id)"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => setDeletingCollege(college)}
+                              className="btn-icon btn-delete"
+                              title="Delete College (DELETE /api/colleges/:id)"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="college-mobile-cards mobile-only">
+              {filteredColleges.map((college) => {
+                const teams = Number(college.totalTeams) || 0;
+                const isFull = teams >= 2;
+                const collegeId = college._id || college.id;
+
+                return (
+                  <div key={collegeId} className="college-card-mobile">
+                    {/* Header */}
+                    <div className="college-card-mobile-header">
+                      <div className="college-title-cell">
+                        <div className="college-avatar">
+                          {college.collegeName?.charAt(0).toUpperCase() || 'C'}
                         </div>
-                      </td>
-                      <td className="code-font">{collegeId}</td>
-                      <td>
-                        <div className="quota-bar-wrapper">
+                        <div className="college-title-info">
+                          <span className="college-name-text">{college.collegeName}</span>
+                          <span className="college-subtext">Verified Institution</span>
+                        </div>
+                      </div>
+                      <span className={`quota-pill ${isFull ? 'pill-full' : teams === 1 ? 'pill-half' : 'pill-empty'}`}>
+                        {isFull ? 'Quota Full (2/2)' : teams === 1 ? '1 Slot Left' : '2 Slots Left'}
+                      </span>
+                    </div>
+
+                    {/* ID & Date Info */}
+                    <div className="college-card-mobile-body">
+                      <div className="mobile-info-row">
+                        <span className="mobile-info-label">College ID:</span>
+                        <div className="mobile-id-badge">
+                          <span className="code-font">{collegeId}</span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(collegeId);
+                              showToast('College ID copied to clipboard!');
+                            }}
+                            className="btn-copy-mini"
+                            title="Copy ID"
+                            aria-label="Copy ID"
+                          >
+                            <Copy size={12} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quota Progress */}
+                      <div className="mobile-info-row" style={{ alignItems: 'flex-start' }}>
+                        <span className="mobile-info-label">Enrolled Teams:</span>
+                        <div className="quota-bar-wrapper" style={{ flex: 1, maxWidth: '160px' }}>
                           <div className="quota-bar-bg">
                             <div 
                               className={`quota-bar-fill ${isFull ? 'fill-full' : teams === 1 ? 'fill-half' : 'fill-empty'}`}
                               style={{ width: `${Math.min(100, (teams / 2) * 100)}%` }}
                             />
                           </div>
-                          <span className="quota-bar-text">{teams} / 2 Teams</span>
+                          <span className="quota-bar-text">{teams} / 2 Teams Enrolled</span>
                         </div>
-                      </td>
-                      <td>
-                        <span className={`quota-pill ${isFull ? 'pill-full' : teams === 1 ? 'pill-half' : 'pill-empty'}`}>
-                          {isFull ? 'Quota Full (2/2)' : teams === 1 ? '1 Slot Available' : '2 Slots Available'}
-                        </span>
-                      </td>
-                      <td className="date-text">
-                        {college.createdAt 
-                          ? new Date(college.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                          : '—'}
-                      </td>
-                      <td>
-                        <div className="table-actions-cell">
-                          <button
-                            onClick={() => setEditingCollege({ ...college })}
-                            className="btn-icon btn-edit"
-                            title="Edit College (PUT /api/colleges/:id)"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeletingCollege(college)}
-                            className="btn-icon btn-delete"
-                            title="Delete College (DELETE /api/colleges/:id)"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                      </div>
+
+                      {college.createdAt && (
+                        <div className="mobile-info-row">
+                          <span className="mobile-info-label">Registered:</span>
+                          <span className="mobile-info-val">
+                            {new Date(college.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </span>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="college-card-mobile-actions">
+                      <button
+                        onClick={() => setEditingCollege({ ...college })}
+                        className="btn btn-secondary btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        <Edit2 size={13} /> Edit College
+                      </button>
+                      <button
+                        onClick={() => setDeletingCollege(college)}
+                        className="btn btn-danger btn-sm"
+                        style={{ flex: 1, justifyContent: 'center' }}
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
