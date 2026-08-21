@@ -11,9 +11,10 @@ import {
   CheckCircle2, 
   Building2, 
   Mail, 
-  ShieldCheck,
-  Filter,
-  UserCheck
+  ShieldCheck, 
+  Filter, 
+  UserCheck,
+  X
 } from 'lucide-react';
 import './UserManagement.css';
 
@@ -28,7 +29,7 @@ export const UserManagement = () => {
   // Modals
   const [selectedUserView, setSelectedUserView] = useState(null);
   const [editUserData, setEditUserData] = useState(null);
-  const [deleteUserId, setDeleteUserId] = useState(null);
+  const [deleteUserObj, setDeleteUserObj] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // 6. Retrieve All Users (GET /api/admin/users)
@@ -92,14 +93,14 @@ export const UserManagement = () => {
 
   // 9. Delete User (DELETE /api/admin/users/:id)
   const handleConfirmDelete = async () => {
-    if (!deleteUserId) return;
+    if (!deleteUserObj) return;
     setActionLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      const res = await apiService.deleteUser(deleteUserId);
-      setSuccessMsg(res.message || 'User deleted successfully');
-      setDeleteUserId(null);
+      const res = await apiService.deleteUser(deleteUserObj._id);
+      setSuccessMsg(res.message || `User "${deleteUserObj.name}" deleted successfully.`);
+      setDeleteUserObj(null);
       fetchUsers();
     } catch (err) {
       setErrorMsg(err.message || 'Failed to delete user');
@@ -166,6 +167,16 @@ export const UserManagement = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <button 
+                className="search-clear-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search query"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <div className="user-filter-group">
@@ -254,7 +265,7 @@ export const UserManagement = () => {
                           <Edit2 size={14} />
                         </button>
                         <button
-                          onClick={() => setDeleteUserId(user._id)}
+                          onClick={() => setDeleteUserObj(user)}
                           className="btn-icon btn-delete"
                           title="Delete User (DELETE /api/admin/users/:id)"
                         >
@@ -394,27 +405,33 @@ export const UserManagement = () => {
       )}
 
       {/* Delete User Dialog (DELETE /api/admin/users/:id) */}
-      {deleteUserId && (
+      {deleteUserObj && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm User Deletion</h3>
-              <button className="modal-close" onClick={() => setDeleteUserId(null)}>&times;</button>
+              <button className="modal-close" onClick={() => setDeleteUserObj(null)}>&times;</button>
             </div>
             <p className="modal-subtitle">
-              Endpoint: <code>DELETE /api/admin/users/{deleteUserId}</code>
+              Endpoint: <code>DELETE /api/admin/users/{deleteUserObj._id}</code>
             </p>
 
+            <div className="delete-target-info" style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>{deleteUserObj.name}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{deleteUserObj.email} • {deleteUserObj.collegeName || deleteUserObj.college?.collegeName || 'N/A'}</div>
+              <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>ID: {deleteUserObj._id}</div>
+            </div>
+
             <p className="delete-warning-text">
-              Are you sure you want to permanently delete user account <code className="code-font">{deleteUserId}</code>? This action cannot be reversed.
+              Are you sure you want to permanently delete this user account? This user will no longer be able to log in or register teams.
             </p>
 
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setDeleteUserId(null)}>
+              <button className="btn btn-secondary" onClick={() => setDeleteUserObj(null)}>
                 Cancel
               </button>
               <button className="btn btn-danger" onClick={handleConfirmDelete} disabled={actionLoading}>
-                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+                {actionLoading ? 'Deleting User...' : 'Confirm Delete'}
               </button>
             </div>
           </div>

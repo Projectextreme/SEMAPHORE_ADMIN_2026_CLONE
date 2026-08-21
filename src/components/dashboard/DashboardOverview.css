@@ -465,6 +465,71 @@
   gap: 0.85rem;
 }
 
+/* Latest Registrations Card Styles */
+.latest-registrations-card {
+  width: 100%;
+}
+
+.participant-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.user-avatar-sm {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--cyan) 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.participant-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.participant-name {
+  color: var(--text-heading);
+  font-size: 0.85rem;
+}
+
+.team-subtext {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.user-email-text {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.reg-details-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.college-line {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.quota-tag-sm {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
 @media (max-width: 1024px) {
   .dashboard-grid-2col {
     grid-template-columns: 1fr;

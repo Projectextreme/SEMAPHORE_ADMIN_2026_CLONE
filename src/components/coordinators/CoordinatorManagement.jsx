@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   AlertCircle,
   Award,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
@@ -20,29 +21,29 @@ export const CoordinatorManagement = () => {
   const [coordinators, setCoordinators] = useState([
     {
       id: 'COORD-01',
-      name: 'Havyas K',
+      name: 'Havyas Bhat',
       email: 'havyas@semaphore.com',
-      phone: '+91 98451 22341',
+      phone: '+91 98450 11223',
       assignedEvent: 'CodeFest 2026',
-      department: 'MCA Final Year',
+      department: 'MCA 2nd Year',
       status: 'Active'
     },
     {
       id: 'COORD-02',
-      name: 'Shashidhara M',
-      email: 'shashi@semaphore.com',
-      phone: '+91 97410 55432',
+      name: 'Shashidhara K',
+      email: 'shashidhara@semaphore.com',
+      phone: '+91 97401 22334',
       assignedEvent: 'CodeFest 2026',
-      department: 'MCA 1st Year',
+      department: 'MCA 2nd Year',
       status: 'Active'
     },
     {
       id: 'COORD-03',
-      name: 'Swasthik Lead',
+      name: 'Swasthik Gowda',
       email: 'swasthik@semaphore.com',
-      phone: '+91 91234 56780',
+      phone: '+91 99001 55667',
       assignedEvent: 'RoboWars Arena',
-      department: 'Lead Organizer',
+      department: 'MCA 1st Year',
       status: 'Active'
     },
     {
@@ -57,6 +58,7 @@ export const CoordinatorManagement = () => {
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCoord, setEditingCoord] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
@@ -106,13 +108,16 @@ export const CoordinatorManagement = () => {
     showToast('Coordinator removed.');
   };
 
+  const eventsList = ['All', ...new Set(coordinators.map(c => c.assignedEvent))];
+
   const filtered = coordinators.filter(c => {
+    const matchesEvent = selectedEvent === 'All' || c.assignedEvent === selectedEvent;
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       c.name.toLowerCase().includes(term) ||
       c.assignedEvent.toLowerCase().includes(term) ||
-      c.email.toLowerCase().includes(term)
-    );
+      c.email.toLowerCase().includes(term);
+    return matchesEvent && matchesSearch;
   });
 
   return (
@@ -163,15 +168,45 @@ export const CoordinatorManagement = () => {
 
       {/* Search Toolbar */}
       <div className="card toolbar-card">
-        <div className="search-bar-wrapper">
-          <Search className="search-icon" size={15} />
-          <input
-            type="text"
-            className="search-input"
-            placeholder="Search by coordinator name, event, or email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="search-bar-wrapper">
+            <Search className="search-icon" size={15} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search by coordinator name, event, or email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="search-clear-btn"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Calendar size={14} style={{ color: 'var(--text-dim)' }} />
+              <select
+                className="form-select select-compact"
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+              >
+                {eventsList.map((evt) => (
+                  <option key={evt} value={evt}>
+                    {evt === 'All' ? 'All Assigned Events' : evt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="endpoint-badge">{filtered.length} Coordinators</span>
+          </div>
         </div>
       </div>
 

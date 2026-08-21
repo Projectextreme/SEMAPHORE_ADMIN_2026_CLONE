@@ -48,6 +48,26 @@
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
+.search-clear-btn {
+  position: absolute;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border-radius: 50%;
+  transition: all 0.15s ease;
+}
+
+.search-clear-btn:hover {
+  color: var(--text-main);
+  background: var(--nav-hover-bg);
+}
+
 .user-filter-group {
   display: flex;
   align-items: center;

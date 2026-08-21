@@ -15,7 +15,8 @@ import {
   Loader2,
   Tag,
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import './EventManagement.css';
@@ -231,22 +232,35 @@ export const EventManagement = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <button 
+                className="search-clear-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search query"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="category-filter-wrapper">
-            <Tag size={14} className="filter-icon" />
-            <select
-              className="form-select select-compact"
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="All">All Categories</option>
-              <option value="Coding & Hackathon">Coding & Hackathon</option>
-              <option value="Robotics">Robotics</option>
-              <option value="Web Development">Web Development</option>
-              <option value="Gaming">Gaming & Esports</option>
-              <option value="Flagship">Flagship Event</option>
-            </select>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="category-filter-wrapper">
+              <Tag size={14} className="filter-icon" />
+              <select
+                className="form-select select-compact"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="All">All Categories</option>
+                <option value="Coding & Hackathon">Coding & Hackathon</option>
+                <option value="Robotics">Robotics</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Gaming">Gaming & Esports</option>
+                <option value="Flagship">Flagship Event</option>
+              </select>
+            </div>
+            <span className="endpoint-badge">{filteredEvents.length} Events Listed</span>
           </div>
         </div>
       </div>

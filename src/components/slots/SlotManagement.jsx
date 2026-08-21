@@ -9,12 +9,16 @@ import {
   Edit2, 
   Trash2,
   Users,
-  RefreshCw
+  RefreshCw,
+  Search,
+  X
 } from 'lucide-react';
 import './SlotManagement.css';
 
 export const SlotManagement = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedEvent, setSelectedEvent] = useState('All');
   const [slots, setSlots] = useState([
     {
       id: 'SLOT-01',
@@ -97,6 +101,18 @@ export const SlotManagement = () => {
     showToast('Schedule slot removed.');
   };
 
+  const eventsList = ['All', ...new Set(slots.map(s => s.eventName))];
+
+  const filteredSlots = slots.filter(s => {
+    const matchesEvent = selectedEvent === 'All' || s.eventName === selectedEvent;
+    const term = searchTerm.toLowerCase();
+    const matchesSearch =
+      s.eventName.toLowerCase().includes(term) ||
+      s.round.toLowerCase().includes(term) ||
+      s.venue.toLowerCase().includes(term);
+    return matchesEvent && matchesSearch;
+  });
+
   return (
     <div className="slots-container">
       {/* Title */}
@@ -142,9 +158,53 @@ export const SlotManagement = () => {
         </div>
       )}
 
+      {/* Search Toolbar */}
+      <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="search-bar-wrapper">
+            <Search className="search-icon" size={15} />
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search schedule by event, round, or venue..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className="search-clear-btn"
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Calendar size={14} style={{ color: 'var(--text-dim)' }} />
+              <select
+                className="form-select select-compact"
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+              >
+                {eventsList.map((evt) => (
+                  <option key={evt} value={evt}>
+                    {evt === 'All' ? 'All Scheduled Events' : evt}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="endpoint-badge">{filteredSlots.length} Slots</span>
+          </div>
+        </div>
+      </div>
+
       {/* Timeline List */}
       <div className="timeline-container">
-        {slots.map((slot, index) => (
+        {filteredSlots.map((slot, index) => (
           <div key={slot.id} className="timeline-item">
             <div className="timeline-marker">
               <div className="timeline-dot"></div>

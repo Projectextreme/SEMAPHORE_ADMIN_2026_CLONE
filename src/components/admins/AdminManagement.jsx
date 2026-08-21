@@ -15,7 +15,9 @@ import {
   Crown,
   Copy,
   Check,
-  Trash2
+  Trash2,
+  Search,
+  X
 } from 'lucide-react';
 import './AdminManagement.css';
 
@@ -25,6 +27,7 @@ export const AdminManagement = () => {
   const [myProfile, setMyProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [copiedId, setCopiedId] = useState(false);
@@ -151,6 +154,16 @@ export const AdminManagement = () => {
     setShowRoleModal(true);
   };
 
+  const filteredAdminsList = adminsList.filter((adm) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (adm.name || '').toLowerCase().includes(term) ||
+      (adm.email || '').toLowerCase().includes(term) ||
+      (adm.role || '').toLowerCase().includes(term) ||
+      (adm._id || '').toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="admin-mgmt-container">
       {/* Page Header */}
@@ -191,50 +204,48 @@ export const AdminManagement = () => {
         </div>
       )}
 
-      {/* Profile Overview Card */}
+      {/* My Profile Card (GET /api/admin/profile) */}
       <div className="card profile-card">
         <div className="card-header">
           <div>
             <h3 className="card-title">
-              <User size={17} /> Current Active Session
+              <UserCheck size={17} /> Active Admin Session Profile
             </h3>
-            <p className="card-subtitle">Authenticated Admin Profile Details</p>
+            <p className="card-subtitle">Endpoint: <code>GET /api/admin/profile</code></p>
           </div>
-          <span className="endpoint-badge">Session Verified</span>
+          <span className="badge badge-success">Authenticated</span>
         </div>
 
         <div className="profile-details-grid">
-          <div className="profile-field">
-            <span className="field-label">Admin ID</span>
-            <div className="field-copy-row">
-              <span className="field-value code-font">{myProfile?._id || currentAdmin?._id || '—'}</span>
+          <div className="profile-item">
+            <span className="profile-label">Administrator Name</span>
+            <span className="profile-val font-bold">{myProfile?.name || currentAdmin?.name}</span>
+          </div>
+
+          <div className="profile-item">
+            <span className="profile-label">Email Address</span>
+            <span className="profile-val">{myProfile?.email || currentAdmin?.email}</span>
+          </div>
+
+          <div className="profile-item">
+            <span className="profile-label">Security Role</span>
+            <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
+              {myProfile?.role === 'superadmin' ? <Crown size={12} /> : null}
+              {myProfile?.role || currentAdmin?.role}
+            </span>
+          </div>
+
+          <div className="profile-item">
+            <span className="profile-label">Admin ID Reference</span>
+            <div className="id-copy-row">
+              <span className="profile-val code-font">{myProfile?._id || currentAdmin?._id}</span>
               <button 
-                className="copy-btn" 
-                onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)}
-                title="Copy ID"
+                onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)} 
+                className="btn-copy-mini"
+                title="Copy Admin ID"
               >
-                {copiedId ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                {copiedId ? <Check size={12} className="text-success" /> : <Copy size={12} />}
               </button>
-            </div>
-          </div>
-
-          <div className="profile-field">
-            <span className="field-label">Full Name</span>
-            <span className="field-value font-bold">{myProfile?.name || currentAdmin?.name || '—'}</span>
-          </div>
-
-          <div className="profile-field">
-            <span className="field-label">Email Address</span>
-            <span className="field-value">{myProfile?.email || currentAdmin?.email || '—'}</span>
-          </div>
-
-          <div className="profile-field">
-            <span className="field-label">Assigned Role</span>
-            <div>
-              <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-                {myProfile?.role === 'superadmin' ? <Crown size={12} /> : <UserCheck size={12} />}
-                {myProfile?.role || currentAdmin?.role || 'admin'}
-              </span>
             </div>
           </div>
         </div>
@@ -242,7 +253,7 @@ export const AdminManagement = () => {
 
       {/* All Admins Table */}
       <div className="card table-card">
-        <div className="card-header">
+        <div className="card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h3 className="card-title">
               <Key size={17} /> System Administrators List
@@ -254,7 +265,31 @@ export const AdminManagement = () => {
             </p>
           </div>
 
-          <span className="endpoint-badge">Access Control</span>
+          {isSuperAdmin && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+              <div className="search-bar-wrapper">
+                <Search className="search-icon" size={15} />
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search admin name, email, or role..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button
+                    className="search-clear-btn"
+                    onClick={() => setSearchTerm('')}
+                    title="Clear search"
+                    aria-label="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <span className="endpoint-badge">{filteredAdminsList.length} Admins</span>
+            </div>
+          )}
         </div>
 
         {!isSuperAdmin ? (
@@ -270,6 +305,10 @@ export const AdminManagement = () => {
             <div className="spinner"></div>
             <span>Loading admin accounts...</span>
           </div>
+        ) : filteredAdminsList.length === 0 ? (
+          <div className="empty-state">
+            <p>No administrator accounts found matching "{searchTerm}".</p>
+          </div>
         ) : (
           <div className="table-responsive">
             <table className="admin-table">
@@ -283,7 +322,7 @@ export const AdminManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {adminsList.map((adm) => (
+                {filteredAdminsList.map((adm) => (
                   <tr key={adm._id} className={adm._id === currentAdmin?._id ? 'highlight-row' : ''}>
                     <td>
                       <div className="admin-user-cell">

@@ -12,6 +12,7 @@ import { RegistrationList } from './components/registrations/RegistrationList';
 import { EventManagement } from './components/events/EventManagement';
 import { CoordinatorManagement } from './components/coordinators/CoordinatorManagement';
 import { SlotManagement } from './components/slots/SlotManagement';
+import { CollegeManagement } from './components/colleges/CollegeManagement';
 import './App.css';
 
 function AdminPortalContent() {
@@ -41,6 +42,8 @@ function AdminPortalContent() {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardOverview setActiveTab={handleTabChange} />;
+      case 'colleges':
+        return <CollegeManagement />;
       case 'admins':
         return <AdminManagement />;
       case 'users':

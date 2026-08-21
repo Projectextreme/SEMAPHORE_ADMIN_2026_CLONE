@@ -111,6 +111,99 @@ export const initialEvents = [
   }
 ];
 
+export const initialRegistrations = [
+  {
+    id: 'REG-892101',
+    _id: 'reg_892101',
+    collegeName: 'MIT Tech',
+    teamName: 'CyberKnights',
+    leaderName: 'Jane Smith',
+    email: 'jane@example.com',
+    phone: '+91 98451 10022',
+    event: 'Web Development Hackathon 2026',
+    membersCount: 4,
+    members: ['Jane Smith (Lead)', 'Rohan Verma', 'Kavya S', 'Aditya Nair'],
+    teamsInCollege: 2,
+    paymentStatus: 'Pending',
+    utr: 'UTR98231049281',
+    amount: '₹ 500',
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    registeredAt: '2026-08-16 10:30 AM'
+  },
+  {
+    id: 'REG-892102',
+    _id: 'reg_892102',
+    collegeName: 'NMAM Institute of Technology',
+    teamName: 'AlgoWizards',
+    leaderName: 'Rahul Sharma',
+    email: 'rahul@nitte.edu.in',
+    phone: '+91 97410 88219',
+    event: 'AI Project Showcase 2026',
+    membersCount: 3,
+    members: ['Rahul Sharma (Lead)', 'Pranav Shenoy', 'Deepa Bhat'],
+    teamsInCollege: 1,
+    paymentStatus: 'Pending',
+    utr: 'UTR19284019283',
+    amount: '₹ 750',
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    registeredAt: '2026-08-16 11:15 AM'
+  },
+  {
+    id: 'REG-892103',
+    _id: 'reg_892103',
+    collegeName: 'RV College of Engineering',
+    teamName: 'MatrixRunners',
+    leaderName: 'Ananya Rao',
+    email: 'ananya@rvce.edu.in',
+    phone: '+91 99002 33411',
+    event: 'Gaming Championship 2026',
+    membersCount: 4,
+    members: ['Ananya Rao (Lead)', 'Varun Gowda', 'Sameer Ali', 'Neha Patil'],
+    teamsInCollege: 2,
+    paymentStatus: 'Approved',
+    utr: 'UTR81920391823',
+    amount: '₹ 500',
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    registeredAt: '2026-08-16 09:00 AM'
+  },
+  {
+    id: 'REG-892104',
+    _id: 'reg_892104',
+    collegeName: 'BMS College of Engineering',
+    teamName: 'ByteBrigade',
+    leaderName: 'Kiran Kumar',
+    email: 'kiran@bmsce.ac.in',
+    phone: '+91 98860 44512',
+    event: 'Web Development Hackathon 2026',
+    membersCount: 4,
+    members: ['Kiran Kumar (Lead)', 'Siddharth M', 'Aishwarya K', 'Tejaswini R'],
+    teamsInCollege: 1,
+    paymentStatus: 'Approved',
+    utr: 'UTR66219044231',
+    amount: '₹ 500',
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    registeredAt: '2026-08-17 02:15 PM'
+  },
+  {
+    id: 'REG-892105',
+    _id: 'reg_892105',
+    collegeName: 'PES University',
+    teamName: 'PES Hackers',
+    leaderName: 'Tanmay Joshi',
+    email: 'tanmay@pes.edu',
+    phone: '+91 96112 55901',
+    event: 'Audit Event',
+    membersCount: 2,
+    members: ['Tanmay Joshi (Lead)', 'Harish Patel'],
+    teamsInCollege: 2,
+    paymentStatus: 'Approved',
+    utr: 'UTR77109283419',
+    amount: '₹ 300',
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    registeredAt: '2026-08-18 04:30 PM'
+  }
+];
+
 export const generateMockJWT = (admin) => {
 
   const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));

@@ -1,11 +1,52 @@
 // Service module mapping to all Semaphore 2026 Admin API Endpoints
 
 import { API_BASE_URL, getAuthHeader } from './apiConfig';
-import { initialAdmins, initialUsers, initialEvents, generateMockJWT } from '../mock/mockDatabase';
+import { initialAdmins, initialUsers, initialEvents, initialRegistrations, generateMockJWT } from '../mock/mockDatabase';
 
 // In-memory state for mock fallback mode
 let mockAdmins = [...initialAdmins];
-let mockUsers = [...initialUsers];
+
+const getStoredUsers = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_users');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading stored users:', e);
+  }
+  localStorage.setItem('semaphore_users', JSON.stringify(initialUsers));
+  return [...initialUsers];
+};
+
+const saveUsers = (users) => {
+  localStorage.setItem('semaphore_users', JSON.stringify(users));
+};
+
+let mockUsers = getStoredUsers();
+
+const getStoredRegistrations = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_registrations');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading stored registrations:', e);
+  }
+  localStorage.setItem('semaphore_registrations', JSON.stringify(initialRegistrations));
+  return [...initialRegistrations];
+};
+
+const saveRegistrations = (registrations) => {
+  localStorage.setItem('semaphore_registrations', JSON.stringify(registrations));
+};
 
 const getCustomEvents = () => {
   try {
@@ -73,6 +114,52 @@ const saveEditedEvent = (id, eventData) => {
     localStorage.setItem('semaphore_edited_events_map', JSON.stringify(map));
   } catch (e) {
     console.warn('Error saving edited event:', e);
+  }
+};
+
+const getCustomColleges = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_custom_colleges');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error reading custom colleges:', e);
+  }
+  return [];
+};
+
+const saveCustomColleges = (colleges) => {
+  try {
+    localStorage.setItem('semaphore_custom_colleges', JSON.stringify(colleges));
+  } catch (e) {
+    console.warn('Error saving custom colleges:', e);
+  }
+};
+
+const getDeletedCollegeIds = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_deleted_college_ids');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error reading deleted college ids:', e);
+  }
+  return [];
+};
+
+const saveDeletedCollegeId = (id) => {
+  try {
+    const ids = getDeletedCollegeIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem('semaphore_deleted_college_ids', JSON.stringify(ids));
+    }
+  } catch (e) {
+    console.warn('Error saving deleted college id:', e);
   }
 };
 
@@ -295,6 +382,7 @@ function mockFallbackHandler(endpoint, options) {
       user.college.collegeName = user.collegeName;
     }
     user.updatedAt = new Date().toISOString();
+    saveUsers(mockUsers);
     return {
       message: 'User updated successfully',
       user: {
@@ -317,9 +405,10 @@ function mockFallbackHandler(endpoint, options) {
       error.status = 404;
       throw error;
     }
-    mockUsers.splice(index, 1);
+    const deleted = mockUsers.splice(index, 1)[0];
+    saveUsers(mockUsers);
     return {
-      message: 'User deleted successfully',
+      message: `User '${deleted.name}' deleted successfully`,
       _id: id
     };
   }
@@ -767,22 +856,161 @@ export const apiService = {
     }
   },
 
-  // 11. Colleges & Registrations Management
+  // 11. Colleges Management (Full CRUD)
   getColleges: async () => {
-    const data = await apiRequest('/api/colleges', {
-      method: 'GET'
-    });
-    return Array.isArray(data) ? data : (data?.colleges || []);
+    let remoteList = [];
+    try {
+      const data = await apiRequest('/api/colleges', {
+        method: 'GET'
+      });
+      remoteList = Array.isArray(data) ? data : (data?.colleges || []);
+    } catch (err) {
+      console.warn('API colleges fetch failed, using local storage:', err);
+    }
+
+    const customColleges = getCustomColleges();
+    const deletedIds = getDeletedCollegeIds();
+
+    const remoteIds = new Set(remoteList.map(c => c._id || c.id));
+    const customNotOnRemote = customColleges.filter(c => !remoteIds.has(c._id || c.id));
+
+    const allColleges = [...customNotOnRemote, ...remoteList].filter(
+      c => !deletedIds.includes(c._id || c.id)
+    );
+    return allColleges;
   },
 
+  addCollege: async (collegeData) => {
+    const payload = {
+      collegeName: collegeData.collegeName,
+      totalTeams: Number(collegeData.totalTeams) || 0
+    };
+
+    let resultCollege;
+    try {
+      const data = await apiRequest('/api/colleges', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      resultCollege = data?.college || data;
+    } catch (err) {
+      resultCollege = {
+        _id: '6a88' + Math.random().toString(16).substr(2, 20),
+        collegeName: payload.collegeName,
+        totalTeams: payload.totalTeams,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    if (resultCollege) {
+      const custom = getCustomColleges();
+      const id = resultCollege._id || resultCollege.id;
+      if (!custom.some(c => (c._id || c.id) === id)) {
+        custom.unshift(resultCollege);
+        saveCustomColleges(custom);
+      }
+    }
+
+    return resultCollege;
+  },
+
+  editCollege: async (id, collegeData) => {
+    const custom = getCustomColleges();
+    const customIdx = custom.findIndex(c => (c._id || c.id) === id);
+    if (customIdx !== -1) {
+      custom[customIdx] = { ...custom[customIdx], ...collegeData, updatedAt: new Date().toISOString() };
+      saveCustomColleges(custom);
+    }
+
+    try {
+      const data = await apiRequest(`/api/colleges/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(collegeData)
+      });
+      return data?.college || data || (customIdx !== -1 ? custom[customIdx] : collegeData);
+    } catch (err) {
+      return customIdx !== -1 ? custom[customIdx] : collegeData;
+    }
+  },
+
+  deleteCollege: async (id) => {
+    saveDeletedCollegeId(id);
+
+    const custom = getCustomColleges().filter(c => (c._id || c.id) !== id);
+    saveCustomColleges(custom);
+
+    try {
+      return await apiRequest(`/api/colleges/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      return { success: true, id };
+    }
+  },
+
+  // 12. Event Registrations & Payment Approvals
   getRegistrations: async () => {
     try {
       const data = await apiRequest('/api/registrations', {
         method: 'GET'
       });
-      return Array.isArray(data) ? data : (data?.registrations || []);
+      const list = Array.isArray(data) ? data : (data?.registrations || []);
+      if (list.length > 0) return list;
+    } catch (err) {
+      console.warn('Registrations API fetch fallback:', err);
+    }
+    return getStoredRegistrations();
+  },
+
+  editRegistration: async (id, regData) => {
+    const list = getStoredRegistrations();
+    const idx = list.findIndex(r => (r._id || r.id) === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...regData, updatedAt: new Date().toISOString() };
+      saveRegistrations(list);
+    }
+
+    try {
+      const data = await apiRequest(`/api/registrations/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(regData)
+      });
+      return data?.registration || data || (idx !== -1 ? list[idx] : regData);
     } catch {
-      return [];
+      return idx !== -1 ? list[idx] : regData;
+    }
+  },
+
+  deleteRegistration: async (id) => {
+    const list = getStoredRegistrations().filter(r => (r._id || r.id) !== id);
+    saveRegistrations(list);
+
+    try {
+      return await apiRequest(`/api/registrations/${id}`, {
+        method: 'DELETE'
+      });
+    } catch {
+      return { success: true, id };
+    }
+  },
+
+  approveRegistrationPayment: async (id, status = 'Approved') => {
+    const list = getStoredRegistrations();
+    const idx = list.findIndex(r => (r._id || r.id) === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], paymentStatus: status, updatedAt: new Date().toISOString() };
+      saveRegistrations(list);
+    }
+
+    try {
+      const data = await apiRequest(`/api/registrations/${id}/payment`, {
+        method: 'PATCH',
+        body: JSON.stringify({ paymentStatus: status })
+      });
+      return data?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: status });
+    } catch {
+      return idx !== -1 ? list[idx] : { id, paymentStatus: status };
     }
   }
 };

@@ -12,7 +12,10 @@ import {
   Building2,
   DollarSign,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  X,
+  Calendar,
+  Filter
 } from 'lucide-react';
 import './PaymentApprovals.css';
 
@@ -55,6 +58,7 @@ export const PaymentApprovals = () => {
   ]);
 
   const [activeFilter, setActiveFilter] = useState('All');
+  const [selectedEvent, setSelectedEvent] = useState('All');
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedUtr, setCopiedUtr] = useState(false);
@@ -81,14 +85,18 @@ export const PaymentApprovals = () => {
     setTimeout(() => setCopiedUtr(false), 2000);
   };
 
+  const eventsList = ['All', ...new Set(payments.map(p => p.event))];
+
   const filteredPayments = payments.filter((p) => {
     const matchesFilter = activeFilter === 'All' || p.status === activeFilter;
+    const matchesEvent = selectedEvent === 'All' || p.event === selectedEvent;
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       p.utr.toLowerCase().includes(term) ||
       p.teamName.toLowerCase().includes(term) ||
-      p.collegeName.toLowerCase().includes(term);
-    return matchesFilter && matchesSearch;
+      p.collegeName.toLowerCase().includes(term) ||
+      p.event.toLowerCase().includes(term);
+    return matchesFilter && matchesEvent && matchesSearch;
   });
 
   const pendingCount = payments.filter((p) => p.status === 'Pending').length;
@@ -172,15 +180,44 @@ export const PaymentApprovals = () => {
             ))}
           </div>
 
-          <div className="search-bar-wrapper">
-            <Search className="search-icon" size={15} />
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search by UTR number, Team or College..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+            <div className="filter-dropdown-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <Calendar size={14} style={{ color: 'var(--text-dim)' }} />
+              <select
+                className="form-select select-compact"
+                value={selectedEvent}
+                onChange={(e) => setSelectedEvent(e.target.value)}
+              >
+                {eventsList.map((evt) => (
+                  <option key={evt} value={evt}>
+                    {evt === 'All' ? 'All Events' : evt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="search-bar-wrapper">
+              <Search className="search-icon" size={15} />
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search by UTR number, Team or College..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button
+                  className="search-clear-btn"
+                  onClick={() => setSearchTerm('')}
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            <span className="endpoint-badge">{filteredPayments.length} Payments</span>
           </div>
         </div>
 

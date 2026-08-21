@@ -6,11 +6,24 @@ import {
   Building2, 
   CheckCircle, 
   AlertTriangle, 
-  Users,
-  CheckCircle2,
-  Filter,
-  Loader2,
-  RefreshCw
+  Users, 
+  CheckCircle2, 
+  Filter, 
+  Loader2, 
+  RefreshCw,
+  Eye,
+  Edit2,
+  Trash2,
+  Check,
+  XCircle,
+  Copy,
+  Receipt,
+  Calendar,
+  Phone,
+  Mail,
+  X,
+  CreditCard,
+  UserCheck
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import './RegistrationList.css';
@@ -20,46 +33,31 @@ export const RegistrationList = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCollege, setSelectedCollege] = useState('All');
-  const [downloadSuccess, setDownloadSuccess] = useState(false);
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('All');
+  const [selectedEventFilter, setSelectedEventFilter] = useState('All');
+
+  // Modals
+  const [inspectingReg, setInspectingReg] = useState(null);
+  const [editingReg, setEditingReg] = useState(null);
+  const [deletingReg, setDeletingReg] = useState(null);
+
+  const [toastMsg, setToastMsg] = useState(null);
+  const [copiedUtr, setCopiedUtr] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const showToast = (msg, isError = false) => {
+    setToastMsg({ text: msg, isError });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
 
   const fetchRegistrations = async () => {
     setLoading(true);
     try {
-      const [usersData, collegesData] = await Promise.all([
-        apiService.getAllUsers(),
-        apiService.getColleges()
-      ]);
-
-      const users = Array.isArray(usersData) ? usersData : (usersData?.users || []);
-      const collegesList = Array.isArray(collegesData) ? collegesData : (collegesData?.colleges || []);
-
-      const collegeMap = {};
-      collegesList.forEach(c => {
-        if (c.collegeName) collegeMap[c.collegeName.toLowerCase().trim()] = c.totalTeams || 0;
-      });
-
-      const mapped = users.map((u, idx) => {
-        const cName = u.collegeName || u.college?.collegeName || 'Autonomous Institution';
-        const teamsInCol = collegeMap[cName.toLowerCase().trim()] || u.college?.totalTeams || 1;
-
-        return {
-          id: `REG-${u._id.slice(-6).toUpperCase()}`,
-          _id: u._id,
-          collegeName: cName,
-          teamName: `${u.name.split(' ')[0]}'s Squad`,
-          leaderName: u.name,
-          email: u.email,
-          event: 'Semaphore 2026',
-          membersCount: teamsInCol > 1 ? 4 : 3,
-          teamsInCollege: teamsInCol,
-          paymentStatus: idx % 3 === 0 ? 'Pending' : 'Approved',
-          registeredAt: u.createdAt ? new Date(u.createdAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : '2026-08-16 10:00'
-        };
-      });
-
-      setRegistrations(mapped);
+      const data = await apiService.getRegistrations();
+      setRegistrations(data);
     } catch (err) {
       console.error('Failed to load registrations:', err);
+      showToast('Failed to load registrations from database.', true);
     } finally {
       setLoading(false);
     }
@@ -69,12 +67,79 @@ export const RegistrationList = () => {
     fetchRegistrations();
   }, []);
 
-  const colleges = ['All', ...new Set(registrations.map((r) => r.collegeName))];
+  // 1. Approve / Change Payment Status
+  const handleApprovePayment = async (reg, newStatus = 'Approved') => {
+    const id = reg._id || reg.id;
+    setActionLoading(true);
+    try {
+      await apiService.approveRegistrationPayment(id, newStatus);
+      setRegistrations((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, paymentStatus: newStatus } : r))
+      );
+      if (inspectingReg && (inspectingReg._id || inspectingReg.id) === id) {
+        setInspectingReg((prev) => ({ ...prev, paymentStatus: newStatus }));
+      }
+      showToast(`Payment for team "${reg.teamName}" marked as ${newStatus}!`);
+    } catch (err) {
+      showToast('Failed to update payment status.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
+  // 2. Save Edit Registration Details
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingReg) return;
+    const id = editingReg._id || editingReg.id;
+    setActionLoading(true);
+    try {
+      const payload = {
+        ...editingReg,
+        membersCount: Number(editingReg.membersCount) || (editingReg.members ? editingReg.members.length : 1)
+      };
+      await apiService.editRegistration(id, payload);
+      setRegistrations((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, ...payload } : r))
+      );
+      showToast(`Registration for team "${editingReg.teamName}" updated successfully!`);
+      setEditingReg(null);
+    } catch (err) {
+      showToast('Failed to save registration changes.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3. Confirm Delete Registration
+  const handleDeleteConfirm = async () => {
+    if (!deletingReg) return;
+    const id = deletingReg._id || deletingReg.id;
+    setActionLoading(true);
+    try {
+      await apiService.deleteRegistration(id);
+      setRegistrations((prev) => prev.filter((r) => (r._id || r.id) !== id));
+      showToast(`Registration for "${deletingReg.teamName}" deleted successfully.`);
+      setDeletingReg(null);
+    } catch (err) {
+      showToast('Failed to delete registration.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCopyUtr = (utr) => {
+    if (!utr) return;
+    navigator.clipboard.writeText(utr);
+    setCopiedUtr(true);
+    setTimeout(() => setCopiedUtr(false), 2000);
+  };
+
+  // Export CSV Report
   const handleExportCSV = () => {
-    const headers = ['Registration ID,College Name,Team Name,Leader Name,Email,Event,Members,Payment Status,Date\n'];
-    const rows = filteredRegistrations.map(r =>
-      `"${r.id}","${r.collegeName}","${r.teamName}","${r.leaderName}","${r.email}","${r.event}",${r.membersCount},"${r.paymentStatus}","${r.registeredAt}"`
+    const headers = ['Reg ID,Team Name,College Name,Leader Name,Email,Phone,Event,Members,Payment Status,UTR,Amount,Date\n'];
+    const rows = filteredRegistrations.map((r) =>
+      `"${r.id || r._id}","${r.teamName}","${r.collegeName}","${r.leaderName}","${r.email}","${r.phone || ''}","${r.event}",${r.membersCount || 1},"${r.paymentStatus}","${r.utr || ''}","${r.amount || ''}","${r.registeredAt || ''}"`
     );
     const csvContent = 'data:text/csv;charset=utf-8,' + headers.concat(rows).join('\n');
     const encodedUri = encodeURI(csvContent);
@@ -85,31 +150,44 @@ export const RegistrationList = () => {
     link.click();
     document.body.removeChild(link);
 
-    setDownloadSuccess(true);
-    setTimeout(() => setDownloadSuccess(false), 3000);
+    showToast('Registrations CSV report generated and downloaded!');
   };
+
+  // Filtering Logic
+  const collegesList = ['All', ...new Set(registrations.map((r) => r.collegeName).filter(Boolean))];
+  const eventsList = ['All', ...new Set(registrations.map((r) => r.event).filter(Boolean))];
 
   const filteredRegistrations = registrations.filter((r) => {
     const matchesCollege = selectedCollege === 'All' || r.collegeName === selectedCollege;
+    const matchesStatus = selectedPaymentStatus === 'All' || r.paymentStatus === selectedPaymentStatus;
+    const matchesEvent = selectedEventFilter === 'All' || r.event === selectedEventFilter;
+    
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      r.teamName.toLowerCase().includes(term) ||
-      r.leaderName.toLowerCase().includes(term) ||
-      r.collegeName.toLowerCase().includes(term) ||
-      r.id.toLowerCase().includes(term);
-    return matchesCollege && matchesSearch;
+      (r.teamName || '').toLowerCase().includes(term) ||
+      (r.leaderName || '').toLowerCase().includes(term) ||
+      (r.collegeName || '').toLowerCase().includes(term) ||
+      (r.email || '').toLowerCase().includes(term) ||
+      (r.event || '').toLowerCase().includes(term) ||
+      (r.utr || '').toLowerCase().includes(term) ||
+      (r.id || r._id || '').toLowerCase().includes(term);
+
+    return matchesCollege && matchesStatus && matchesEvent && matchesSearch;
   });
+
+  const pendingCount = registrations.filter((r) => r.paymentStatus === 'Pending').length;
+  const approvedCount = registrations.filter((r) => r.paymentStatus === 'Approved').length;
 
   return (
     <div className="registrations-container">
-      {/* Title */}
+      {/* Title Bar */}
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <FileSpreadsheet className="title-icon" /> Team Registrations & College Quotas
+            <FileSpreadsheet className="title-icon" /> Event Registrations & Payment Approvals
           </h2>
           <p className="page-description">
-            Audit team rosters, monitor the strict 2 teams per college quota policy, and export data summaries.
+            Audit enrolled teams, edit participant details, verify UPI payments, inspect proof screenshots, and enforce 2-team college quotas.
           </p>
         </div>
 
@@ -131,50 +209,116 @@ export const RegistrationList = () => {
         </div>
       </div>
 
-      {/* CSV Download Toast */}
-      {downloadSuccess && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={16} />
-          <span>Registrations CSV report generated and downloaded successfully!</span>
+      {/* Notifications */}
+      {toastMsg && (
+        <div className={`alert ${toastMsg.isError ? 'alert-error' : 'alert-success'}`}>
+          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{toastMsg.text}</span>
         </div>
       )}
+
+      {/* Summary KPI Strip */}
+      <div className="registration-kpi-strip">
+        <div className="kpi-mini-card">
+          <span className="kpi-mini-label">Total Teams</span>
+          <span className="kpi-mini-val text-cyan">{registrations.length}</span>
+        </div>
+        <div className="kpi-mini-card">
+          <span className="kpi-mini-label">Pending Payments</span>
+          <span className="kpi-mini-val text-warning">{pendingCount}</span>
+        </div>
+        <div className="kpi-mini-card">
+          <span className="kpi-mini-label">Approved & Verified</span>
+          <span className="kpi-mini-val text-success">{approvedCount}</span>
+        </div>
+        <div className="kpi-mini-card">
+          <span className="kpi-mini-label">Colleges Enrolled</span>
+          <span className="kpi-mini-val text-indigo">{collegesList.length - 1}</span>
+        </div>
+      </div>
 
       {/* College Rule Banner */}
       <div className="college-rule-alert">
         <AlertTriangle size={18} className="alert-rule-icon" />
         <div className="rule-text">
-          <strong>College Quota Rule:</strong> Maximum 2 teams per affiliated institution permitted initially.
-          Colleges reaching 2 teams are flagged as <em>Quota Reached (2/2)</em>.
+          <strong>Semaphore 2026 Quota Rule:</strong> Maximum 2 teams per institution permitted.
+          Colleges with 2 registered teams are tagged with <span className="quota-tag-inline">2/2 Quota Reached</span>.
         </div>
       </div>
 
       {/* Filters Card */}
       <div className="card filter-card">
-        <div className="filter-row">
+        <div className="filter-toolbar">
           <div className="search-bar-wrapper">
             <Search className="search-icon" size={15} />
             <input
               type="text"
               className="search-input"
-              placeholder="Search by team name, leader, or college..."
+              placeholder="Search by team, leader, college, event, UTR, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <button 
+                className="search-clear-btn" 
+                onClick={() => setSearchTerm('')}
+                title="Clear search"
+                aria-label="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
-          <div className="college-filter-wrapper">
-            <Building2 size={15} className="filter-icon" />
-            <select
-              className="form-select select-compact"
-              value={selectedCollege}
-              onChange={(e) => setSelectedCollege(e.target.value)}
-            >
-              {colleges.map((c) => (
-                <option key={c} value={c}>
-                  {c === 'All' ? 'All Colleges' : c}
-                </option>
-              ))}
-            </select>
+          <div className="filter-controls-group">
+            {/* Payment Filter */}
+            <div className="filter-dropdown-wrapper">
+              <CreditCard size={14} className="filter-icon" />
+              <select
+                className="form-select select-compact"
+                value={selectedPaymentStatus}
+                onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+              >
+                <option value="All">All Payment States</option>
+                <option value="Pending">Pending Approvals</option>
+                <option value="Approved">Approved Payments</option>
+                <option value="Rejected">Rejected Payments</option>
+              </select>
+            </div>
+
+            {/* College Filter */}
+            <div className="filter-dropdown-wrapper">
+              <Building2 size={14} className="filter-icon" />
+              <select
+                className="form-select select-compact"
+                value={selectedCollege}
+                onChange={(e) => setSelectedCollege(e.target.value)}
+              >
+                {collegesList.map((c) => (
+                  <option key={c} value={c}>
+                    {c === 'All' ? 'All Colleges' : c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Event Filter */}
+            <div className="filter-dropdown-wrapper">
+              <Calendar size={14} className="filter-icon" />
+              <select
+                className="form-select select-compact"
+                value={selectedEventFilter}
+                onChange={(e) => setSelectedEventFilter(e.target.value)}
+              >
+                {eventsList.map((evt) => (
+                  <option key={evt} value={evt}>
+                    {evt === 'All' ? 'All Events' : evt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <span className="endpoint-badge">{filteredRegistrations.length} Teams</span>
           </div>
         </div>
 
@@ -184,80 +328,446 @@ export const RegistrationList = () => {
             <thead>
               <tr>
                 <th>REG ID</th>
+                <th>TEAM & LEADER</th>
                 <th>COLLEGE NAME</th>
-                <th>TEAM NAME</th>
-                <th>LEADER DETAILS</th>
                 <th>EVENT</th>
                 <th>MEMBERS</th>
-                <th>QUOTA STATUS</th>
+                <th>QUOTA</th>
                 <th>PAYMENT</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
                       <Loader2 size={18} className="spin-icon" />
-                      <span>Loading registrations from live database...</span>
+                      <span>Loading event registrations from live database...</span>
                     </div>
                   </td>
                 </tr>
               ) : filteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    No registrations found matching your filter.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)' }}>
+                    No team registrations found matching your query.
                   </td>
                 </tr>
               ) : (
-                filteredRegistrations.map((reg) => (
-                  <tr key={reg.id}>
-                    <td className="code-font">{reg.id}</td>
-                    <td className="font-semibold college-col">
-                      <span className="college-cell-name">{reg.collegeName}</span>
-                    </td>
-                    <td>
-                      <strong className="team-highlight">{reg.teamName}</strong>
-                    </td>
-                    <td>
-                      <div className="leader-info">
-                        <span className="leader-name">{reg.leaderName}</span>
-                        <span className="email-sub">{reg.email}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="event-tag">{reg.event}</span>
-                    </td>
-                    <td className="text-center font-bold">{reg.membersCount}</td>
-                    <td>
-                      <span
-                        className={`quota-badge ${
-                          reg.teamsInCollege >= 2 ? 'quota-full' : 'quota-ok'
-                        }`}
-                      >
-                        {reg.teamsInCollege >= 2 ? (
-                          <>
-                            <CheckCircle size={11} /> 2/2 Reached
-                          </>
-                        ) : (
-                          `1 / 2 Slots`
+                filteredRegistrations.map((reg) => {
+                  const regId = reg.id || reg._id;
+                  const isApproved = reg.paymentStatus === 'Approved';
+
+                  return (
+                    <tr key={regId}>
+                      <td className="code-font">{regId}</td>
+                      <td>
+                        <div className="team-leader-cell">
+                          <strong className="team-highlight">{reg.teamName}</strong>
+                          <span className="leader-name-sub">Lead: {reg.leaderName}</span>
+                          <span className="leader-email-sub">{reg.email}</span>
+                        </div>
+                      </td>
+                      <td className="college-col">
+                        <span className="college-cell-name">{reg.collegeName}</span>
+                      </td>
+                      <td>
+                        <span className="event-tag">{reg.event}</span>
+                      </td>
+                      <td className="text-center font-bold">
+                        <span className="members-count-badge">
+                          <Users size={11} /> {reg.membersCount || (reg.members ? reg.members.length : 1)}
+                        </span>
+                      </td>
+                      <td>
+                        <span
+                          className={`quota-badge ${
+                            reg.teamsInCollege >= 2 ? 'quota-full' : 'quota-ok'
+                          }`}
+                        >
+                          {reg.teamsInCollege >= 2 ? (
+                            <>
+                              <CheckCircle size={11} /> 2/2 Full
+                            </>
+                          ) : (
+                            `1 / 2 Slots`
+                          )}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
+                          {reg.paymentStatus || 'Pending'}
+                        </span>
+                        {reg.utr && (
+                          <span className="utr-subtext code-font">{reg.utr}</span>
                         )}
-                      </span>
-                    </td>
-                    <td>
-                      <span
-                        className={`status-badge status-${reg.paymentStatus.toLowerCase()}`}
-                      >
-                        {reg.paymentStatus}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td>
+                        <div className="table-actions-cell">
+                          {/* Quick Approve Button */}
+                          {!isApproved ? (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn-icon btn-approve"
+                              title="Approve Payment"
+                              disabled={actionLoading}
+                            >
+                              <Check size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-unapprove"
+                              title="Mark Payment as Pending"
+                              disabled={actionLoading}
+                            >
+                              <CheckCircle2 size={14} className="text-success" />
+                            </button>
+                          )}
+
+                          {/* Inspect Info Modal */}
+                          <button
+                            onClick={() => setInspectingReg(reg)}
+                            className="btn-icon btn-view"
+                            title="View Registration & Payment Info"
+                          >
+                            <Eye size={14} />
+                          </button>
+
+                          {/* Edit Registration */}
+                          <button
+                            onClick={() => setEditingReg({ ...reg })}
+                            className="btn-icon btn-edit"
+                            title="Edit Registration Details"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          {/* Delete Registration */}
+                          <button
+                            onClick={() => setDeletingReg(reg)}
+                            className="btn-icon btn-delete"
+                            title="Delete Registration"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Inspect Registration & Payment Information Modal */}
+      {inspectingReg && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-large">
+            <div className="modal-header">
+              <h3><Receipt size={19} /> Registration & Payment Details</h3>
+              <button className="modal-close" onClick={() => setInspectingReg(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">
+              Registration Reference: <code>{inspectingReg.id || inspectingReg._id}</code>
+            </p>
+
+            <div className="inspect-grid">
+              {/* Left Column: Team & College */}
+              <div className="inspect-col">
+                <h4 className="inspect-section-title"><Users size={15} /> Team & College Profile</h4>
+                
+                <div className="user-detail-card">
+                  <div className="detail-row">
+                    <span className="detail-label">Team Name</span>
+                    <span className="font-bold">{inspectingReg.teamName}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Team Leader</span>
+                    <span>{inspectingReg.leaderName}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Email Address</span>
+                    <span>{inspectingReg.email}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Phone Number</span>
+                    <span>{inspectingReg.phone || '+91 98451 00223'}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Institution</span>
+                    <span>{inspectingReg.collegeName}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Enrolled Event</span>
+                    <span className="event-tag">{inspectingReg.event}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Registration Date</span>
+                    <span className="date-text">{inspectingReg.registeredAt || '2026-08-16'}</span>
+                  </div>
+                </div>
+
+                {/* Team Members List */}
+                <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
+                <div className="members-roster-box">
+                  {inspectingReg.members && inspectingReg.members.length > 0 ? (
+                    inspectingReg.members.map((member, idx) => (
+                      <div key={idx} className="member-item">
+                        <span className="member-num">{idx + 1}.</span>
+                        <span className="member-name">{member}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="member-item">
+                      <span className="member-name">{inspectingReg.leaderName} (Team Leader)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: Payment & Transaction Audit */}
+              <div className="inspect-col">
+                <h4 className="inspect-section-title"><CreditCard size={15} /> Payment Verification & Proof</h4>
+
+                <div className="user-detail-card">
+                  <div className="detail-row">
+                    <span className="detail-label">Payment Status</span>
+                    <span className={`status-badge status-${(inspectingReg.paymentStatus || 'pending').toLowerCase()}`}>
+                      {inspectingReg.paymentStatus || 'Pending'}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Amount Paid</span>
+                    <span className="font-bold text-success" style={{ fontSize: '1.05rem' }}>
+                      {inspectingReg.amount || '₹ 500'}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">UPI Reference (UTR)</span>
+                    <div className="utr-copy-row">
+                      <span className="code-font">{inspectingReg.utr || 'UTR98231049281'}</span>
+                      <button 
+                        onClick={() => handleCopyUtr(inspectingReg.utr || 'UTR98231049281')} 
+                        className="btn-copy"
+                        title="Copy UTR"
+                      >
+                        {copiedUtr ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Screenshot Preview */}
+                <div className="payment-proof-preview">
+                  <span className="detail-label" style={{ display: 'block', marginBottom: '0.4rem' }}>
+                    Uploaded Payment Receipt / Screenshot:
+                  </span>
+                  <div className="receipt-image-container">
+                    <img 
+                      src={inspectingReg.proofUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80'} 
+                      alt="Payment Receipt" 
+                      className="receipt-image"
+                    />
+                  </div>
+                </div>
+
+                {/* Quick Payment Approval Actions inside Modal */}
+                <div className="modal-approval-controls">
+                  {inspectingReg.paymentStatus !== 'Approved' ? (
+                    <button
+                      onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
+                      className="btn btn-success"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <CheckCircle2 size={16} /> Approve Payment Reference
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleApprovePayment(inspectingReg, 'Pending')}
+                      className="btn btn-secondary"
+                      style={{ width: '100%', justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <AlertTriangle size={15} /> Revoke to Pending
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1.25rem' }}>
+              <button className="btn btn-secondary" onClick={() => setInspectingReg(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Registration Details Modal */}
+      {editingReg && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3><Edit2 size={19} /> Edit Registration Details</h3>
+              <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">
+              Registration ID: <code>{editingReg.id || editingReg._id}</code>
+            </p>
+
+            <form onSubmit={handleSaveEdit} className="modal-form">
+              <div className="form-group">
+                <label className="form-label">Team Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.teamName || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, teamName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Leader Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.leaderName || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={editingReg.email || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Phone Number</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.phone || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, phone: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Institution / College Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.collegeName || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Enrolled Event</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.event || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, event: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Members Count</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={6}
+                  className="form-input"
+                  value={editingReg.membersCount || 1}
+                  onChange={(e) => setEditingReg({ ...editingReg, membersCount: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Payment Status</label>
+                <select
+                  className="form-select"
+                  value={editingReg.paymentStatus || 'Pending'}
+                  onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">UPI Reference (UTR Number)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.utr || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, utr: e.target.value })}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Saving...' : 'Save Registration'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Registration Confirmation Modal */}
+      {deletingReg && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Registration Deletion</h3>
+              <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">
+              Registration Reference: <code>{deletingReg.id || deletingReg._id}</code>
+            </p>
+
+            <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>Team: {deletingReg.teamName}</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Leader: {deletingReg.leaderName} ({deletingReg.email})</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>College: {deletingReg.collegeName} • Event: {deletingReg.event}</div>
+            </div>
+
+            <p className="delete-warning-text">
+              Are you sure you want to permanently delete this team registration? This action cannot be reversed.
+            </p>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
+                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -15,13 +15,28 @@ import {
   Sparkles,
   ExternalLink,
   Layers,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Edit2,
+  Trash2,
+  Check,
+  XCircle,
+  AlertTriangle,
+  Receipt,
+  X
 } from 'lucide-react';
 import './DashboardOverview.css';
 
 export const DashboardOverview = ({ setActiveTab }) => {
   const { admin, isSuperAdmin } = useAuth();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [registrations, setRegistrations] = useState([]);
+  const [toastMsg, setToastMsg] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Modals
+  const [editingReg, setEditingReg] = useState(null);
+  const [deletingReg, setDeletingReg] = useState(null);
 
   const [stats, setStats] = useState({
     totalAdmins: 3,
@@ -32,37 +47,119 @@ export const DashboardOverview = ({ setActiveTab }) => {
     totalColleges: 3
   });
 
-  const loadStats = async () => {
+  const showToast = (msg, isError = false) => {
+    setToastMsg({ text: msg, isError });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const users = await apiService.getAllUsers();
-      const events = await apiService.getAllEvents();
+      const [users, events, regs, colleges] = await Promise.all([
+        apiService.getAllUsers(),
+        apiService.getAllEvents(),
+        apiService.getRegistrations(),
+        apiService.getColleges()
+      ]);
+
+      const usersList = Array.isArray(users) ? users : (users?.users || []);
+      const eventsList = Array.isArray(events) ? events : (events?.events || []);
+      const regsList = Array.isArray(regs) ? regs : (regs?.registrations || []);
+      const collegesList = Array.isArray(colleges) ? colleges : (colleges?.colleges || []);
+
+      setRegistrations(regsList);
+
+      const pendingCount = regsList.filter((r) => r.paymentStatus === 'Pending').length;
+      const approvedCount = regsList.filter((r) => r.paymentStatus === 'Approved').length;
 
       if (isSuperAdmin) {
         const admins = await apiService.getAllAdmins();
-        setStats((prev) => ({
-          ...prev,
-          totalUsers: users.length,
-          totalAdmins: admins.length,
-          activeEvents: events.length
-        }));
+        const adminsList = Array.isArray(admins) ? admins : (admins?.admins || []);
+        setStats({
+          totalUsers: usersList.length,
+          totalAdmins: adminsList.length,
+          activeEvents: eventsList.length,
+          totalColleges: collegesList.length,
+          pendingPayments: pendingCount,
+          approvedPayments: approvedCount
+        });
       } else {
-        setStats((prev) => ({
-          ...prev,
-          totalUsers: users.length,
-          activeEvents: events.length
-        }));
+        setStats({
+          totalUsers: usersList.length,
+          totalAdmins: 0,
+          activeEvents: eventsList.length,
+          totalColleges: collegesList.length,
+          pendingPayments: pendingCount,
+          approvedPayments: approvedCount
+        });
       }
     } catch (err) {
-      console.warn('Dashboard stats fallback mode');
+      console.warn('Dashboard stats fallback mode:', err);
     } finally {
-      setTimeout(() => setIsRefreshing(false), 500);
+      setTimeout(() => setIsRefreshing(false), 400);
     }
   };
 
   useEffect(() => {
-    loadStats();
+    loadData();
   }, [isSuperAdmin]);
+
+  // 1. Quick Approve / Change Payment Status
+  const handleApprovePayment = async (reg, newStatus = 'Approved') => {
+    const id = reg._id || reg.id;
+    setActionLoading(true);
+    try {
+      await apiService.approveRegistrationPayment(id, newStatus);
+      setRegistrations((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, paymentStatus: newStatus } : r))
+      );
+      showToast(`Payment for "${reg.leaderName || reg.teamName}" marked as ${newStatus}!`);
+      loadData();
+    } catch (err) {
+      showToast('Failed to update payment status.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 2. Save Edit Registration
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingReg) return;
+    const id = editingReg._id || editingReg.id;
+    setActionLoading(true);
+    try {
+      await apiService.editRegistration(id, editingReg);
+      setRegistrations((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, ...editingReg } : r))
+      );
+      showToast(`Registration for "${editingReg.leaderName || editingReg.teamName}" updated!`);
+      setEditingReg(null);
+      loadData();
+    } catch (err) {
+      showToast('Failed to save registration changes.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3. Confirm Delete Registration
+  const handleDeleteConfirm = async () => {
+    if (!deletingReg) return;
+    const id = deletingReg._id || deletingReg.id;
+    setActionLoading(true);
+    try {
+      await apiService.deleteRegistration(id);
+      setRegistrations((prev) => prev.filter((r) => (r._id || r.id) !== id));
+      showToast(`Registration for "${deletingReg.leaderName || deletingReg.teamName}" deleted.`);
+      setDeletingReg(null);
+      loadData();
+    } catch (err) {
+      showToast('Failed to delete registration.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   const kpis = [
     isSuperAdmin ? {
@@ -82,13 +179,13 @@ export const DashboardOverview = ({ setActiveTab }) => {
       icon: Building2,
       colorClass: 'indigo',
       trend: 'Quota Guard Active',
-      tab: 'registrations'
+      tab: 'colleges'
     },
     {
       id: 'users',
       title: 'Registered Users',
       value: stats.totalUsers,
-      subtext: '3 Colleges Enrolled',
+      subtext: `${stats.totalColleges} Colleges Enrolled`,
       icon: Users,
       colorClass: 'cyan',
       trend: '+100% Verified',
@@ -101,7 +198,7 @@ export const DashboardOverview = ({ setActiveTab }) => {
       subtext: 'Needs Scan & Pay check',
       icon: CreditCard,
       colorClass: 'amber',
-      trend: 'Action Required',
+      trend: stats.pendingPayments > 0 ? 'Action Required' : 'All Clear',
       tab: 'payments'
     },
     {
@@ -115,6 +212,8 @@ export const DashboardOverview = ({ setActiveTab }) => {
       tab: 'events'
     }
   ];
+
+  const latestRegistrations = registrations.slice(0, 5);
 
   return (
     <div className="dashboard-container">
@@ -130,7 +229,7 @@ export const DashboardOverview = ({ setActiveTab }) => {
             </span>
             <button 
               className="btn btn-xs btn-secondary refresh-btn"
-              onClick={loadStats}
+              onClick={loadData}
               disabled={isRefreshing}
               title="Refresh Dashboard Statistics"
               aria-label="Refresh Dashboard Data"
@@ -161,6 +260,14 @@ export const DashboardOverview = ({ setActiveTab }) => {
           </div>
         </div>
       </div>
+
+      {/* Notifications Toast */}
+      {toastMsg && (
+        <div className={`alert ${toastMsg.isError ? 'alert-error' : 'alert-success'}`}>
+          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
+          <span>{toastMsg.text}</span>
+        </div>
+      )}
 
       {/* KPI Cards Grid */}
       <div className="kpi-grid">
@@ -199,6 +306,160 @@ export const DashboardOverview = ({ setActiveTab }) => {
             </div>
           );
         })}
+      </div>
+
+      {/* SECTION: Registrations (Latest) Card Table */}
+      <div className="card latest-registrations-card">
+        <div className="card-header">
+          <div>
+            <h3 className="card-title">
+              <FileSpreadsheet size={17} /> Registrations (Latest)
+            </h3>
+            <p className="card-subtitle">
+              Recent attendee signups, competition enrollments, and payment verification states
+            </p>
+          </div>
+          <button
+            onClick={() => setActiveTab('registrations')}
+            className="btn btn-xs btn-secondary"
+            title="View All Registrations"
+          >
+            View All ({registrations.length}) <ArrowUpRight size={12} />
+          </button>
+        </div>
+
+        <div className="table-responsive">
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>USER / PARTICIPANT</th>
+                <th>EMAIL</th>
+                <th>EVENT NAME</th>
+                <th>PAYMENT STATUS</th>
+                <th>REGISTRATION DETAILS</th>
+                <th>ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {latestRegistrations.length === 0 ? (
+                <tr>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                    No recent registrations recorded yet.
+                  </td>
+                </tr>
+              ) : (
+                latestRegistrations.map((reg) => {
+                  const regId = reg.id || reg._id;
+                  const status = reg.paymentStatus || 'Pending';
+                  const isPending = status === 'Pending';
+                  const isApproved = status === 'Approved';
+                  const isRejected = status === 'Rejected';
+
+                  return (
+                    <tr key={regId}>
+                      {/* 1. User/Participant Name */}
+                      <td>
+                        <div className="participant-cell">
+                          <div className="user-avatar-sm">
+                            {(reg.leaderName || reg.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="participant-info">
+                            <strong className="participant-name">{reg.leaderName || reg.name || 'Participant'}</strong>
+                            <span className="team-subtext">Team: {reg.teamName || 'Solo'}</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 2. Email */}
+                      <td>
+                        <span className="user-email-text">{reg.email || 'N/A'}</span>
+                      </td>
+
+                      {/* 3. Event Name */}
+                      <td>
+                        <span className="event-tag">{reg.event || 'Semaphore 2026'}</span>
+                      </td>
+
+                      {/* 4. Payment Status */}
+                      <td>
+                        <span
+                          className={`status-badge status-${status.toLowerCase()}`}
+                          title={`Payment Status: ${status}`}
+                        >
+                          {isApproved && <CheckCircle2 size={11} />}
+                          {isPending && <Clock size={11} />}
+                          {isRejected && <XCircle size={11} />}
+                          {status}
+                        </span>
+                        {reg.utr && (
+                          <span className="utr-subtext code-font">{reg.utr}</span>
+                        )}
+                      </td>
+
+                      {/* 5. Relevant Registration Details */}
+                      <td>
+                        <div className="reg-details-cell">
+                          <span className="college-line">
+                            <Building2 size={12} /> {reg.collegeName || 'Autonomous Institute'}
+                          </span>
+                          <span className="quota-tag-sm">
+                            {reg.teamsInCollege >= 2 ? '2/2 Quota Reached' : `${reg.membersCount || 1} Member(s)`} • {reg.amount || '₹ 500'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 6. Actions (Approve Payment for pending, Edit, Delete) */}
+                      <td>
+                        <div className="table-actions-cell">
+                          {/* Approve Payment for Pending status */}
+                          {isPending && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn btn-xs btn-success"
+                              title="Approve Pending Payment"
+                              disabled={actionLoading}
+                            >
+                              <Check size={12} /> Approve
+                            </button>
+                          )}
+
+                          {isApproved && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-unapprove"
+                              title="Mark as Pending"
+                              disabled={actionLoading}
+                            >
+                              <CheckCircle2 size={14} className="text-success" />
+                            </button>
+                          )}
+
+                          {/* Edit Action */}
+                          <button
+                            onClick={() => setEditingReg({ ...reg })}
+                            className="btn-icon btn-edit"
+                            title="Edit Registration Details"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+
+                          {/* Delete Action */}
+                          <button
+                            onClick={() => setDeletingReg(reg)}
+                            className="btn-icon btn-delete"
+                            title="Delete Registration"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Two Column Grid: Event Registration & College Breakdown */}
@@ -294,10 +555,10 @@ export const DashboardOverview = ({ setActiveTab }) => {
               <p className="card-subtitle">Enforcement of 2 teams per college rule</p>
             </div>
             <button
-              onClick={() => setActiveTab('registrations')}
+              onClick={() => setActiveTab('colleges')}
               className="btn btn-xs btn-secondary"
             >
-              Quotas <ArrowUpRight size={12} />
+              Colleges <ArrowUpRight size={12} />
             </button>
           </div>
 
@@ -346,6 +607,129 @@ export const DashboardOverview = ({ setActiveTab }) => {
           </div>
         </div>
       </div>
+
+      {/* Edit Registration Modal */}
+      {editingReg && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3><Edit2 size={19} /> Edit Registration Details</h3>
+              <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">
+              Registration Reference: <code>{editingReg.id || editingReg._id}</code>
+            </p>
+
+            <form onSubmit={handleSaveEdit} className="modal-form">
+              <div className="form-group">
+                <label className="form-label">Participant / Leader Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.leaderName || editingReg.name || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  value={editingReg.email || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Event Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.event || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, event: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">College Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.collegeName || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Payment Status</label>
+                <select
+                  className="form-select"
+                  value={editingReg.paymentStatus || 'Pending'}
+                  onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Registration Modal */}
+      {deletingReg && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Delete Registration</h3>
+              <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">
+              Registration Reference: <code>{deletingReg.id || deletingReg._id}</code>
+            </p>
+
+            <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>
+                {deletingReg.leaderName || deletingReg.name}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                {deletingReg.email} • {deletingReg.event}
+              </div>
+              <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>
+                College: {deletingReg.collegeName}
+              </div>
+            </div>
+
+            <p className="delete-warning-text">
+              Are you sure you want to remove this registration record from the dashboard and database?
+            </p>
+
+            <div className="modal-actions">
+              <button className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
+                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
