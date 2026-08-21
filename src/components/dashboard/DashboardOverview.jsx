@@ -568,7 +568,8 @@ export const DashboardOverview = ({ setActiveTab }) => {
             </button>
           </div>
 
-          <div className="table-responsive">
+          {/* Desktop Table View */}
+          <div className="table-responsive desktop-only">
             <table className="dashboard-table">
               <thead>
                 <tr>
@@ -629,6 +630,78 @@ export const DashboardOverview = ({ setActiveTab }) => {
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Cards View */}
+          <div className="mobile-cards-list mobile-only" style={{ padding: '0.65rem 0.25rem' }}>
+            <div className="mobile-data-card">
+              <div className="mobile-card-header">
+                <div>
+                  <strong style={{ fontSize: '0.95rem' }}>CodeFest 2026</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Coding & Hackathon</div>
+                </div>
+                <span className="num-pill cyan">1 Team</span>
+              </div>
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Participants:</span>
+                  <strong style={{ color: 'var(--text-main)' }}>4 Members</strong>
+                </div>
+                <div className="mobile-card-row" style={{ alignItems: 'center' }}>
+                  <span className="mobile-card-label">Capacity:</span>
+                  <div className="progress-bar-container" style={{ flex: 1, maxWidth: '140px' }}>
+                    <div className="progress-bar-fill" style={{ width: '50%' }}></div>
+                    <span>50%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mobile-data-card">
+              <div className="mobile-card-header">
+                <div>
+                  <strong style={{ fontSize: '0.95rem' }}>RoboWars Arena</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Robotics Flagship</div>
+                </div>
+                <span className="num-pill cyan">1 Team</span>
+              </div>
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Participants:</span>
+                  <strong style={{ color: 'var(--text-main)' }}>3 Members</strong>
+                </div>
+                <div className="mobile-card-row" style={{ alignItems: 'center' }}>
+                  <span className="mobile-card-label">Capacity:</span>
+                  <div className="progress-bar-container" style={{ flex: 1, maxWidth: '140px' }}>
+                    <div className="progress-bar-fill" style={{ width: '50%' }}></div>
+                    <span>50%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mobile-data-card">
+              <div className="mobile-card-header">
+                <div>
+                  <strong style={{ fontSize: '0.95rem' }}>WebCrafters</strong>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Web Development</div>
+                </div>
+                <span className="num-pill cyan">1 Team</span>
+              </div>
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Participants:</span>
+                  <strong style={{ color: 'var(--text-main)' }}>2 Members</strong>
+                </div>
+                <div className="mobile-card-row" style={{ alignItems: 'center' }}>
+                  <span className="mobile-card-label">Capacity:</span>
+                  <div className="progress-bar-container" style={{ flex: 1, maxWidth: '140px' }}>
+                    <div className="progress-bar-fill" style={{ width: '35%' }}></div>
+                    <span>35%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
