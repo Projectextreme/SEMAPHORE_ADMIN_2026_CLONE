@@ -1,10 +1,10 @@
-/* Registration List CSS - Modern, Clean, Pixel-Perfect */
-
 .registrations-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .college-rule-alert {
@@ -203,4 +203,40 @@
   background: var(--danger-bg);
   color: var(--danger);
   border: 1px solid var(--danger-border);
+}
+
+@media (max-width: 768px) {
+  .registrations-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .college-filter-wrapper {
+    width: 100%;
+  }
+
+  .college-filter-wrapper .form-select {
+    width: 100%;
+  }
+
+  .filter-card {
+    padding: 1rem 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .registrations-container {
+    padding: 0.85rem 0.65rem;
+  }
+
+  .college-rule-alert {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.78rem;
+  }
 }

@@ -2,27 +2,42 @@
 
 .admin-app-layout {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background-color: var(--bg-dark);
   color: var(--text-main);
   font-family: var(--font-sans);
   transition: background-color 0.25s ease, color 0.25s ease;
+  overflow-x: hidden;
+  position: relative;
 }
 
 .admin-body {
   display: flex;
   flex: 1;
   height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
   overflow: hidden;
+  position: relative;
 }
 
 .admin-main-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--main-gradient);
   padding: 0;
   position: relative;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 992px) {
+  .admin-body {
+    height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
+  }
 }
 
 .full-screen-loader {

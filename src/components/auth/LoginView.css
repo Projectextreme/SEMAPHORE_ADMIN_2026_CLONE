@@ -264,3 +264,52 @@
   font-size: 0.72rem;
   color: var(--text-dim);
 }
+
+@media (max-width: 480px) {
+  .login-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .login-card {
+    padding: 1.5rem 1.15rem;
+    border-radius: 16px;
+  }
+
+  .login-logo-badge {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+  }
+
+  .login-title {
+    font-size: 1.35rem;
+  }
+
+  .login-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .login-background-glow {
+    width: 280px;
+    height: 280px;
+  }
+
+  .login-secondary-glow {
+    display: none;
+  }
+
+  .quick-chip-btn {
+    padding: 0.45rem 0.65rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .login-card {
+    padding: 1.25rem 0.85rem;
+  }
+
+  .login-form .form-input {
+    font-size: 0.82rem;
+  }
+}

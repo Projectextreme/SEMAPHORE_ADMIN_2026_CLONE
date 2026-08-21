@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette } from 'lucide-react';
+import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette, Menu, X } from 'lucide-react';
 import './Header.css';
 
-export const Header = () => {
+export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
   const { admin, logout, isSuperAdmin } = useAuth();
   const { theme, toggleTheme, colorPreset, changeColorPreset } = useTheme();
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -19,17 +19,28 @@ export const Header = () => {
 
   return (
     <header className="main-header">
-      <div className="header-brand">
-        <div className="header-logo">
-          <ShieldCheck size={20} className="brand-icon" />
-          <span className="logo-beacon"></span>
-        </div>
-        <div className="brand-text">
-          <div className="brand-title-row">
-            <span className="brand-name">SEMAPHORE</span>
-            <span className="brand-year">2026</span>
+      <div className="header-left">
+        <button 
+          className={`mobile-nav-toggle ${isMobileNavOpen ? 'active' : ''}`}
+          onClick={onToggleMobileNav}
+          title="Toggle Navigation Menu"
+          aria-label="Toggle navigation drawer"
+        >
+          {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        <div className="header-brand">
+          <div className="header-logo">
+            <ShieldCheck size={20} className="brand-icon" />
+            <span className="logo-beacon"></span>
           </div>
-          <span className="brand-tag">ADMIN CONTROL SUITE</span>
+          <div className="brand-text">
+            <div className="brand-title-row">
+              <span className="brand-name">SEMAPHORE</span>
+              <span className="brand-year">2026</span>
+            </div>
+            <span className="brand-tag">ADMIN CONTROL SUITE</span>
+          </div>
         </div>
       </div>
 

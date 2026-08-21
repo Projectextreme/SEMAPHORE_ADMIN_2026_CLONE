@@ -1,10 +1,10 @@
-/* Event Management CSS - Modern & Clean */
-
 .events-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .events-toolbar-card {
@@ -27,7 +27,7 @@
 
 .events-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
   gap: 1.15rem;
 }
 
@@ -178,4 +178,59 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .events-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .events-toolbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .category-filter-wrapper {
+    width: 100%;
+  }
+
+  .category-filter-wrapper .form-select {
+    width: 100%;
+  }
+
+  .events-toolbar-inner .btn {
+    width: 100%;
+  }
+
+  .event-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .card-action-btns {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 480px) {
+  .events-container {
+    padding: 0.85rem 0.65rem;
+  }
+
+  .event-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .meta-item.full-width {
+    grid-column: span 1;
+  }
+
+  .card-action-btns {
+    justify-content: space-between;
+  }
 }

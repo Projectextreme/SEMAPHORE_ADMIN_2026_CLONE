@@ -1,10 +1,10 @@
-/* User Management CSS - Modern & Clean */
-
 .user-mgmt-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .user-toolbar {
@@ -216,4 +216,41 @@
   text-align: center;
   color: var(--text-muted);
   font-size: 0.88rem;
+}
+
+@media (max-width: 768px) {
+  .user-mgmt-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .user-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .user-filter-group {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .role-filter-wrapper {
+    width: 100%;
+  }
+
+  .select-compact {
+    width: 100%;
+  }
+
+  .user-toolbar .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-mgmt-container {
+    padding: 0.85rem 0.65rem;
+  }
 }

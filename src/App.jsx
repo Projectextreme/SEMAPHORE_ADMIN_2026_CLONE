@@ -17,6 +17,7 @@ import './App.css';
 function AdminPortalContent() {
   const { isAuthenticated, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   if (loading) {
     return (
@@ -31,10 +32,15 @@ function AdminPortalContent() {
     return <LoginView />;
   }
 
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setIsMobileNavOpen(false);
+  };
+
   const renderActiveView = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <DashboardOverview setActiveTab={setActiveTab} />;
+        return <DashboardOverview setActiveTab={handleTabChange} />;
       case 'admins':
         return <AdminManagement />;
       case 'users':
@@ -50,15 +56,23 @@ function AdminPortalContent() {
       case 'slots':
         return <SlotManagement />;
       default:
-        return <DashboardOverview setActiveTab={setActiveTab} />;
+        return <DashboardOverview setActiveTab={handleTabChange} />;
     }
   };
 
   return (
     <div className="admin-app-layout">
-      <Header />
+      <Header 
+        isMobileNavOpen={isMobileNavOpen} 
+        onToggleMobileNav={() => setIsMobileNavOpen((prev) => !prev)} 
+      />
       <div className="admin-body">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={handleTabChange}
+          isMobileNavOpen={isMobileNavOpen}
+          onCloseMobileNav={() => setIsMobileNavOpen(false)}
+        />
         <main className="admin-main-content">
           {renderActiveView()}
         </main>

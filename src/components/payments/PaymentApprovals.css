@@ -1,15 +1,15 @@
-/* Payment Approvals CSS - Modern & Clean */
-
 .payments-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .payment-summary-strip {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
   gap: 1rem;
 }
 
@@ -53,6 +53,10 @@
   padding: 0.25rem;
   border-radius: 9px;
   border: 1px solid var(--border-color);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 .tab-btn {
@@ -285,4 +289,42 @@
 .proof-sub {
   font-size: 0.72rem;
   color: var(--text-muted);
+}
+
+@media (max-width: 768px) {
+  .payments-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .payment-summary-strip {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .filter-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .tab-group {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .payments-container {
+    padding: 0.85rem 0.65rem;
+  }
+
+  .payment-summary-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-btn {
+    padding: 0.35rem 0.6rem;
+    font-size: 0.75rem;
+  }
 }

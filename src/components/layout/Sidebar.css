@@ -1,4 +1,27 @@
-/* Sidebar CSS - Modern & Refined */
+/* Sidebar CSS - Modern, Refined & Fully Responsive */
+
+/* Backdrop Overlay for Mobile Drawer */
+.sidebar-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--modal-overlay-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
+  pointer-events: none;
+}
+
+.sidebar-backdrop.visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
 
 .main-sidebar {
   width: 260px;
@@ -12,7 +35,45 @@
   padding: 1.15rem 0.85rem;
   flex-shrink: 0;
   overflow-y: auto;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 100;
+}
+
+.sidebar-mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0.5rem 0.85rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-mobile-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-heading);
+}
+
+.sidebar-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: var(--danger-border);
 }
 
 .sidebar-nav-container {
@@ -147,4 +208,35 @@
   font-size: 0.68rem;
   color: var(--text-dim);
   padding-left: 1.25rem;
+}
+
+/* Responsive Off-Canvas Drawer on Mobile and Tablet */
+@media (max-width: 992px) {
+  .main-sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: min(290px, 84vw);
+    z-index: 1000;
+    transform: translateX(-100%);
+    box-shadow: 0 0 45px rgba(0, 0, 0, 0.45);
+    background: var(--bg-card);
+    padding: 1.15rem 1rem 1.5rem;
+  }
+
+  .main-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mobile-header {
+    display: flex;
+  }
+
+  .nav-item {
+    padding: 0.68rem 0.85rem;
+    font-size: 0.88rem;
+  }
 }

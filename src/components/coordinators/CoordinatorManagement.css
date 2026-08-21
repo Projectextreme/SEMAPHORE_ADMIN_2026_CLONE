@@ -1,10 +1,10 @@
-/* Coordinator Management CSS */
-
 .coord-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .toolbar-card {
@@ -13,7 +13,7 @@
 
 .coords-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 1.15rem;
 }
 
@@ -112,4 +112,27 @@
   font-size: 0.72rem;
   color: var(--text-dim);
   font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .coord-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .coord-container {
+    padding: 0.85rem 0.65rem;
+  }
+
+  .coords-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .coord-card-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
 }

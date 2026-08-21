@@ -1,15 +1,15 @@
-/* Admin Management CSS - Modern & Clean */
-
 .admin-mgmt-container {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   padding: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .profile-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   gap: 1rem;
 }
 
@@ -170,4 +170,26 @@
 
 .text-success {
   color: var(--success);
+}
+
+@media (max-width: 768px) {
+  .admin-mgmt-container {
+    padding: 1rem;
+    gap: 1rem;
+  }
+
+  .profile-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-mgmt-container {
+    padding: 0.85rem 0.65rem;
+  }
+
+  .restricted-notice {
+    padding: 0.85rem;
+    font-size: 0.82rem;
+  }
 }
