@@ -38,7 +38,7 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileNavOpen, onCloseMobil
       title: 'SECURITY & USERS',
       items: [
         { id: 'users', label: 'User Directory', icon: Users },
-        { id: 'admins', label: 'Admins & Roles', icon: ShieldCheck, badge: isSuperAdmin ? 'Super' : 'Auth' }
+        ...(isSuperAdmin ? [{ id: 'admins', label: 'Admin Management', icon: ShieldCheck, badge: 'Super' }] : [])
       ]
     }
   ];

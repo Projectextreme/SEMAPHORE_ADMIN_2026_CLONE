@@ -14,7 +14,8 @@ import {
   Check,
   Loader2,
   Tag,
-  UserCheck
+  UserCheck,
+  RefreshCw
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import './EventManagement.css';
@@ -192,9 +193,22 @@ export const EventManagement = () => {
           </p>
         </div>
 
-        <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-          <Plus size={15} /> Create New Event
-        </button>
+        <div className="title-actions-group">
+          <button 
+            onClick={fetchEvents} 
+            className="btn btn-secondary"
+            disabled={loading}
+            title="Refresh Events List"
+            aria-label="Refresh Events"
+          >
+            <RefreshCw size={15} className={loading ? 'spin-icon' : ''} />
+            <span>{loading ? 'Refreshing...' : 'Refresh Events'}</span>
+          </button>
+
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+            <Plus size={15} /> Create New Event
+          </button>
+        </div>
       </div>
 
       {/* Alert Notification */}

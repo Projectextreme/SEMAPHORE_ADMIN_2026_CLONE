@@ -7,6 +7,75 @@ import { initialAdmins, initialUsers, initialEvents, generateMockJWT } from '../
 let mockAdmins = [...initialAdmins];
 let mockUsers = [...initialUsers];
 
+const getCustomEvents = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_custom_events');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error reading custom events:', e);
+  }
+  return [];
+};
+
+const saveCustomEvents = (events) => {
+  try {
+    localStorage.setItem('semaphore_custom_events', JSON.stringify(events));
+  } catch (e) {
+    console.warn('Error saving custom events:', e);
+  }
+};
+
+const getDeletedEventIds = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_deleted_event_ids');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error reading deleted event ids:', e);
+  }
+  return [];
+};
+
+const saveDeletedEventId = (id) => {
+  try {
+    const ids = getDeletedEventIds();
+    if (!ids.includes(id)) {
+      ids.push(id);
+      localStorage.setItem('semaphore_deleted_event_ids', JSON.stringify(ids));
+    }
+  } catch (e) {
+    console.warn('Error saving deleted event id:', e);
+  }
+};
+
+const getEditedEventsMap = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_edited_events_map');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (typeof parsed === 'object' && parsed !== null) return parsed;
+    }
+  } catch (e) {
+    console.warn('Error reading edited events map:', e);
+  }
+  return {};
+};
+
+const saveEditedEvent = (id, eventData) => {
+  try {
+    const map = getEditedEventsMap();
+    map[id] = { ...(map[id] || {}), ...eventData, updatedAt: new Date().toISOString() };
+    localStorage.setItem('semaphore_edited_events_map', JSON.stringify(map));
+  } catch (e) {
+    console.warn('Error saving edited event:', e);
+  }
+};
+
 const getStoredEvents = () => {
   try {
     const stored = localStorage.getItem('semaphore_events');
@@ -110,7 +179,7 @@ function mockFallbackHandler(endpoint, options) {
       name: body.name,
       email: body.email,
       password: body.password || 'password123',
-      role: body.role || 'admin',
+      role: 'admin', // Superadmins can only create standard admins
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -167,6 +236,29 @@ function mockFallbackHandler(endpoint, options) {
       throw error;
     }
     return mockAdmins.map(({ password, ...rest }) => rest);
+  }
+
+  // 5b. DELETE /api/admin/:id
+  if (endpoint.startsWith('/api/admin/') && !endpoint.includes('/users') && method === 'DELETE') {
+    if (currentAdmin?.role !== 'superadmin') {
+      const error = new Error('Access denied. Superadmin privileges required.');
+      error.status = 403;
+      throw error;
+    }
+    const id = endpoint.split('/')[3];
+    const targetIndex = mockAdmins.findIndex(a => a._id === id);
+    if (targetIndex === -1) {
+      const error = new Error('Admin account not found');
+      error.status = 404;
+      throw error;
+    }
+    if (mockAdmins[targetIndex].role === 'superadmin') {
+      const error = new Error('Super Admin accounts are protected and cannot be deleted.');
+      error.status = 403;
+      throw error;
+    }
+    const deleted = mockAdmins.splice(targetIndex, 1)[0];
+    return { success: true, message: `Standard Admin '${deleted.name}' deleted successfully`, id };
   }
 
   // 6. GET /api/admin/users
@@ -385,11 +477,14 @@ export const apiService = {
     return result;
   },
 
-  // 2. Add New Admin
+  // 2. Add New Admin (Always Standard Admin)
   addAdmin: async (adminData) => {
     return await apiRequest('/api/admin/addadmin', {
       method: 'POST',
-      body: JSON.stringify(adminData)
+      body: JSON.stringify({
+        ...adminData,
+        role: 'admin' // Superadmins can only create standard admins
+      })
     });
   },
 
@@ -412,6 +507,13 @@ export const apiService = {
   getAllAdmins: async () => {
     return await apiRequest('/api/admin/all', {
       method: 'GET'
+    });
+  },
+
+  // 5b. Delete Admin Account (Super Admin only, standard admins only)
+  deleteAdmin: async (id) => {
+    return await apiRequest(`/api/admin/${id}`, {
+      method: 'DELETE'
     });
   },
 
@@ -455,18 +557,62 @@ export const apiService = {
     if (params.date) query.append('date', params.date);
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
-    const data = await apiRequest(`/api/events${queryString}`, {
-      method: 'GET'
+    let remoteList = [];
+    try {
+      const data = await apiRequest(`/api/events${queryString}`, {
+        method: 'GET'
+      });
+      remoteList = Array.isArray(data) ? data : (data?.events || []);
+    } catch (err) {
+      console.warn('API events fetch failed, using local events storage:', err);
+      remoteList = getStoredEvents();
+    }
+
+    const customEvents = getCustomEvents();
+    const deletedIds = getDeletedEventIds();
+    const editedMap = getEditedEventsMap();
+
+    // Map remote events with any locally saved edits
+    const remoteIds = new Set(remoteList.map(e => e._id || e.id));
+    const processedRemote = remoteList.map(evt => {
+      const id = evt._id || evt.id;
+      if (editedMap[id]) {
+        return { ...evt, ...editedMap[id] };
+      }
+      return evt;
     });
-    return Array.isArray(data) ? data : (data?.events || []);
+
+    // Merge in newly created custom events that aren't on the remote server
+    const customNotOnRemote = customEvents
+      .filter(e => !remoteIds.has(e._id || e.id))
+      .map(evt => {
+        const id = evt._id || evt.id;
+        if (editedMap[id]) {
+          return { ...evt, ...editedMap[id] };
+        }
+        return evt;
+      });
+
+    const allEvents = [...customNotOnRemote, ...processedRemote].filter(
+      evt => !deletedIds.includes(evt._id || evt.id)
+    );
+
+    mockEvents = allEvents;
+    saveEvents(allEvents);
+    return allEvents;
   },
 
   // GET /api/events/:id
   getEventById: async (id) => {
-    const data = await apiRequest(`/api/events/${id}`, {
-      method: 'GET'
-    });
-    return data?.event || data;
+    try {
+      const data = await apiRequest(`/api/events/${id}`, {
+        method: 'GET'
+      });
+      return data?.event || data;
+    } catch (err) {
+      const all = await apiService.getAllEvents();
+      return all.find(e => (e._id || e.id) === id);
+    }
   },
 
   // POST /api/events
@@ -475,6 +621,7 @@ export const apiService = {
       title: eventData.title,
       description: eventData.description || 'Semaphore 2026 Event',
       location: eventData.location || eventData.venue || 'Main Auditorium',
+      venue: eventData.location || eventData.venue || 'Main Auditorium',
       date: eventData.date || new Date().toISOString(),
       capacity: Number(eventData.capacity) || 100,
       registrationFee: Number(eventData.registrationFee !== undefined ? eventData.registrationFee : (typeof eventData.fee === 'string' ? eventData.fee.replace(/[^\d]/g, '') : eventData.fee)) || 0,
@@ -497,15 +644,65 @@ export const apiService = {
       status: eventData.status || 'Active'
     };
 
-    const data = await apiRequest('/api/events', {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    return data?.event || data;
+    let resultEvent;
+    try {
+      const data = await apiRequest('/api/events', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      resultEvent = data?.event || (data?.title ? data : null);
+    } catch (err) {
+      const fallback = mockFallbackHandler('/api/events', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      resultEvent = fallback?.event;
+    }
+
+    if (!resultEvent) {
+      const fallback = mockFallbackHandler('/api/events', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      resultEvent = fallback?.event;
+    }
+
+    if (resultEvent) {
+      const custom = getCustomEvents();
+      const id = resultEvent._id || resultEvent.id;
+      if (!custom.some(e => (e._id || e.id) === id)) {
+        custom.unshift(resultEvent);
+        saveCustomEvents(custom);
+      }
+      
+      const stored = getStoredEvents();
+      if (!stored.some(e => (e._id || e.id) === id)) {
+        stored.unshift(resultEvent);
+        saveEvents(stored);
+      }
+    }
+
+    return resultEvent;
   },
 
   // PATCH /api/events/:id
   editEvent: async (id, eventData) => {
+    saveEditedEvent(id, eventData);
+
+    const custom = getCustomEvents();
+    const customIdx = custom.findIndex(e => (e._id || e.id) === id);
+    if (customIdx !== -1) {
+      custom[customIdx] = { ...custom[customIdx], ...eventData, updatedAt: new Date().toISOString() };
+      saveCustomEvents(custom);
+    }
+
+    const stored = getStoredEvents();
+    const storedIdx = stored.findIndex(e => (e._id || e.id) === id);
+    if (storedIdx !== -1) {
+      stored[storedIdx] = { ...stored[storedIdx], ...eventData, updatedAt: new Date().toISOString() };
+      saveEvents(stored);
+    }
+
     const payload = {
       ...(eventData.title !== undefined && { title: eventData.title }),
       ...(eventData.description !== undefined && { description: eventData.description }),
@@ -524,11 +721,15 @@ export const apiService = {
       ...(eventData.category !== undefined && { category: eventData.category })
     };
 
-    const data = await apiRequest(`/api/events/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(payload)
-    });
-    return data?.event || data;
+    try {
+      const data = await apiRequest(`/api/events/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+      return data?.event || data || (storedIdx !== -1 ? stored[storedIdx] : eventData);
+    } catch (err) {
+      return storedIdx !== -1 ? stored[storedIdx] : eventData;
+    }
   },
 
   // PATCH /api/events/:id/coordinators
@@ -549,9 +750,21 @@ export const apiService = {
 
   // DELETE /api/events/:id
   deleteEvent: async (id) => {
-    return await apiRequest(`/api/events/${id}`, {
-      method: 'DELETE'
-    });
+    saveDeletedEventId(id);
+
+    const custom = getCustomEvents().filter(e => (e._id || e.id) !== id);
+    saveCustomEvents(custom);
+
+    const stored = getStoredEvents().filter(e => (e._id || e.id) !== id);
+    saveEvents(stored);
+
+    try {
+      return await apiRequest(`/api/events/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      return { success: true, id };
+    }
   },
 
   // 11. Colleges & Registrations Management

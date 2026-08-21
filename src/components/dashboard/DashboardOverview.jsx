@@ -14,12 +14,14 @@ import {
   Clock,
   Sparkles,
   ExternalLink,
-  Layers
+  Layers,
+  RefreshCw
 } from 'lucide-react';
 import './DashboardOverview.css';
 
 export const DashboardOverview = ({ setActiveTab }) => {
   const { admin, isSuperAdmin } = useAuth();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const [stats, setStats] = useState({
     totalAdmins: 3,
@@ -30,45 +32,57 @@ export const DashboardOverview = ({ setActiveTab }) => {
     totalColleges: 3
   });
 
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const users = await apiService.getAllUsers();
-        const events = await apiService.getAllEvents();
+  const loadStats = async () => {
+    setIsRefreshing(true);
+    try {
+      const users = await apiService.getAllUsers();
+      const events = await apiService.getAllEvents();
 
-        if (isSuperAdmin) {
-          const admins = await apiService.getAllAdmins();
-          setStats((prev) => ({
-            ...prev,
-            totalUsers: users.length,
-            totalAdmins: admins.length,
-            activeEvents: events.length
-          }));
-        } else {
-          setStats((prev) => ({
-            ...prev,
-            totalUsers: users.length,
-            activeEvents: events.length
-          }));
-        }
-      } catch (err) {
-        console.warn('Dashboard stats fallback mode');
+      if (isSuperAdmin) {
+        const admins = await apiService.getAllAdmins();
+        setStats((prev) => ({
+          ...prev,
+          totalUsers: users.length,
+          totalAdmins: admins.length,
+          activeEvents: events.length
+        }));
+      } else {
+        setStats((prev) => ({
+          ...prev,
+          totalUsers: users.length,
+          activeEvents: events.length
+        }));
       }
-    };
+    } catch (err) {
+      console.warn('Dashboard stats fallback mode');
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
 
+  useEffect(() => {
     loadStats();
   }, [isSuperAdmin]);
 
   const kpis = [
-    {
+    isSuperAdmin ? {
       id: 'admins',
       title: 'Administrators',
       value: stats.totalAdmins,
-      subtext: isSuperAdmin ? 'Full Access Granted' : 'Role: Admin',
+      subtext: 'Full Access Granted',
       icon: ShieldCheck,
       colorClass: 'indigo',
       trend: '+1 This Week',
       tab: 'admins'
+    } : {
+      id: 'colleges',
+      title: 'Colleges Enrolled',
+      value: stats.totalColleges,
+      subtext: 'Max 2 Teams / College',
+      icon: Building2,
+      colorClass: 'indigo',
+      trend: 'Quota Guard Active',
+      tab: 'registrations'
     },
     {
       id: 'users',
@@ -114,6 +128,16 @@ export const DashboardOverview = ({ setActiveTab }) => {
             <span className="event-date-pill">
               <Clock size={13} /> Fest Status: Registration Open
             </span>
+            <button 
+              className="btn btn-xs btn-secondary refresh-btn"
+              onClick={loadStats}
+              disabled={isRefreshing}
+              title="Refresh Dashboard Statistics"
+              aria-label="Refresh Dashboard Data"
+            >
+              <RefreshCw size={12} className={isRefreshing ? 'spin-icon' : ''} />
+              <span>{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
+            </button>
           </div>
 
           <h2>

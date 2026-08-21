@@ -113,9 +113,22 @@ export const RegistrationList = () => {
           </p>
         </div>
 
-        <button onClick={handleExportCSV} className="btn btn-primary">
-          <Download size={15} /> Export CSV Report
-        </button>
+        <div className="title-actions-group">
+          <button 
+            onClick={fetchRegistrations} 
+            className="btn btn-secondary"
+            disabled={loading}
+            title="Refresh Registrations Data"
+            aria-label="Refresh Registrations"
+          >
+            <RefreshCw size={15} className={loading ? 'spin-icon' : ''} />
+            <span>{loading ? 'Refreshing...' : 'Refresh Data'}</span>
+          </button>
+
+          <button onClick={handleExportCSV} className="btn btn-primary">
+            <Download size={15} /> Export CSV Report
+          </button>
+        </div>
       </div>
 
       {/* CSV Download Toast */}

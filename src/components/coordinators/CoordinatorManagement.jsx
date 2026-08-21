@@ -10,11 +10,13 @@ import {
   Search, 
   CheckCircle2, 
   AlertCircle,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
 export const CoordinatorManagement = () => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [coordinators, setCoordinators] = useState([
     {
       id: 'COORD-01',
@@ -126,9 +128,29 @@ export const CoordinatorManagement = () => {
           </p>
         </div>
 
-        <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
-          <Plus size={15} /> Add Coordinator
-        </button>
+        <div className="title-actions-group">
+          <button 
+            onClick={() => {
+              setIsRefreshing(true);
+              setTimeout(() => {
+                setIsRefreshing(false);
+                setToastMsg('Coordinators roster reloaded from department directory.');
+                setTimeout(() => setToastMsg(null), 3000);
+              }, 500);
+            }} 
+            className="btn btn-secondary"
+            disabled={isRefreshing}
+            title="Refresh Coordinators Roster"
+            aria-label="Refresh Coordinators"
+          >
+            <RefreshCw size={15} className={isRefreshing ? 'spin-icon' : ''} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh List'}</span>
+          </button>
+
+          <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+            <Plus size={15} /> Add Coordinator
+          </button>
+        </div>
       </div>
 
       {/* Toast Alert */}

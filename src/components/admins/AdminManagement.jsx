@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   Crown,
   Copy,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import './AdminManagement.css';
 
@@ -84,8 +85,11 @@ export const AdminManagement = () => {
     setErrorMsg('');
     setSuccessMsg('');
     try {
-      const res = await apiService.addAdmin(newAdmin);
-      setSuccessMsg(`Admin "${res.name}" created successfully as ${res.role}!`);
+      const res = await apiService.addAdmin({
+        ...newAdmin,
+        role: 'admin'
+      });
+      setSuccessMsg(`Standard Admin "${res.name}" created successfully!`);
       setShowAddModal(false);
       setNewAdmin({ name: '', email: '', password: '', role: 'admin' });
       fetchAdminData();
@@ -118,12 +122,30 @@ export const AdminManagement = () => {
     }
   };
 
+  const handleDeleteAdmin = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove standard admin "${name}"?`)) {
+      return;
+    }
+    setActionLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await apiService.deleteAdmin(id);
+      setSuccessMsg(`Standard admin "${name}" deleted successfully.`);
+      fetchAdminData();
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to delete admin');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const openRoleModalForAdmin = (adminObj) => {
     setSelectedAdminForRole(adminObj);
     setRoleForm({
       adminId: adminObj._id,
       email: adminObj.email,
-      role: adminObj.role === 'superadmin' ? 'admin' : 'superadmin',
+      role: 'admin',
       useEmail: false
     });
     setShowRoleModal(true);
@@ -285,13 +307,21 @@ export const AdminManagement = () => {
                     </td>
                     <td className="date-text">{new Date(adm.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td>
-                      <button
-                        onClick={() => openRoleModalForAdmin(adm)}
-                        className="btn btn-xs btn-outline-warning"
-                        title="Change Admin Role (PUT /api/admin/makeadmin)"
-                      >
-                        <Key size={12} /> Change Role
-                      </button>
+                      {adm.role === 'superadmin' ? (
+                        <span className="protected-badge" title="Super Admin accounts are protected and cannot be deleted or modified">
+                          <Crown size={12} className="crown-icon" /> Superadmin (Protected)
+                        </span>
+                      ) : (
+                        <div className="table-actions-cell">
+                          <button
+                            onClick={() => handleDeleteAdmin(adm._id, adm.name)}
+                            className="btn btn-xs btn-outline-danger"
+                            title="Remove Standard Admin Account"
+                          >
+                            <Trash2 size={12} /> Remove
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -361,14 +391,13 @@ export const AdminManagement = () => {
 
               <div className="form-group">
                 <label className="form-label">Assigned Role</label>
-                <select
-                  className="form-select"
-                  value={newAdmin.role}
-                  onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
-                >
-                  <option value="admin">Standard Admin (admin)</option>
-                  <option value="superadmin">Super Administrator (superadmin)</option>
-                </select>
+                <div className="fixed-role-badge">
+                  <ShieldCheck size={16} className="text-cyan" />
+                  <span>Standard Administrator (<code>admin</code>)</span>
+                </div>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
+                  Superadmins can provision Standard Admin accounts only. Superadmin accounts cannot be created from this panel.
+                </small>
               </div>
 
               <div className="modal-actions">

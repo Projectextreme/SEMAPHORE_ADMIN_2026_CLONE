@@ -577,6 +577,14 @@ code, pre, .code-font {
   color: var(--primary);
 }
 
+.title-actions-group,
+.header-button-group {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
 /* Global Modal Styles */
 .modal-overlay {
   position: fixed;
@@ -809,8 +817,19 @@ table tbody tr:last-child td {
     gap: 0.75rem;
   }
 
-  .page-title-bar .btn {
+  .title-actions-group,
+  .header-button-group {
     width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .title-actions-group .btn,
+  .header-button-group .btn {
+    flex: 1;
+    min-width: 130px;
   }
 
   .search-bar-wrapper {
@@ -853,6 +872,17 @@ table tbody tr:last-child td {
 
   .page-description {
     font-size: 0.8rem;
+  }
+
+  .title-actions-group,
+  .header-button-group {
+    flex-direction: column;
+  }
+
+  .title-actions-group .btn,
+  .header-button-group .btn {
+    width: 100%;
+    flex: none;
   }
 
   .btn {

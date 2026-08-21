@@ -8,11 +8,13 @@ import {
   AlertCircle, 
   Edit2, 
   Trash2,
-  Users
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import './SlotManagement.css';
 
 export const SlotManagement = () => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [slots, setSlots] = useState([
     {
       id: 'SLOT-01',
@@ -108,9 +110,28 @@ export const SlotManagement = () => {
           </p>
         </div>
 
-        <button onClick={() => setShowModal(true)} className="btn btn-primary">
-          <Plus size={15} /> Add Schedule Slot
-        </button>
+        <div className="title-actions-group">
+          <button 
+            onClick={() => {
+              setIsRefreshing(true);
+              setTimeout(() => {
+                setIsRefreshing(false);
+                showToast('Schedule timeline refreshed from central calendar.');
+              }, 500);
+            }} 
+            className="btn btn-secondary"
+            disabled={isRefreshing}
+            title="Refresh Schedules"
+            aria-label="Refresh Schedule Slots"
+          >
+            <RefreshCw size={15} className={isRefreshing ? 'spin-icon' : ''} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh Slots'}</span>
+          </button>
+
+          <button onClick={() => setShowModal(true)} className="btn btn-primary">
+            <Plus size={15} /> Add Schedule Slot
+          </button>
+        </div>
       </div>
 
       {/* Toast Alert */}

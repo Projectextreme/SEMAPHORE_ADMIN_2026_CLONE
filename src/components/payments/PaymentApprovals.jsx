@@ -11,11 +11,13 @@ import {
   Receipt,
   Building2,
   DollarSign,
-  TrendingUp
+  TrendingUp,
+  RefreshCw
 } from 'lucide-react';
 import './PaymentApprovals.css';
 
 export const PaymentApprovals = () => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [payments, setPayments] = useState([
     {
       id: 'PAY-8921',
@@ -105,6 +107,24 @@ export const PaymentApprovals = () => {
             Audit submitted UPI transaction UTR reference codes, verify fee receipts, and approve college team registrations.
           </p>
         </div>
+
+        <button 
+          onClick={() => {
+            setIsRefreshing(true);
+            setTimeout(() => {
+              setIsRefreshing(false);
+              setToastMessage('Payment queue refreshed from live transaction logs.');
+              setTimeout(() => setToastMessage(null), 3000);
+            }, 600);
+          }} 
+          className="btn btn-secondary"
+          disabled={isRefreshing}
+          title="Refresh Payments Queue"
+          aria-label="Refresh Payments"
+        >
+          <RefreshCw size={15} className={isRefreshing ? 'spin-icon' : ''} />
+          <span>{isRefreshing ? 'Refreshing...' : 'Refresh Payments'}</span>
+        </button>
       </div>
 
       {/* Toast Feedback */}

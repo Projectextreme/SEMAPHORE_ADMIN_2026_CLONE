@@ -172,6 +172,39 @@
   color: var(--success);
 }
 
+.fixed-role-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.protected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.22rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.table-actions-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 @media (max-width: 768px) {
   .admin-mgmt-container {
     padding: 1rem;

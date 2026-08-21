@@ -225,10 +225,15 @@
     box-shadow: 0 0 45px rgba(0, 0, 0, 0.45);
     background: var(--bg-card);
     padding: 1.15rem 1rem 1.5rem;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.28s;
   }
 
   .main-sidebar.mobile-open {
     transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .sidebar-mobile-header {
