@@ -949,16 +949,24 @@ export const apiService = {
     }
   },
 
-  // 12. Event Registrations & Payment Approvals
+  // 12. Event Registrations & Payment Approvals (Docs: GET /api/registrations/all, PUT /api/registrations/:id/payment-status)
   getRegistrations: async () => {
     try {
-      const data = await apiRequest('/api/registrations', {
+      const data = await apiRequest('/api/registrations/all', {
         method: 'GET'
       });
       const list = Array.isArray(data) ? data : (data?.registrations || []);
       if (list.length > 0) return list;
     } catch (err) {
-      console.warn('Registrations API fetch fallback:', err);
+      try {
+        const fallbackData = await apiRequest('/api/registrations', {
+          method: 'GET'
+        });
+        const fallbackList = Array.isArray(fallbackData) ? fallbackData : (fallbackData?.registrations || []);
+        if (fallbackList.length > 0) return fallbackList;
+      } catch (e) {
+        console.warn('Registrations API fetch fallback:', e);
+      }
     }
     return getStoredRegistrations();
   },
@@ -995,23 +1003,68 @@ export const apiService = {
     }
   },
 
-  approveRegistrationPayment: async (id, status = 'Approved') => {
+  approveRegistrationPayment: async (id, status = 'approved') => {
+    const normStatus = status.toLowerCase();
+    const displayStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
     const list = getStoredRegistrations();
     const idx = list.findIndex(r => (r._id || r.id) === id);
     if (idx !== -1) {
-      list[idx] = { ...list[idx], paymentStatus: status, updatedAt: new Date().toISOString() };
+      list[idx] = { ...list[idx], paymentStatus: displayStatus, updatedAt: new Date().toISOString() };
       saveRegistrations(list);
     }
 
     try {
-      const data = await apiRequest(`/api/registrations/${id}/payment`, {
-        method: 'PATCH',
-        body: JSON.stringify({ paymentStatus: status })
+      // Documented Endpoint: PUT /api/registrations/:id/payment-status
+      const data = await apiRequest(`/api/registrations/${id}/payment-status`, {
+        method: 'PUT',
+        body: JSON.stringify({ paymentStatus: normStatus })
       });
-      return data?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: status });
-    } catch {
-      return idx !== -1 ? list[idx] : { id, paymentStatus: status };
+      return data?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
+    } catch (err) {
+      try {
+        const altData = await apiRequest(`/api/registrations/${id}/payment`, {
+          method: 'PATCH',
+          body: JSON.stringify({ paymentStatus: normStatus })
+        });
+        return altData?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
+      } catch {
+        return idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus };
+      }
     }
+  },
+
+  // 13. Timetable API (Docs: GET, POST, PUT, DELETE /api/timetable)
+  getTimetable: async (params = {}) => {
+    const query = params.date ? `?date=${params.date}` : '';
+    try {
+      const data = await apiRequest(`/api/timetable${query}`, {
+        method: 'GET'
+      });
+      return Array.isArray(data) ? data : (data?.timetable || []);
+    } catch (err) {
+      console.warn('Timetable fetch error:', err);
+      return [];
+    }
+  },
+
+  addTimetableSlot: async (slotData) => {
+    return await apiRequest('/api/timetable', {
+      method: 'POST',
+      body: JSON.stringify(slotData)
+    });
+  },
+
+  editTimetableSlot: async (id, slotData) => {
+    return await apiRequest(`/api/timetable/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(slotData)
+    });
+  },
+
+  deleteTimetableSlot: async (id) => {
+    return await apiRequest(`/api/timetable/${id}`, {
+      method: 'DELETE'
+    });
   }
 };
 

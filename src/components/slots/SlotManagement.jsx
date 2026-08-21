@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Clock, 
   Plus, 
@@ -13,6 +13,7 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { apiService } from '../../services/apiService';
 import './SlotManagement.css';
 
 export const SlotManagement = () => {
@@ -68,6 +69,36 @@ export const SlotManagement = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+
+  const fetchSlots = async () => {
+    setIsRefreshing(true);
+    try {
+      const data = await apiService.getTimetable();
+      if (Array.isArray(data) && data.length > 0) {
+        const mapped = data.map((item, idx) => ({
+          id: item._id || item.id || `SLOT-0${idx + 1}`,
+          _id: item._id,
+          eventName: item.event?.title || item.eventName || 'Scheduled Event',
+          round: item.round || 'Round Session',
+          date: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 22, 2026',
+          startTime: item.startTime || '09:30 AM',
+          endTime: item.endTime || '11:30 AM',
+          venue: item.location || item.venue || 'Main Block Lab',
+          capacity: item.capacity || '30 Teams',
+          status: item.status || 'Scheduled'
+        }));
+        setSlots(mapped);
+      }
+    } catch (err) {
+      console.warn('Timetable fetch fallback mode');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSlots();
+  }, []);
 
   const [newSlot, setNewSlot] = useState({
     eventName: 'CodeFest 2026',
