@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, Lock, Mail, Eye, EyeOff, Sparkles, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import './LoginView.css';
 
 export const LoginView = () => {
   const { login } = useAuth();
-  const [email, setEmail] = useState('semaphore2026@gmail.com');
-  const [password, setPassword] = useState('mca@9988');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -30,18 +30,6 @@ export const LoginView = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFillSuperAdmin = () => {
-    setEmail('semaphore2026@gmail.com');
-    setPassword('mca@9988');
-    setErrorMessage('');
-  };
-
-  const handleQuickFillAdmin = () => {
-    setEmail('john@example.com');
-    setPassword('password123');
-    setErrorMessage('');
   };
 
   return (
@@ -87,7 +75,7 @@ export const LoginView = () => {
                 id="admin-email"
                 type="email"
                 className="form-input"
-                placeholder="name@semaphore.com"
+                placeholder="admin@semaphore.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -141,40 +129,10 @@ export const LoginView = () => {
           </button>
         </form>
 
-        {/* Quick Demo Fill Buttons */}
-        <div className="quick-fill-section">
-          <div className="quick-fill-title">
-            <Sparkles size={13} /> Quick Access Preset Logins
-          </div>
-          <div className="quick-fill-buttons">
-            <button
-              type="button"
-              className="quick-chip-btn chip-superadmin"
-              onClick={handleQuickFillSuperAdmin}
-            >
-              <div className="chip-content">
-                <span className="chip-role">Super Admin</span>
-                <span className="chip-email">semaphore2026@gmail.com</span>
-              </div>
-              <span className="chip-tag">All Access</span>
-            </button>
-            <button
-              type="button"
-              className="quick-chip-btn chip-admin"
-              onClick={handleQuickFillAdmin}
-            >
-              <div className="chip-content">
-                <span className="chip-role">Standard Admin</span>
-                <span className="chip-email">john@example.com</span>
-              </div>
-              <span className="chip-tag">Moderator</span>
-            </button>
-          </div>
-        </div>
-
         {/* Footer info */}
         <div className="login-footer">
-          <span>Protected Route • REST API JWT Security Guard</span>
+          <Lock size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
+          <span>Secure Administrator Portal • 256-bit Encrypted Session</span>
         </div>
       </div>
     </div>
