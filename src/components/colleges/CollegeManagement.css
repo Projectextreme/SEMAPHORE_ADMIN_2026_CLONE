@@ -312,3 +312,12 @@
     width: 100%;
   }
 }
+
+.table-actions-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}

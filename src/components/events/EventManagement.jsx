@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import {
   Calendar,
   Plus,
@@ -22,11 +24,23 @@ import { apiService } from '../../services/apiService';
 import './EventManagement.css';
 
 export const EventManagement = () => {
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [alert, setAlert] = useState(null);
+
+  const showAlert = (type, message) => {
+    if (type === 'error') {
+      showError(message);
+    } else if (type === 'warning') {
+      showWarning(message);
+    } else if (type === 'info') {
+      showInfo(message);
+    } else {
+      showSuccess(message);
+    }
+  };
 
   // Add Event Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -71,11 +85,6 @@ export const EventManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const showAlert = (type, message) => {
-    setAlert({ type, message });
-    setTimeout(() => setAlert(null), 4000);
   };
 
   const toggleEventStatus = async (evt) => {
@@ -212,14 +221,6 @@ export const EventManagement = () => {
         </div>
       </div>
 
-      {/* Alert Notification */}
-      {alert && (
-        <div className={`alert alert-${alert.type}`}>
-          {alert.type === 'success' ? <Check size={17} /> : <AlertCircle size={17} />}
-          <span>{alert.message}</span>
-        </div>
-      )}
-
       {/* Toolbar Filter & Search */}
       <div className="card events-toolbar-card">
         <div className="events-toolbar-inner">
@@ -267,16 +268,28 @@ export const EventManagement = () => {
 
       {/* Events Grid */}
       {loading ? (
-        <div className="empty-state">
-          <Loader2 size={24} className="spin-icon" />
-          <p>Loading Semaphore Events...</p>
+        <div className="events-grid">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="card skeleton-box" style={{ height: '220px' }} />
+          ))}
         </div>
       ) : filteredEvents.length === 0 ? (
-        <div className="empty-state">
-          <Calendar size={36} />
-          <h3>No events found</h3>
-          <p>No events match your search or category filter.</p>
-        </div>
+        <EmptyState
+          type="events"
+          title="No competition events found"
+          description="No events match your current search or category filter. Try clearing your filters or create a new event."
+          primaryAction={{
+            label: 'Create New Event',
+            onClick: () => setShowAddModal(true)
+          }}
+          secondaryAction={{
+            label: 'Reset Filters',
+            onClick: () => {
+              setSearchTerm('');
+              setSelectedCategory('All');
+            }
+          }}
+        />
       ) : (
         <div className="events-grid">
           {filteredEvents.map((evt) => {

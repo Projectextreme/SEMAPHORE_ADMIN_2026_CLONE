@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { 
   Clock, 
   Plus, 
@@ -17,6 +19,7 @@ import { apiService } from '../../services/apiService';
 import './SlotManagement.css';
 
 export const SlotManagement = () => {
+  const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('All');
@@ -68,7 +71,14 @@ export const SlotManagement = () => {
   ]);
 
   const [showModal, setShowModal] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
+
+  const showToast = (msg, isError = false) => {
+    if (isError) {
+      showError(msg);
+    } else {
+      showSuccess(msg);
+    }
+  };
 
   const fetchSlots = async () => {
     setIsRefreshing(true);
@@ -110,11 +120,6 @@ export const SlotManagement = () => {
     capacity: '25 Teams',
     status: 'Scheduled'
   });
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
-  };
 
   const handleAddSubmit = (e) => {
     e.preventDefault();
@@ -181,14 +186,6 @@ export const SlotManagement = () => {
         </div>
       </div>
 
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={16} />
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
       {/* Search Toolbar */}
       <div className="card" style={{ padding: '1rem 1.25rem', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -234,54 +231,73 @@ export const SlotManagement = () => {
       </div>
 
       {/* Timeline List */}
-      <div className="timeline-container">
-        {filteredSlots.map((slot, index) => (
-          <div key={slot.id} className="timeline-item">
-            <div className="timeline-marker">
-              <div className="timeline-dot"></div>
-              {index < slots.length - 1 && <div className="timeline-line"></div>}
-            </div>
-
-            <div className="card timeline-card">
-              <div className="slot-card-header">
-                <div className="slot-time-badge">
-                  <Clock size={13} />
-                  <span>{slot.startTime} – {slot.endTime}</span>
-                </div>
-                <span className="slot-date-tag">{slot.date}</span>
-                <span className="status-badge status-approved">{slot.status}</span>
+      {filteredSlots.length === 0 ? (
+        <EmptyState
+          type="events"
+          title="No scheduled slots found"
+          description={searchTerm ? `No schedule slots match "${searchTerm}".` : "No timetable slots configured yet."}
+          primaryAction={{
+            label: 'Add Schedule Slot',
+            onClick: () => setShowModal(true)
+          }}
+          secondaryAction={searchTerm ? {
+            label: 'Clear Search',
+            onClick: () => {
+              setSearchTerm('');
+              setSelectedEvent('All');
+            }
+          } : null}
+        />
+      ) : (
+        <div className="timeline-container">
+          {filteredSlots.map((slot, index) => (
+            <div key={slot.id} className="timeline-item">
+              <div className="timeline-marker">
+                <div className="timeline-dot"></div>
+                {index < filteredSlots.length - 1 && <div className="timeline-line"></div>}
               </div>
 
-              <div className="slot-card-body">
-                <h3 className="slot-title">{slot.eventName}</h3>
-                <p className="slot-round">{slot.round}</p>
-
-                <div className="slot-meta-row">
-                  <div className="meta-chip">
-                    <MapPin size={13} className="chip-icon" />
-                    <span>{slot.venue}</span>
+              <div className="card timeline-card">
+                <div className="slot-card-header">
+                  <div className="slot-time-badge">
+                    <Clock size={13} />
+                    <span>{slot.startTime} – {slot.endTime}</span>
                   </div>
-                  <div className="meta-chip">
-                    <Users size={13} className="chip-icon" />
-                    <span>Capacity: {slot.capacity}</span>
+                  <span className="slot-date-tag">{slot.date}</span>
+                  <span className="status-badge status-approved">{slot.status}</span>
+                </div>
+
+                <div className="slot-card-body">
+                  <h3 className="slot-title">{slot.eventName}</h3>
+                  <p className="slot-round">{slot.round}</p>
+
+                  <div className="slot-meta-row">
+                    <div className="meta-chip">
+                      <MapPin size={13} className="chip-icon" />
+                      <span>{slot.venue}</span>
+                    </div>
+                    <div className="meta-chip">
+                      <Users size={13} className="chip-icon" />
+                      <span>Capacity: {slot.capacity}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="slot-card-footer">
-                <span className="code-font slot-id">{slot.id}</span>
-                <button
-                  onClick={() => handleDelete(slot.id)}
-                  className="btn-icon btn-delete"
-                  title="Remove Slot"
-                >
-                  <Trash2 size={13} />
-                </button>
+                <div className="slot-card-footer">
+                  <span className="code-font slot-id">{slot.id}</span>
+                  <button
+                    onClick={() => handleDelete(slot.id)}
+                    className="btn-icon btn-delete"
+                    title="Remove Slot"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Slot Modal */}
       {showModal && (

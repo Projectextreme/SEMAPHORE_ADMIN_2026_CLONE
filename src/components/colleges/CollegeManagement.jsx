@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { 
   Building2, 
   Plus, 
@@ -19,12 +21,11 @@ import { apiService } from '../../services/apiService';
 import './CollegeManagement.css';
 
 export const CollegeManagement = () => {
+  const { showSuccess, showError } = useToast();
   const [colleges, setColleges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [quotaFilter, setQuotaFilter] = useState('All');
-  const [toastMsg, setToastMsg] = useState(null);
-  const [errorMsg, setErrorMsg] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Modals
@@ -40,17 +41,14 @@ export const CollegeManagement = () => {
 
   const showToast = (msg, isError = false) => {
     if (isError) {
-      setErrorMsg(msg);
-      setTimeout(() => setErrorMsg(null), 4000);
+      showError(msg);
     } else {
-      setToastMsg(msg);
-      setTimeout(() => setToastMsg(null), 4000);
+      showSuccess(msg);
     }
   };
 
   const fetchColleges = async () => {
     setLoading(true);
-    setErrorMsg(null);
     try {
       const data = await apiService.getColleges();
       setColleges(data);
@@ -179,21 +177,6 @@ export const CollegeManagement = () => {
         </div>
       </div>
 
-      {/* Notifications */}
-      {errorMsg && (
-        <div className="alert alert-error">
-          <AlertCircle size={17} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {toastMsg && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={17} />
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
       {/* Metric Strip */}
       <div className="college-metric-strip">
         <div className="metric-chip">
@@ -262,9 +245,23 @@ export const CollegeManagement = () => {
             <span>Fetching colleges roster...</span>
           </div>
         ) : filteredColleges.length === 0 ? (
-          <div className="empty-state">
-            <p>No college records found matching "{searchTerm}".</p>
-          </div>
+          <EmptyState
+            type="colleges"
+            title="No college records found"
+            description={searchTerm ? `No colleges found matching "${searchTerm}". Try resetting your filters.` : "No colleges are registered yet."}
+            primaryAction={{
+              label: 'Add New College',
+              onClick: () => setShowAddModal(true)
+            }}
+            secondaryAction={searchTerm ? {
+              label: 'Clear Search',
+              onClick: () => {
+                setSearchTerm('');
+                setQuotaFilter('All');
+              }
+            } : null}
+            compact={true}
+          />
         ) : (
           <>
             {/* Desktop Table View */}

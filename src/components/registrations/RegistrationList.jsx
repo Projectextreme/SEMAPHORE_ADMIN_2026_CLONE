@@ -26,9 +26,12 @@ import {
   UserCheck
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import './RegistrationList.css';
 
 export const RegistrationList = () => {
+  const { showSuccess, showError } = useToast();
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,13 +44,15 @@ export const RegistrationList = () => {
   const [editingReg, setEditingReg] = useState(null);
   const [deletingReg, setDeletingReg] = useState(null);
 
-  const [toastMsg, setToastMsg] = useState(null);
   const [copiedUtr, setCopiedUtr] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const showToast = (msg, isError = false) => {
-    setToastMsg({ text: msg, isError });
-    setTimeout(() => setToastMsg(null), 4000);
+    if (isError) {
+      showError(msg);
+    } else {
+      showSuccess(msg);
+    }
   };
 
   const fetchRegistrations = async () => {
@@ -209,14 +214,6 @@ export const RegistrationList = () => {
         </div>
       </div>
 
-      {/* Notifications */}
-      {toastMsg && (
-        <div className={`alert ${toastMsg.isError ? 'alert-error' : 'alert-success'}`}>
-          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
-          <span>{toastMsg.text}</span>
-        </div>
-      )}
-
       {/* Summary KPI Strip */}
       <div className="registration-kpi-strip">
         <div className="kpi-mini-card">
@@ -349,8 +346,22 @@ export const RegistrationList = () => {
                 </tr>
               ) : filteredRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-secondary)' }}>
-                    No team registrations found matching your query.
+                  <td colSpan="8" style={{ padding: '1rem' }}>
+                    <EmptyState 
+                      type="search"
+                      title="No team registrations found"
+                      description="No registrations match your search query or filter parameters."
+                      primaryAction={{
+                        label: 'Reset Filters',
+                        onClick: () => {
+                          setSearchTerm('');
+                          setSelectedCollege('All');
+                          setSelectedPaymentStatus('All');
+                          setSelectedEventFilter('All');
+                        }
+                      }}
+                      compact={true}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -368,75 +379,48 @@ export const RegistrationList = () => {
                           <span className="leader-email-sub">{reg.email}</span>
                         </div>
                       </td>
-                      <td className="college-col">
-                        <span className="college-cell-name">{reg.collegeName}</span>
-                      </td>
+                      <td>{reg.collegeName || 'N/A'}</td>
                       <td>
-                        <span className="event-tag">{reg.event}</span>
+                        <span className="event-tag-pill">{reg.eventName || 'Event'}</span>
                       </td>
-                      <td className="text-center font-bold">
-                        <span className="members-count-badge">
-                          <Users size={11} /> {reg.membersCount || (reg.members ? reg.members.length : 1)}
+                      <td className="center-cell">
+                        <span className="member-count-badge">
+                          <Users size={12} /> {reg.participants ? reg.participants.length : 1}
                         </span>
                       </td>
                       <td>
-                        <span
-                          className={`quota-badge ${
-                            reg.teamsInCollege >= 2 ? 'quota-full' : 'quota-ok'
-                          }`}
-                        >
-                          {reg.teamsInCollege >= 2 ? (
-                            <>
-                              <CheckCircle size={11} /> 2/2 Full
-                            </>
-                          ) : (
-                            `1 / 2 Slots`
-                          )}
-                        </span>
+                        <span className="quota-tag">{reg.quotaStatus || 'Under Quota'}</span>
                       </td>
                       <td>
                         <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
                           {reg.paymentStatus || 'Pending'}
                         </span>
-                        {reg.utr && (
-                          <span className="utr-subtext code-font">{reg.utr}</span>
-                        )}
                       </td>
                       <td>
-                        <div className="table-actions-cell">
-                          {/* Quick Approve Button */}
-                          {!isApproved ? (
+                        <div className="table-actions">
+                          {/* Quick Approval Check */}
+                          {!isApproved && (
                             <button
-                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              onClick={() => handleQuickApprove(reg)}
                               className="btn-icon btn-approve"
-                              title="Approve Payment"
-                              disabled={actionLoading}
+                              title="Quick Approve Registration"
                             >
                               <Check size={14} />
                             </button>
-                          ) : (
-                            <button
-                              onClick={() => handleApprovePayment(reg, 'Pending')}
-                              className="btn-icon btn-unapprove"
-                              title="Mark Payment as Pending"
-                              disabled={actionLoading}
-                            >
-                              <CheckCircle2 size={14} className="text-success" />
-                            </button>
                           )}
 
-                          {/* Inspect Info Modal */}
+                          {/* View Full Info */}
                           <button
                             onClick={() => setInspectingReg(reg)}
                             className="btn-icon btn-view"
-                            title="View Registration & Payment Info"
+                            title="View Full Registration Details"
                           >
                             <Eye size={14} />
                           </button>
 
-                          {/* Edit Registration */}
+                          {/* Edit Details */}
                           <button
-                            onClick={() => setEditingReg({ ...reg })}
+                            onClick={() => setEditingReg(reg)}
                             className="btn-icon btn-edit"
                             title="Edit Registration Details"
                           >
@@ -463,22 +447,39 @@ export const RegistrationList = () => {
 
         {/* Mobile Cards View */}
         <div className="mobile-cards-list mobile-only" style={{ padding: '0.5rem' }}>
-          {filteredRegistrations.map((reg) => {
-            const regId = reg.id || reg._id;
-            const isApproved = reg.paymentStatus === 'Approved';
+          {filteredRegistrations.length === 0 ? (
+            <EmptyState 
+              type="search"
+              title="No team registrations found"
+              description="No registrations match your search query or filter parameters."
+              primaryAction={{
+                label: 'Reset Filters',
+                onClick: () => {
+                  setSearchTerm('');
+                  setSelectedCollege('All');
+                  setSelectedPaymentStatus('All');
+                  setSelectedEventFilter('All');
+                }
+              }}
+              compact={true}
+            />
+          ) : (
+            filteredRegistrations.map((reg) => {
+              const regId = reg.id || reg._id;
+              const isApproved = reg.paymentStatus === 'Approved';
 
-            return (
-              <div key={regId} className="mobile-data-card">
-                {/* Header */}
-                <div className="mobile-card-header">
-                  <div>
-                    <strong className="team-highlight" style={{ fontSize: '1rem' }}>{reg.teamName}</strong>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Lead: {reg.leaderName}</div>
+              return (
+                <div key={regId} className="mobile-data-card">
+                  {/* Header */}
+                  <div className="mobile-card-header">
+                    <div>
+                      <strong className="team-highlight" style={{ fontSize: '1rem' }}>{reg.teamName}</strong>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Lead: {reg.leaderName}</div>
+                    </div>
+                    <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
+                      {reg.paymentStatus || 'Pending'}
+                    </span>
                   </div>
-                  <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
-                    {reg.paymentStatus || 'Pending'}
-                  </span>
-                </div>
 
                 {/* Body Details */}
                 <div className="mobile-card-body">
@@ -583,7 +584,8 @@ export const RegistrationList = () => {
                 </div>
               </div>
             );
-          })}
+          }))
+        }
         </div>
       </div>
 

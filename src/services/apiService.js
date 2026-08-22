@@ -117,17 +117,28 @@ const saveEditedEvent = (id, eventData) => {
   }
 };
 
+const defaultColleges = [
+  { _id: "67b0c110e4b0987654321def", collegeName: "MIT Tech", totalTeams: 2, createdAt: "2026-08-16T10:00:00.000Z" },
+  { _id: "67b0c110e4b0987654321deg", collegeName: "NMAM Institute of Technology", totalTeams: 1, createdAt: "2026-08-16T11:15:00.000Z" },
+  { _id: "67b0c110e4b0987654321deh", collegeName: "RV College of Engineering", totalTeams: 2, createdAt: "2026-08-16T12:30:00.000Z" },
+  { _id: "67b0c110e4b0987654321dei", collegeName: "BMS College of Engineering", totalTeams: 1, createdAt: "2026-08-17T02:15:00.000Z" },
+  { _id: "67b0c110e4b0987654321dej", collegeName: "PES University", totalTeams: 2, createdAt: "2026-08-18T04:30:00.000Z" },
+  { _id: "67b0c110e4b0987654321dek", collegeName: "St. Joseph Engineering College", totalTeams: 0, createdAt: "2026-08-19T09:00:00.000Z" },
+  { _id: "67b0c110e4b0987654321del", collegeName: "Canara Engineering College", totalTeams: 1, createdAt: "2026-08-19T10:30:00.000Z" }
+];
+
 const getCustomColleges = () => {
   try {
     const stored = localStorage.getItem('semaphore_custom_colleges');
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch (e) {
     console.warn('Error reading custom colleges:', e);
   }
-  return [];
+  localStorage.setItem('semaphore_custom_colleges', JSON.stringify(defaultColleges));
+  return [...defaultColleges];
 };
 
 const saveCustomColleges = (colleges) => {
@@ -528,6 +539,50 @@ function mockFallbackHandler(endpoint, options) {
     mockEvents.splice(index, 1);
     saveEvents(mockEvents);
     return { success: true, message: 'Operation successful', id };
+  }
+
+  // 16. GET /api/colleges
+  if (endpoint === '/api/colleges' && method === 'GET') {
+    const list = getCustomColleges();
+    const deleted = getDeletedCollegeIds();
+    return { colleges: list.filter(c => !deleted.includes(c._id || c.id)) };
+  }
+
+  // 17. POST /api/colleges
+  if (endpoint === '/api/colleges' && method === 'POST') {
+    const newCollege = {
+      _id: '67b0' + Math.random().toString(16).substr(2, 20),
+      collegeName: body.collegeName,
+      totalTeams: Number(body.totalTeams) || 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const list = getCustomColleges();
+    list.unshift(newCollege);
+    saveCustomColleges(list);
+    return { success: true, message: 'College added successfully', college: newCollege };
+  }
+
+  // 18. PUT / PATCH /api/colleges/:id
+  if (endpoint.startsWith('/api/colleges/') && (method === 'PUT' || method === 'PATCH')) {
+    const id = endpoint.split('/')[3];
+    const list = getCustomColleges();
+    const index = list.findIndex(c => (c._id === id || c.id === id));
+    if (index !== -1) {
+      list[index] = { ...list[index], ...body, updatedAt: new Date().toISOString() };
+      saveCustomColleges(list);
+      return { success: true, message: 'College updated successfully', college: list[index] };
+    }
+    return { success: true, message: 'College updated', college: { _id: id, ...body } };
+  }
+
+  // 19. DELETE /api/colleges/:id
+  if (endpoint.startsWith('/api/colleges/') && method === 'DELETE') {
+    const id = endpoint.split('/')[3];
+    saveDeletedCollegeId(id);
+    const list = getCustomColleges().filter(c => (c._id !== id && c.id !== id));
+    saveCustomColleges(list);
+    return { success: true, message: 'College removed successfully', id };
   }
 
   throw new Error(`Endpoint ${endpoint} not found`);

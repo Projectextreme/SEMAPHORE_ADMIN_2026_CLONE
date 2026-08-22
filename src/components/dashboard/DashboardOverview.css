@@ -9,9 +9,11 @@
 
 .welcome-banner {
   background: var(--banner-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--banner-border);
-  border-radius: 16px;
-  padding: 1.5rem 1.75rem;
+  border-radius: 18px;
+  padding: 1.65rem 1.85rem;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -19,6 +21,18 @@
   justify-content: space-between;
   gap: 1.5rem;
   flex-wrap: wrap;
+  box-shadow: var(--glass-shadow);
+}
+
+.welcome-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--glass-shine);
+  pointer-events: none;
 }
 
 .welcome-content {
@@ -89,9 +103,11 @@
 }
 
 .banner-stat-chip {
-  background: var(--badge-bg);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
@@ -99,6 +115,12 @@
   text-align: center;
   min-width: 100px;
   flex: 1;
+  transition: transform 0.2s ease;
+}
+
+.banner-stat-chip:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary-border);
 }
 
 .chip-num {
@@ -123,21 +145,34 @@
 }
 
 .kpi-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 1.15rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 1.25rem;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: var(--card-shadow);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--glass-shadow);
   user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--glass-shine);
+  pointer-events: none;
 }
 
 .kpi-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary);
+  transform: translateY(-3px);
+  border-color: var(--primary-border);
   box-shadow: var(--card-shadow-hover);
 }
 
@@ -604,4 +639,13 @@
   .endpoint-item {
     padding: 0.65rem 0.75rem;
   }
+}
+
+.table-actions-cell {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }

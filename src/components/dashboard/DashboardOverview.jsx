@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { apiService } from '../../services/apiService';
 import {
   Users,
@@ -29,9 +31,9 @@ import './DashboardOverview.css';
 
 export const DashboardOverview = ({ setActiveTab }) => {
   const { admin, isSuperAdmin } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [registrations, setRegistrations] = useState([]);
-  const [toastMsg, setToastMsg] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Modals
@@ -48,8 +50,11 @@ export const DashboardOverview = ({ setActiveTab }) => {
   });
 
   const showToast = (msg, isError = false) => {
-    setToastMsg({ text: msg, isError });
-    setTimeout(() => setToastMsg(null), 4000);
+    if (isError) {
+      showError(msg);
+    } else {
+      showSuccess(msg);
+    }
   };
 
   const loadData = async () => {
@@ -261,14 +266,6 @@ export const DashboardOverview = ({ setActiveTab }) => {
         </div>
       </div>
 
-      {/* Notifications Toast */}
-      {toastMsg && (
-        <div className={`alert ${toastMsg.isError ? 'alert-error' : 'alert-success'}`}>
-          {toastMsg.isError ? <AlertTriangle size={16} /> : <CheckCircle2 size={16} />}
-          <span>{toastMsg.text}</span>
-        </div>
-      )}
-
       {/* KPI Cards Grid */}
       <div className="kpi-grid">
         {kpis.map((kpi) => {
@@ -344,8 +341,13 @@ export const DashboardOverview = ({ setActiveTab }) => {
             <tbody>
               {latestRegistrations.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    No recent registrations recorded yet.
+                  <td colSpan="6" style={{ padding: '1rem' }}>
+                    <EmptyState 
+                      type="registrations"
+                      title="No registrations found"
+                      description="New student and team signups will automatically appear here in real-time."
+                      compact={true}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -465,9 +467,12 @@ export const DashboardOverview = ({ setActiveTab }) => {
         {/* Mobile Cards View */}
         <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem 0.5rem' }}>
           {latestRegistrations.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)' }}>
-              No recent registrations recorded yet.
-            </div>
+            <EmptyState 
+              type="registrations"
+              title="No registrations found"
+              description="New student and team signups will automatically appear here in real-time."
+              compact={true}
+            />
           ) : (
             latestRegistrations.map((reg) => {
               const regId = reg.id || reg._id;

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiService } from '../../services/apiService';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { 
   Users, 
   Search, 
@@ -20,12 +22,11 @@ import {
 import './UserManagement.css';
 
 export const UserManagement = () => {
+  const { showSuccess, showError } = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   // Modals
   const [selectedUserView, setSelectedUserView] = useState(null);
@@ -36,12 +37,11 @@ export const UserManagement = () => {
   // 6. Retrieve All Users (GET /api/admin/users)
   const fetchUsers = async () => {
     setLoading(true);
-    setErrorMsg('');
     try {
       const res = await apiService.getAllUsers();
       setUsers(res);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to fetch users list');
+      showError(err.message || 'Failed to fetch users list');
     } finally {
       setLoading(false);
     }
@@ -53,12 +53,11 @@ export const UserManagement = () => {
 
   // 7. Retrieve Single User (GET /api/admin/users/:id)
   const handleViewUser = async (id) => {
-    setErrorMsg('');
     try {
       const user = await apiService.getUserById(id);
       setSelectedUserView(user);
     } catch (err) {
-      setErrorMsg(err.message || 'User not found');
+      showError(err.message || 'User not found');
     }
   };
 
@@ -77,16 +76,14 @@ export const UserManagement = () => {
   const handleSaveEdit = async (e) => {
     e.preventDefault();
     setActionLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
     try {
       const { _id, ...payload } = editUserData;
       const res = await apiService.editUser(_id, payload);
-      setSuccessMsg(res.message || 'User updated successfully');
+      showSuccess(res.message || 'User updated successfully');
       setEditUserData(null);
       fetchUsers();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to update user');
+      showError(err.message || 'Failed to update user');
     } finally {
       setActionLoading(false);
     }
@@ -96,15 +93,13 @@ export const UserManagement = () => {
   const handleConfirmDelete = async () => {
     if (!deleteUserObj) return;
     setActionLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
     try {
       const res = await apiService.deleteUser(deleteUserObj._id);
-      setSuccessMsg(res.message || `User "${deleteUserObj.name}" deleted successfully.`);
+      showSuccess(res.message || `User "${deleteUserObj.name}" deleted successfully.`);
       setDeleteUserObj(null);
       fetchUsers();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to delete user');
+      showError(err.message || 'Failed to delete user');
     } finally {
       setActionLoading(false);
     }
@@ -141,30 +136,15 @@ export const UserManagement = () => {
         </div>
       </div>
 
-      {/* Notifications */}
-      {errorMsg && (
-        <div className="alert alert-error">
-          <AlertCircle size={17} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {successMsg && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={17} />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
       {/* User Table Card */}
       <div className="card table-card">
-        <div className="card-header border-none user-toolbar">
+        <div className="user-toolbar">
           <div className="search-bar-wrapper">
             <Search className="search-icon" size={16} />
             <input
               type="text"
               className="search-input"
-              placeholder="Search by name, email, college, or user ID..."
+              placeholder="Search by name, email, college or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -203,9 +183,19 @@ export const UserManagement = () => {
             <span>Fetching user directory...</span>
           </div>
         ) : filteredUsers.length === 0 ? (
-          <div className="empty-state">
-            <p>No user records found matching "{searchTerm}".</p>
-          </div>
+          <EmptyState
+            type="users"
+            title="No user records found"
+            description={searchTerm ? `No users found matching "${searchTerm}".` : "No registered participants or accounts found."}
+            secondaryAction={searchTerm ? {
+              label: 'Clear Search',
+              onClick: () => {
+                setSearchTerm('');
+                setSelectedRoleFilter('All');
+              }
+            } : null}
+            compact={true}
+          />
         ) : (
           <>
             {/* Desktop Table View */}
@@ -311,8 +301,7 @@ export const UserManagement = () => {
                         <button
                           onClick={() => {
                             navigator.clipboard.writeText(user._id);
-                            setToastMsg('User ID copied to clipboard!');
-                            setTimeout(() => setToastMsg(null), 2500);
+                            showSuccess('User ID copied to clipboard!');
                           }}
                           className="btn-copy-mini"
                           title="Copy User ID"

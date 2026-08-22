@@ -1,48 +1,51 @@
 import { useState } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { 
   UserCheck, 
   Plus, 
-  Mail, 
-  Phone, 
-  Calendar, 
+  Search, 
   Edit2, 
   Trash2, 
-  Search, 
+  Phone, 
+  Mail, 
+  Tag, 
   CheckCircle2, 
   AlertCircle,
-  Award,
-  RefreshCw,
-  X
+  Building2,
+  Calendar,
+  X,
+  Check
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
 export const CoordinatorManagement = () => {
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { showSuccess, showError } = useToast();
   const [coordinators, setCoordinators] = useState([
     {
       id: 'COORD-01',
-      name: 'Havyas Bhat',
-      email: 'havyas@semaphore.com',
-      phone: '+91 98450 11223',
+      name: 'Rohan Shenoy',
+      email: 'rohan.shenoy@semaphore.com',
+      phone: '+91 98860 12345',
       assignedEvent: 'CodeFest 2026',
       department: 'MCA 2nd Year',
       status: 'Active'
     },
     {
       id: 'COORD-02',
-      name: 'Shashidhara K',
-      email: 'shashidhara@semaphore.com',
-      phone: '+91 97401 22334',
-      assignedEvent: 'CodeFest 2026',
+      name: 'Ananya Prabhu',
+      email: 'ananya.p@semaphore.com',
+      phone: '+91 98450 67890',
+      assignedEvent: 'RoboWars Arena',
       department: 'MCA 2nd Year',
       status: 'Active'
     },
     {
       id: 'COORD-03',
-      name: 'Swasthik Gowda',
-      email: 'swasthik@semaphore.com',
-      phone: '+91 99001 55667',
-      assignedEvent: 'RoboWars Arena',
+      name: 'Karthik Rao',
+      email: 'karthik.rao@semaphore.com',
+      phone: '+91 97410 54321',
+      assignedEvent: 'DesignX UI/UX',
       department: 'MCA 1st Year',
       status: 'Active'
     },
@@ -61,7 +64,6 @@ export const CoordinatorManagement = () => {
   const [selectedEvent, setSelectedEvent] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCoord, setEditingCoord] = useState(null);
-  const [toastMsg, setToastMsg] = useState('');
 
   const [newCoord, setNewCoord] = useState({
     name: '',
@@ -72,9 +74,12 @@ export const CoordinatorManagement = () => {
     status: 'Active'
   });
 
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3000);
+  const showToast = (msg, isError = false) => {
+    if (isError) {
+      showError(msg);
+    } else {
+      showSuccess(msg);
+    }
   };
 
   const handleAddSubmit = (e) => {
@@ -139,8 +144,7 @@ export const CoordinatorManagement = () => {
               setIsRefreshing(true);
               setTimeout(() => {
                 setIsRefreshing(false);
-                setToastMsg('Coordinators roster reloaded from department directory.');
-                setTimeout(() => setToastMsg(null), 3000);
+                showSuccess('Coordinators roster reloaded from department directory.');
               }, 500);
             }} 
             className="btn btn-secondary"
@@ -211,59 +215,78 @@ export const CoordinatorManagement = () => {
       </div>
 
       {/* Coordinators Grid */}
-      <div className="coords-grid">
-        {filtered.map((coord) => (
-          <div key={coord.id} className="card coord-card">
-            <div className="coord-card-header">
-              <div className="coord-avatar">
-                {coord.name.charAt(0)}
+      {filtered.length === 0 ? (
+        <EmptyState
+          type="users"
+          title="No event coordinators found"
+          description={searchTerm ? `No coordinators found matching "${searchTerm}".` : "No event coordinators have been assigned."}
+          primaryAction={{
+            label: 'Assign Coordinator',
+            onClick: () => setShowAddModal(true)
+          }}
+          secondaryAction={searchTerm ? {
+            label: 'Clear Search',
+            onClick: () => {
+              setSearchTerm('');
+              setSelectedEvent('All');
+            }
+          } : null}
+        />
+      ) : (
+        <div className="coords-grid">
+          {filtered.map((coord) => (
+            <div key={coord.id} className="card coord-card">
+              <div className="coord-card-header">
+                <div className="coord-avatar">
+                  {coord.name.charAt(0)}
+                </div>
+                <div className="coord-meta">
+                  <h4 className="coord-name">{coord.name}</h4>
+                  <span className="coord-dept">{coord.department}</span>
+                </div>
+                <span className={`status-pill status-${coord.status.toLowerCase()}`}>
+                  {coord.status}
+                </span>
               </div>
-              <div className="coord-name-col">
-                <h3 className="coord-name">{coord.name}</h3>
-                <span className="coord-id code-font">{coord.id}</span>
+
+              <div className="coord-body">
+                <div className="coord-detail-row">
+                  <Tag size={13} className="detail-icon" />
+                  <span className="detail-val font-bold text-primary">{coord.assignedEvent}</span>
+                </div>
+                <div className="coord-detail-row">
+                  <Mail size={13} className="detail-icon" />
+                  <span className="detail-val">{coord.email}</span>
+                </div>
+                <div className="coord-detail-row">
+                  <Phone size={13} className="detail-icon" />
+                  <span className="detail-val">{coord.phone}</span>
+                </div>
               </div>
-              <span className="status-badge status-approved">{coord.status}</span>
+
+              <div className="coord-card-footer">
+                <span className="coord-id-tag code-font">{coord.id}</span>
+                <div className="coord-actions">
+                  <button
+                    onClick={() => handleOpenEdit(coord)}
+                    className="btn-icon btn-edit"
+                    title="Edit Coordinator Details"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(coord.id)}
+                    className="btn-icon btn-delete"
+                    title="Remove Coordinator"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
             </div>
-
-            <div className="coord-info-body">
-              <div className="coord-event-tag">
-                <Award size={13} />
-                <span>{coord.assignedEvent}</span>
-              </div>
-
-              <div className="coord-contact-row">
-                <Mail size={13} className="contact-icon" />
-                <span className="contact-text">{coord.email}</span>
-              </div>
-
-              <div className="coord-contact-row">
-                <Phone size={13} className="contact-icon" />
-                <span className="contact-text">{coord.phone}</span>
-              </div>
-            </div>
-
-            <div className="coord-card-footer">
-              <span className="dept-tag">{coord.department}</span>
-              <div className="action-buttons">
-                <button
-                  onClick={() => setEditingCoord(coord)}
-                  className="btn-icon btn-edit"
-                  title="Edit Coordinator"
-                >
-                  <Edit2 size={13} />
-                </button>
-                <button
-                  onClick={() => handleDelete(coord.id)}
-                  className="btn-icon btn-delete"
-                  title="Remove Coordinator"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Modal */}
       {showAddModal && (

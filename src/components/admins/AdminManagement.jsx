@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { apiService } from '../../services/apiService';
 import { 
   ShieldCheck, 
@@ -23,13 +25,12 @@ import './AdminManagement.css';
 
 export const AdminManagement = () => {
   const { admin: currentAdmin, isSuperAdmin } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [adminsList, setAdminsList] = useState([]);
   const [myProfile, setMyProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [copiedId, setCopiedId] = useState(false);
 
   // Modals state
@@ -55,7 +56,6 @@ export const AdminManagement = () => {
 
   const fetchAdminData = async () => {
     setLoading(true);
-    setErrorMsg('');
     try {
       const profile = await apiService.getAdminProfile();
       setMyProfile(profile);
@@ -65,7 +65,7 @@ export const AdminManagement = () => {
         setAdminsList(allAdmins);
       }
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to fetch admin data');
+      showError(err.message || 'Failed to fetch admin data');
     } finally {
       setLoading(false);
     }
@@ -78,6 +78,7 @@ export const AdminManagement = () => {
   const handleCopyId = (id) => {
     navigator.clipboard.writeText(id);
     setCopiedId(true);
+    showSuccess('Admin ID copied to clipboard!');
     setTimeout(() => setCopiedId(false), 2000);
   };
 
@@ -85,19 +86,17 @@ export const AdminManagement = () => {
   const handleAddAdminSubmit = async (e) => {
     e.preventDefault();
     setActionLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
     try {
       const res = await apiService.addAdmin({
         ...newAdmin,
         role: 'admin'
       });
-      setSuccessMsg(`Standard Admin "${res.name}" created successfully!`);
+      showSuccess(`Standard Admin "${res.name}" created successfully!`);
       setShowAddModal(false);
       setNewAdmin({ name: '', email: '', password: '', role: 'admin' });
       fetchAdminData();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to add admin');
+      showError(err.message || 'Failed to add admin');
     } finally {
       setActionLoading(false);
     }
@@ -107,19 +106,17 @@ export const AdminManagement = () => {
   const handleMakeAdminSubmit = async (e) => {
     e.preventDefault();
     setActionLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
     try {
       const payload = roleForm.useEmail
         ? { email: roleForm.email, role: roleForm.role }
         : { adminId: roleForm.adminId, role: roleForm.role };
 
       const res = await apiService.changeAdminRole(payload);
-      setSuccessMsg(res.message || `Admin role updated to ${res.role}!`);
+      showSuccess(res.message || `Admin role updated to ${res.role}!`);
       setShowRoleModal(false);
       fetchAdminData();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to update admin role');
+      showError(err.message || 'Failed to update admin role');
     } finally {
       setActionLoading(false);
     }
@@ -130,14 +127,12 @@ export const AdminManagement = () => {
       return;
     }
     setActionLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
     try {
       await apiService.deleteAdmin(id);
-      setSuccessMsg(`Standard admin "${name}" deleted successfully.`);
+      showSuccess(`Standard admin "${name}" deleted successfully.`);
       fetchAdminData();
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to delete admin');
+      showError(err.message || 'Failed to delete admin');
     } finally {
       setActionLoading(false);
     }
@@ -188,21 +183,6 @@ export const AdminManagement = () => {
           )}
         </div>
       </div>
-
-      {/* Notifications */}
-      {errorMsg && (
-        <div className="alert alert-error">
-          <AlertCircle size={17} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {successMsg && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={17} />
-          <span>{successMsg}</span>
-        </div>
-      )}
 
       {/* My Profile Card (GET /api/admin/profile) */}
       <div className="card profile-card">
@@ -306,9 +286,20 @@ export const AdminManagement = () => {
             <span>Loading admin accounts...</span>
           </div>
         ) : filteredAdminsList.length === 0 ? (
-          <div className="empty-state">
-            <p>No administrator accounts found matching "{searchTerm}".</p>
-          </div>
+          <EmptyState
+            type="users"
+            title="No administrators found"
+            description={searchTerm ? `No administrator accounts found matching "${searchTerm}".` : "No other administrator accounts found."}
+            primaryAction={{
+              label: 'Add New Admin',
+              onClick: () => setShowAddModal(true)
+            }}
+            secondaryAction={searchTerm ? {
+              label: 'Clear Search',
+              onClick: () => setSearchTerm('')
+            } : null}
+            compact={true}
+          />
         ) : (
           <>
             {/* Desktop Table View */}

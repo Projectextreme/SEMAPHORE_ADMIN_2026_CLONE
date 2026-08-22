@@ -189,6 +189,15 @@
 }
 
 /* Action Buttons */
+.table-actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 .btn-approve {
   color: var(--success);
 }

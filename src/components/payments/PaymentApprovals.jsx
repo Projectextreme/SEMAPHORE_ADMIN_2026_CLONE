@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useToast } from '../../context/ToastContext';
+import { EmptyState } from '../common/EmptyState';
 import { 
   CreditCard, 
   CheckCircle2, 
@@ -20,6 +22,7 @@ import {
 import './PaymentApprovals.css';
 
 export const PaymentApprovals = () => {
+  const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [payments, setPayments] = useState([
     {
@@ -62,11 +65,13 @@ export const PaymentApprovals = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [copiedUtr, setCopiedUtr] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
+  const showToast = (msg, isError = false) => {
+    if (isError) {
+      showError(msg);
+    } else {
+      showSuccess(msg);
+    }
   };
 
   const handleStatusChange = (id, newStatus) => {
@@ -134,14 +139,6 @@ export const PaymentApprovals = () => {
           <span>{isRefreshing ? 'Refreshing...' : 'Refresh Payments'}</span>
         </button>
       </div>
-
-      {/* Toast Feedback */}
-      {toastMessage && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={16} />
-          <span>{toastMessage}</span>
-        </div>
-      )}
 
       {/* Quick Summary Metric Cards */}
       <div className="payment-summary-strip">
@@ -237,76 +234,113 @@ export const PaymentApprovals = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map((p) => (
-                <tr key={p.id}>
-                  <td className="code-font">{p.id}</td>
-                  <td>
-                    <div className="utr-cell">
-                      <span className="code-font font-bold utr-text">{p.utr}</span>
-                      <button 
-                        onClick={() => handleCopyUtr(p.utr)}
-                        className="btn-copy-mini"
-                        title="Copy UTR Code"
-                      >
-                        <Copy size={11} />
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="team-college-cell">
-                      <span className="team-title">{p.teamName}</span>
-                      <span className="college-sub">{p.collegeName}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="event-pill">{p.event}</span>
-                  </td>
-                  <td className="amount-text">{p.amount}</td>
-                  <td>
-                    <span className={`status-badge status-${p.status.toLowerCase()}`}>
-                      {p.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => setSelectedPayment(p)}
-                        className="btn-icon btn-view"
-                        title="View UTR Receipt Proof"
-                      >
-                        <Eye size={14} />
-                      </button>
-
-                      {p.status !== 'Approved' && (
-                        <button
-                          onClick={() => handleStatusChange(p.id, 'Approved')}
-                          className="btn-icon btn-approve"
-                          title="Approve Payment"
-                        >
-                          <CheckCircle2 size={14} />
-                        </button>
-                      )}
-
-                      {p.status !== 'Rejected' && (
-                        <button
-                          onClick={() => handleStatusChange(p.id, 'Rejected')}
-                          className="btn-icon btn-reject"
-                          title="Reject Payment"
-                        >
-                          <XCircle size={14} />
-                        </button>
-                      )}
-                    </div>
+              {filteredPayments.length === 0 ? (
+                <tr>
+                  <td colSpan="7" style={{ padding: '1rem' }}>
+                    <EmptyState
+                      type="payments"
+                      title="No payment records found"
+                      description="No payment verification entries match your search query or filter selection."
+                      primaryAction={{
+                        label: 'Reset Filters',
+                        onClick: () => {
+                          setActiveFilter('All');
+                          setSelectedEvent('All');
+                          setSearchTerm('');
+                        }
+                      }}
+                      compact={true}
+                    />
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredPayments.map((p) => (
+                  <tr key={p.id}>
+                    <td className="code-font">{p.id}</td>
+                    <td>
+                      <div className="utr-cell">
+                        <span className="code-font font-bold utr-text">{p.utr}</span>
+                        <button 
+                          onClick={() => handleCopyUtr(p.utr)}
+                          className="btn-copy-mini"
+                          title="Copy UTR Code"
+                        >
+                          <Copy size={11} />
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="team-college-cell">
+                        <span className="team-title">{p.teamName}</span>
+                        <span className="college-sub">{p.collegeName}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="event-pill">{p.event}</span>
+                    </td>
+                    <td className="amount-text">{p.amount}</td>
+                    <td>
+                      <span className={`status-badge status-${p.status.toLowerCase()}`}>
+                        {p.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          onClick={() => setSelectedPayment(p)}
+                          className="btn-icon btn-view"
+                          title="View UTR Receipt Proof"
+                        >
+                          <Eye size={14} />
+                        </button>
+
+                        {p.status !== 'Approved' && (
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'Approved')}
+                            className="btn-icon btn-approve"
+                            title="Approve Payment"
+                          >
+                            <CheckCircle2 size={14} />
+                          </button>
+                        )}
+
+                        {p.status !== 'Rejected' && (
+                          <button
+                            onClick={() => handleStatusChange(p.id, 'Rejected')}
+                            className="btn-icon btn-reject"
+                            title="Reject Payment"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Mobile Cards View */}
         <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem 0.5rem' }}>
-          {filteredPayments.map((p) => (
+          {filteredPayments.length === 0 ? (
+            <EmptyState
+              type="payments"
+              title="No payment records found"
+              description="No payment verification entries match your search query or filter selection."
+              primaryAction={{
+                label: 'Reset Filters',
+                onClick: () => {
+                  setActiveFilter('All');
+                  setSelectedEvent('All');
+                  setSearchTerm('');
+                }
+              }}
+              compact={true}
+            />
+          ) : (
+            filteredPayments.map((p) => (
             <div key={p.id} className="mobile-data-card">
               <div className="mobile-card-header">
                 <div>
@@ -373,7 +407,8 @@ export const PaymentApprovals = () => {
                 )}
               </div>
             </div>
-          ))}
+          )))
+        }
         </div>
       </div>
 

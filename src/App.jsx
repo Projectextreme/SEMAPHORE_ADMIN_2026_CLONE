@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
+import { ToastContainer } from './components/common/ToastContainer';
 import { LoginView } from './components/auth/LoginView';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -65,6 +67,10 @@ function AdminPortalContent() {
 
   return (
     <div className="admin-app-layout">
+      {/* Subtle Ambient Background Mesh Lights */}
+      <div className="ambient-glow-orb orb-primary" />
+      <div className="ambient-glow-orb orb-cyan" />
+
       <Header 
         isMobileNavOpen={isMobileNavOpen} 
         onToggleMobileNav={() => setIsMobileNavOpen((prev) => !prev)} 
@@ -77,7 +83,9 @@ function AdminPortalContent() {
           onCloseMobileNav={() => setIsMobileNavOpen(false)}
         />
         <main className="admin-main-content">
-          {renderActiveView()}
+          <div key={activeTab} className="view-transition-container">
+            {renderActiveView()}
+          </div>
         </main>
       </div>
     </div>
@@ -88,8 +96,12 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AdminPortalContent />
+        <ToastProvider>
+          <AdminPortalContent />
+          <ToastContainer />
+        </ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   );
 }
+
