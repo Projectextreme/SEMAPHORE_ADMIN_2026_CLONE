@@ -127,6 +127,33 @@
   color: var(--text-muted);
 }
 
+.user-id-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.user-id-pill:hover {
+  background: var(--primary-light);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.id-copy-icon {
+  color: var(--text-dim);
+}
+
+.user-id-pill:hover .id-copy-icon {
+  color: var(--primary);
+}
+
 .college-tag {
   display: inline-flex;
   align-items: center;

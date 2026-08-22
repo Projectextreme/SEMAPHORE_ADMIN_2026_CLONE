@@ -371,7 +371,12 @@ export const RegistrationList = () => {
 
                   return (
                     <tr key={regId}>
-                      <td className="code-font">{regId}</td>
+                      <td className="code-font" title={`Click to copy: ${regId}`} onClick={() => {
+                        navigator.clipboard.writeText(regId);
+                        showSuccess('Registration ID copied!');
+                      }} style={{ cursor: 'pointer' }}>
+                        {regId && regId.length > 10 ? `${regId.slice(0, 6)}...${regId.slice(-4)}` : regId}
+                      </td>
                       <td>
                         <div className="team-leader-cell">
                           <strong className="team-highlight">{reg.teamName}</strong>

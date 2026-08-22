@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ShieldCheck, Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
+import { AnimatedCyberShield } from '../common/AnimatedSvg';
 import './LoginView.css';
 
 export const LoginView = () => {
@@ -47,9 +48,7 @@ export const LoginView = () => {
       <div className="login-card">
         {/* Header */}
         <div className="login-header">
-          <div className="login-logo-badge">
-            <ShieldCheck className="logo-icon" size={28} />
-          </div>
+          <AnimatedCyberShield size={74} className="login-logo-anim" />
           <div className="login-title-row">
             <h1 className="login-title">SEMAPHORE</h1>
             <span className="login-year-tag">2026</span>

@@ -1,0 +1,51 @@
+.lottie-player-wrapper {
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.lottie-fallback-svg svg {
+  animation: lottiePulse 2s ease-in-out infinite alternate;
+}
+
+.lottie-spin-ring {
+  animation: lottieSpin 1.8s linear infinite;
+  transform-origin: center;
+}
+
+.lottie-pulse-core {
+  animation: lottieCorePulse 1.5s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+@keyframes lottieSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lottiePulse {
+  from {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+  to {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+@keyframes lottieCorePulse {
+  from {
+    transform: scale(0.85);
+    opacity: 0.5;
+  }
+  to {
+    transform: scale(1.15);
+    opacity: 0.9;
+  }
+}

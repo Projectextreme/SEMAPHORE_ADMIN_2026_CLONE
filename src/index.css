@@ -822,7 +822,12 @@ code, pre, .code-font {
   border-radius: 10px;
   -webkit-overflow-scrolling: touch;
   position: relative;
-  scrollbar-width: thin;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.table-responsive::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 table {
@@ -831,6 +836,7 @@ table {
   border-spacing: 0;
   text-align: left;
   font-size: 0.86rem;
+  table-layout: auto;
 }
 
 table th {
@@ -940,16 +946,14 @@ table tbody tr:last-child td {
 @keyframes viewEnter {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.992);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
 .view-transition-container {
-  animation: viewEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: viewEnter 0.2s ease-out;
   width: 100%;
   min-height: 100%;
   display: flex;

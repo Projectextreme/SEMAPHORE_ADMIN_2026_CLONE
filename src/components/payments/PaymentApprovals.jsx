@@ -255,7 +255,12 @@ export const PaymentApprovals = () => {
               ) : (
                 filteredPayments.map((p) => (
                   <tr key={p.id}>
-                    <td className="code-font">{p.id}</td>
+                    <td className="code-font" title={`Click to copy: ${p.id}`} onClick={() => {
+                      navigator.clipboard.writeText(p.id);
+                      showSuccess('Payment ID copied!');
+                    }} style={{ cursor: 'pointer' }}>
+                      {p.id && p.id.length > 10 ? `${p.id.slice(0, 6)}...${p.id.slice(-4)}` : p.id}
+                    </td>
                     <td>
                       <div className="utr-cell">
                         <span className="code-font font-bold utr-text">{p.utr}</span>

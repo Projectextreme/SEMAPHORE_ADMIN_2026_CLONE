@@ -225,7 +225,15 @@ export const UserManagement = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="code-font">{user._id}</td>
+                      <td>
+                        <div className="user-id-pill" title={`Click to copy: ${user._id}`} onClick={() => {
+                          navigator.clipboard.writeText(user._id);
+                          showSuccess('User ID copied to clipboard!');
+                        }}>
+                          <span className="code-font">{user._id ? `${user._id.slice(0, 6)}...${user._id.slice(-4)}` : 'N/A'}</span>
+                          <Copy size={11} className="id-copy-icon" />
+                        </div>
+                      </td>
                       <td>
                         <span className="college-tag">
                           <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}

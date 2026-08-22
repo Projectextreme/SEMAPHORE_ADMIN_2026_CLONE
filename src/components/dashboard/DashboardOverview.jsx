@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
 import {
   Users,
@@ -858,261 +859,251 @@ export const DashboardOverview = () => {
       </div>
 
       {/* ========================================================================= */}
-      {/* MODALS: Edit / Delete Registration, Delete User, Edit / Delete Event */}
+      {/* MODALS (Rendered via createPortal to guarantee centered viewport position) */}
       {/* ========================================================================= */}
 
       {/* 1. Edit Registration Modal */}
       {editingReg && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit Registration Details</h3>
-              <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Registration Reference: <code>{editingReg.id || editingReg._id}</code>
-            </p>
-
-            <form onSubmit={handleSaveEditReg} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Participant / Leader Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.leaderName || editingReg.name || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Team Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.teamName || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, teamName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">College Name *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingReg.collegeName || ''}
-                    onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Registration Amount</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingReg.amount || '₹ 500'}
-                    onChange={(e) => setEditingReg({ ...editingReg, amount: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Payment Status</label>
-                  <select
-                    className="form-select"
-                    value={editingReg.paymentStatus || 'Pending'}
-                    onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">UTR Ref Code</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingReg.utr || ''}
-                    onChange={(e) => setEditingReg({ ...editingReg, utr: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editingReg} onClose={() => setEditingReg(null)} maxWidth="580px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit Registration Details</h3>
+            <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Registration Reference: <code>{editingReg.id || editingReg._id}</code>
+          </p>
+
+          <form onSubmit={handleSaveEditReg} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Participant / Leader Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.leaderName || editingReg.name || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Team Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.teamName || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, teamName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">College Name *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.collegeName || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Registration Amount</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.amount || '₹ 500'}
+                  onChange={(e) => setEditingReg({ ...editingReg, amount: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Payment Status</label>
+                <select
+                  className="form-select"
+                  value={editingReg.paymentStatus || 'Pending'}
+                  onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">UTR Ref Code</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingReg.utr || ''}
+                  onChange={(e) => setEditingReg({ ...editingReg, utr: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* 2. Confirm Delete Registration Modal */}
       {deletingReg && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-danger">
-            <div className="modal-header">
-              <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Registration</h3>
-              <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Are you sure you want to permanently delete registration for <strong>{deletingReg.leaderName || deletingReg.teamName}</strong>? This action cannot be undone.
-            </p>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleDeleteConfirmReg}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
+        <Modal isOpen={!!deletingReg} onClose={() => setDeletingReg(null)} maxWidth="500px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Registration</h3>
+            <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Are you sure you want to permanently delete registration for <strong>{deletingReg.leaderName || deletingReg.teamName}</strong>? This action cannot be undone.
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteConfirmReg}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* 3. Confirm Delete User Modal */}
       {deletingUser && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-danger">
-            <div className="modal-header">
-              <h3><AlertTriangle size={19} className="text-danger" /> Delete User Account</h3>
-              <button className="modal-close" onClick={() => setDeletingUser(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Are you sure you want to remove user <strong>{deletingUser.name}</strong> ({deletingUser.email || deletingUser.collegeName})?
-            </p>
-            <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setDeletingUser(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleDeleteConfirmUser}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Deleting...' : 'Delete User'}
-              </button>
-            </div>
+        <Modal isOpen={!!deletingUser} onClose={() => setDeletingUser(null)} maxWidth="500px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Delete User Account</h3>
+            <button className="modal-close" onClick={() => setDeletingUser(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Are you sure you want to remove user <strong>{deletingUser.name}</strong> ({deletingUser.email || deletingUser.collegeName || 'User'})?
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingUser(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteConfirmUser}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Deleting...' : 'Delete User'}
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* 4. Edit Event Modal */}
       {editingEvent && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit Event Details</h3>
-              <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">Update parameters for {editingEvent.title}</p>
-
-            <form onSubmit={handleSaveEditEvent} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Event Title *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingEvent.title || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Short Tag (e.g. Coding)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingEvent.shortTag || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, shortTag: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Fee (e.g. ₹ 500)</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingEvent.fee || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, fee: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea
-                  className="form-input"
-                  rows={3}
-                  value={editingEvent.description || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Venue</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingEvent.venue || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, venue: e.target.value })}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingEvent(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save Event'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editingEvent} onClose={() => setEditingEvent(null)} maxWidth="580px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit Event Details</h3>
+            <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
           </div>
-        </div>
-      )}
+          <p className="modal-subtitle">Update parameters for {editingEvent.title}</p>
 
-      {/* 6. Confirm Delete Event Modal */}
-      {deletingEvent && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-danger">
-            <div className="modal-header">
-              <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Event</h3>
-              <button className="modal-close" onClick={() => setDeletingEvent(null)}>&times;</button>
+          <form onSubmit={handleSaveEditEvent} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Event Title *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingEvent.title || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                required
+              />
             </div>
-            <p className="modal-subtitle">
-              Are you sure you want to delete event <strong>{deletingEvent.title}</strong>?
-            </p>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Short Tag (e.g. Coding)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingEvent.shortTag || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, shortTag: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Fee (e.g. ₹ 500)</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingEvent.fee || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, fee: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Description</label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={editingEvent.description || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Venue</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingEvent.venue || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, venue: e.target.value })}
+              />
+            </div>
+
             <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setDeletingEvent(null)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingEvent(null)}>
                 Cancel
               </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={handleDeleteConfirmEvent}
-                disabled={actionLoading}
-              >
-                {actionLoading ? 'Deleting...' : 'Delete Event'}
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : 'Save Event'}
               </button>
             </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* 5. Confirm Delete Event Modal */}
+      {deletingEvent && (
+        <Modal isOpen={!!deletingEvent} onClose={() => setDeletingEvent(null)} maxWidth="500px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Event</h3>
+            <button className="modal-close" onClick={() => setDeletingEvent(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Are you sure you want to delete event <strong>{deletingEvent.title}</strong>?
+          </p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingEvent(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteConfirmEvent}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Deleting...' : 'Delete Event'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
