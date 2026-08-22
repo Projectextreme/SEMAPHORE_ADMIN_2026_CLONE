@@ -9,21 +9,30 @@
 
 .profile-details-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
-.profile-field {
+.profile-field,
+.profile-item {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  background: var(--badge-bg);
-  padding: 0.8rem 0.95rem;
-  border-radius: 10px;
+  gap: 0.45rem;
+  background: var(--bg-surface);
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
   border: 1px solid var(--border-color);
+  box-shadow: var(--card-shadow);
+  transition: all 0.18s ease;
 }
 
-.field-label {
+.profile-field:hover,
+.profile-item:hover {
+  border-color: var(--primary-border);
+}
+
+.field-label,
+.profile-label {
   font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-dim);
@@ -31,9 +40,10 @@
   letter-spacing: 0.05em;
 }
 
-.field-value {
-  font-size: 0.88rem;
-  color: var(--text-main);
+.field-value,
+.profile-val {
+  font-size: 0.9rem;
+  color: var(--text-heading);
   word-break: break-all;
 }
 

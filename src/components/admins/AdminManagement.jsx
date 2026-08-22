@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
 import { 
   ShieldCheck, 
@@ -197,31 +198,33 @@ export const AdminManagement = () => {
         </div>
 
         <div className="profile-details-grid">
-          <div className="profile-item">
-            <span className="profile-label">Administrator Name</span>
-            <span className="profile-val font-bold">{myProfile?.name || currentAdmin?.name}</span>
+          <div className="profile-field">
+            <span className="field-label">Administrator Name</span>
+            <strong className="field-value font-bold">{myProfile?.name || currentAdmin?.name || 'Super Admin'}</strong>
           </div>
 
-          <div className="profile-item">
-            <span className="profile-label">Email Address</span>
-            <span className="profile-val">{myProfile?.email || currentAdmin?.email}</span>
+          <div className="profile-field">
+            <span className="field-label">Email Address</span>
+            <span className="field-value">{myProfile?.email || currentAdmin?.email}</span>
           </div>
 
-          <div className="profile-item">
-            <span className="profile-label">Security Role</span>
-            <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-              {myProfile?.role === 'superadmin' ? <Crown size={12} /> : null}
-              {myProfile?.role || currentAdmin?.role}
-            </span>
+          <div className="profile-field">
+            <span className="field-label">Security Role</span>
+            <div>
+              <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
+                {myProfile?.role === 'superadmin' ? <Crown size={12} /> : null}
+                {myProfile?.role || currentAdmin?.role || 'admin'}
+              </span>
+            </div>
           </div>
 
-          <div className="profile-item">
-            <span className="profile-label">Admin ID Reference</span>
-            <div className="id-copy-row">
-              <span className="profile-val code-font">{myProfile?._id || currentAdmin?._id}</span>
+          <div className="profile-field">
+            <span className="field-label">Admin ID Reference</span>
+            <div className="field-copy-row">
+              <span className="field-value code-font">{myProfile?._id || currentAdmin?._id}</span>
               <button 
                 onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)} 
-                className="btn-copy-mini"
+                className="copy-btn"
                 title="Copy Admin ID"
               >
                 {copiedId ? <Check size={12} className="text-success" /> : <Copy size={12} />}
@@ -431,143 +434,139 @@ export const AdminManagement = () => {
 
       {/* Add Admin Modal (POST /api/admin/addadmin) */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><UserPlus size={19} /> Add New Administrator</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>POST /api/admin/addadmin</code>
-            </p>
-
-            <form onSubmit={handleAddAdminSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <div className="input-wrapper">
-                  <User className="input-icon" size={16} />
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Swasthik Lead"
-                    value={newAdmin.name}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <div className="input-wrapper">
-                  <Mail className="input-icon" size={16} />
-                  <input
-                    type="email"
-                    className="form-input"
-                    placeholder="e.g. swasthik@semaphore.com"
-                    value={newAdmin.email}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Password</label>
-                <div className="input-wrapper">
-                  <Key className="input-icon" size={16} />
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="Set secure password"
-                    value={newAdmin.password}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Assigned Role</label>
-                <div className="fixed-role-badge">
-                  <ShieldCheck size={16} className="text-cyan" />
-                  <span>Standard Administrator (<code>admin</code>)</span>
-                </div>
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
-                  Superadmins can provision Standard Admin accounts only. Superadmin accounts cannot be created from this panel.
-                </small>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Creating...' : 'Create Admin Account'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="540px">
+          <div className="modal-header">
+            <h3><UserPlus size={19} /> Add New Administrator</h3>
+            <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>POST /api/admin/addadmin</code>
+          </p>
+
+          <form onSubmit={handleAddAdminSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <div className="input-wrapper">
+                <User className="input-icon" size={16} />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Swasthik Lead"
+                  value={newAdmin.name}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <div className="input-wrapper">
+                <Mail className="input-icon" size={16} />
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="e.g. swasthik@semaphore.com"
+                  value={newAdmin.email}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="input-wrapper">
+                <Key className="input-icon" size={16} />
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="Set secure password"
+                  value={newAdmin.password}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Assigned Role</label>
+              <div className="fixed-role-badge">
+                <ShieldCheck size={16} className="text-cyan" />
+                <span>Standard Administrator (<code>admin</code>)</span>
+              </div>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
+                Superadmins can provision Standard Admin accounts only. Superadmin accounts cannot be created from this panel.
+              </small>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Creating...' : 'Create Admin Account'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Change Role Modal (PUT /api/admin/makeadmin) */}
       {showRoleModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Key size={19} /> Modify Admin Role</h3>
-              <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>PUT /api/admin/makeadmin</code>
-            </p>
-
-            <form onSubmit={handleMakeAdminSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Target Admin Email</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={roleForm.email}
-                  onChange={(e) => setRoleForm({ ...roleForm, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Target Admin ID</label>
-                <input
-                  type="text"
-                  className="form-input code-font"
-                  value={roleForm.adminId}
-                  onChange={(e) => setRoleForm({ ...roleForm, adminId: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">New Assigned Role</label>
-                <select
-                  className="form-select"
-                  value={roleForm.role}
-                  onChange={(e) => setRoleForm({ ...roleForm, role: e.target.value })}
-                >
-                  <option value="superadmin">superadmin (Full Privileges)</option>
-                  <option value="admin">admin (Standard Moderator)</option>
-                </select>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowRoleModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-warning" disabled={actionLoading}>
-                  {actionLoading ? 'Updating Role...' : 'Save Role Change'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} maxWidth="520px">
+          <div className="modal-header">
+            <h3><Key size={19} /> Modify Admin Role</h3>
+            <button className="modal-close" onClick={() => setShowRoleModal(false)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>PUT /api/admin/makeadmin</code>
+          </p>
+
+          <form onSubmit={handleMakeAdminSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Target Admin Email</label>
+              <input
+                type="text"
+                className="form-input"
+                value={roleForm.email}
+                onChange={(e) => setRoleForm({ ...roleForm, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Target Admin ID</label>
+              <input
+                type="text"
+                className="form-input code-font"
+                value={roleForm.adminId}
+                onChange={(e) => setRoleForm({ ...roleForm, adminId: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">New Assigned Role</label>
+              <select
+                className="form-select"
+                value={roleForm.role}
+                onChange={(e) => setRoleForm({ ...roleForm, role: e.target.value })}
+              >
+                <option value="superadmin">superadmin (Full Privileges)</option>
+                <option value="admin">admin (Standard Moderator)</option>
+              </select>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRoleModal(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-warning" disabled={actionLoading}>
+                {actionLoading ? 'Updating Role...' : 'Save Role Change'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );
