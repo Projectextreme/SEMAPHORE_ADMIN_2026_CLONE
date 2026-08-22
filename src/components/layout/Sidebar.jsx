@@ -1,3 +1,4 @@
+import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ShieldCheck, 
@@ -15,42 +16,35 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
 
-export const Sidebar = ({ activeTab, setActiveTab, isMobileNavOpen, onCloseMobileNav }) => {
+export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
   const { isSuperAdmin } = useAuth();
 
   const navSections = [
     {
       title: 'OVERVIEW',
       items: [
-        { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard }
+        { id: 'dashboard', path: '/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard }
       ]
     },
     {
       title: 'EVENT OPERATIONS',
       items: [
-        { id: 'colleges', label: 'College Directory', icon: Building2 },
-        { id: 'events', label: 'Events & Rules', icon: Calendar, badge: 'Active' },
-        { id: 'registrations', label: 'Team Registrations', icon: FileSpreadsheet },
-        { id: 'payments', label: 'Payment Approvals', icon: CreditCard, count: 2 },
-        { id: 'coordinators', label: 'Event Coordinators', icon: UserCheck },
-        { id: 'slots', label: 'Slots & Schedules', icon: Clock }
+        { id: 'colleges', path: '/colleges', label: 'College Directory', icon: Building2 },
+        { id: 'events', path: '/events', label: 'Events & Rules', icon: Calendar, badge: 'Active' },
+        { id: 'registrations', path: '/registrations', label: 'Team Registrations', icon: FileSpreadsheet },
+        { id: 'payments', path: '/payments', label: 'Payment Approvals', icon: CreditCard, count: 2 },
+        { id: 'coordinators', path: '/coordinators', label: 'Event Coordinators', icon: UserCheck },
+        { id: 'slots', path: '/slots', label: 'Slots & Schedules', icon: Clock }
       ]
     },
     {
       title: 'SECURITY & USERS',
       items: [
-        { id: 'users', label: 'User Directory', icon: Users },
-        ...(isSuperAdmin ? [{ id: 'admins', label: 'Admin Management', icon: ShieldCheck, badge: 'Super' }] : [])
+        { id: 'users', path: '/users', label: 'User Directory', icon: Users },
+        ...(isSuperAdmin ? [{ id: 'admins', path: '/admins', label: 'Admin Management', icon: ShieldCheck, badge: 'Super' }] : [])
       ]
     }
   ];
-
-  const handleItemClick = (tabId) => {
-    setActiveTab(tabId);
-    if (onCloseMobileNav) {
-      onCloseMobileNav();
-    }
-  };
 
   return (
     <>
@@ -81,18 +75,18 @@ export const Sidebar = ({ activeTab, setActiveTab, isMobileNavOpen, onCloseMobil
               <div className="sidebar-items-list">
                 {section.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = activeTab === item.id;
                   return (
-                    <button
+                    <NavLink
                       key={item.id}
-                      onClick={() => handleItemClick(item.id)}
-                      className={`nav-item ${isActive ? 'nav-active' : ''}`}
+                      to={item.path}
+                      onClick={onCloseMobileNav}
+                      className={({ isActive }) => `nav-item ${isActive ? 'nav-active' : ''}`}
                     >
                       <Icon size={17} className="nav-icon" />
                       <span className="nav-label">{item.label}</span>
                       {item.badge && <span className="nav-badge">{item.badge}</span>}
                       {item.count && <span className="nav-count">{item.count}</span>}
-                    </button>
+                    </NavLink>
                   );
                 })}
               </div>

@@ -70,10 +70,6 @@ export const EventManagement = () => {
   // Delete Confirmation Modal State
   const [deletingEvent, setDeletingEvent] = useState(null);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
   const fetchEvents = async () => {
     setLoading(true);
     try {
@@ -86,6 +82,10 @@ export const EventManagement = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const toggleEventStatus = async (evt) => {
     const updatedStatus = evt.status === 'Active' ? 'Draft' : 'Active';

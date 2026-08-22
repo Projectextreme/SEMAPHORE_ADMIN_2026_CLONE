@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
@@ -17,53 +18,9 @@ import { SlotManagement } from './components/slots/SlotManagement';
 import { CollegeManagement } from './components/colleges/CollegeManagement';
 import './App.css';
 
-function AdminPortalContent() {
-  const { isAuthenticated, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+function AdminLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-
-  if (loading) {
-    return (
-      <div className="full-screen-loader">
-        <div className="spinner"></div>
-        <span>Verifying Semaphore 2026 Admin Authorization...</span>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <LoginView />;
-  }
-
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setIsMobileNavOpen(false);
-  };
-
-  const renderActiveView = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <DashboardOverview setActiveTab={handleTabChange} />;
-      case 'colleges':
-        return <CollegeManagement />;
-      case 'admins':
-        return <AdminManagement />;
-      case 'users':
-        return <UserManagement />;
-      case 'payments':
-        return <PaymentApprovals />;
-      case 'registrations':
-        return <RegistrationList />;
-      case 'events':
-        return <EventManagement />;
-      case 'coordinators':
-        return <CoordinatorManagement />;
-      case 'slots':
-        return <SlotManagement />;
-      default:
-        return <DashboardOverview setActiveTab={handleTabChange} />;
-    }
-  };
+  const location = useLocation();
 
   return (
     <div className="admin-app-layout">
@@ -77,14 +34,12 @@ function AdminPortalContent() {
       />
       <div className="admin-body">
         <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={handleTabChange}
           isMobileNavOpen={isMobileNavOpen}
           onCloseMobileNav={() => setIsMobileNavOpen(false)}
         />
         <main className="admin-main-content">
-          <div key={activeTab} className="view-transition-container">
-            {renderActiveView()}
+          <div key={location.pathname} className="view-transition-container">
+            <Outlet />
           </div>
         </main>
       </div>
@@ -92,16 +47,109 @@ function AdminPortalContent() {
   );
 }
 
-export default function App() {
-  return (
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <AdminPortalContent />
-          <ToastContainer />
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  );
+function ProtectedRoute() {
+  const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return (
+      <div className="full-screen-loader">
+        <div className="spinner"></div>
+        <span>Verifying Semaphore 2026 Admin Authorization...</span>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <AdminLayout />;
 }
 
+function SuperAdminRoute({ children }) {
+  const { isSuperAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="full-screen-loader">
+        <div className="spinner"></div>
+        <span>Verifying Semaphore 2026 Admin Authorization...</span>
+      </div>
+    );
+  }
+
+  if (!isSuperAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+function PublicAuthRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="full-screen-loader">
+        <div className="spinner"></div>
+        <span>Verifying Semaphore 2026 Admin Authorization...</span>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <Routes>
+              {/* Public Auth Route */}
+              <Route
+                path="/login"
+                element={
+                  <PublicAuthRoute>
+                    <LoginView />
+                  </PublicAuthRoute>
+                }
+              />
+
+              {/* Protected App Routes inside AdminLayout */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<DashboardOverview />} />
+                <Route path="/colleges" element={<CollegeManagement />} />
+                <Route path="/events" element={<EventManagement />} />
+                <Route path="/registrations" element={<RegistrationList />} />
+                <Route path="/payments" element={<PaymentApprovals />} />
+                <Route path="/coordinators" element={<CoordinatorManagement />} />
+                <Route path="/slots" element={<SlotManagement />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route
+                  path="/admins"
+                  element={
+                    <SuperAdminRoute>
+                      <AdminManagement />
+                    </SuperAdminRoute>
+                  }
+                />
+              </Route>
+
+              {/* Fallback Wildcard */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+            <ToastContainer />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </BrowserRouter>
+  );
+}

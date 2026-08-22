@@ -11,16 +11,15 @@ import {
   Mail, 
   Tag, 
   CheckCircle2, 
-  AlertCircle,
-  Building2,
-  Calendar,
+  Calendar, 
   X,
-  Check
+  RefreshCw
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
 export const CoordinatorManagement = () => {
   const { showSuccess, showError } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [coordinators, setCoordinators] = useState([
     {
       id: 'COORD-01',
@@ -162,14 +161,6 @@ export const CoordinatorManagement = () => {
         </div>
       </div>
 
-      {/* Toast Alert */}
-      {toastMsg && (
-        <div className="alert alert-success">
-          <CheckCircle2 size={16} />
-          <span>{toastMsg}</span>
-        </div>
-      )}
-
       {/* Search Toolbar */}
       <div className="card toolbar-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -268,7 +259,7 @@ export const CoordinatorManagement = () => {
                 <span className="coord-id-tag code-font">{coord.id}</span>
                 <div className="coord-actions">
                   <button
-                    onClick={() => handleOpenEdit(coord)}
+                    onClick={() => setEditingCoord({ ...coord })}
                     className="btn-icon btn-edit"
                     title="Edit Coordinator Details"
                   >

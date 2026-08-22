@@ -1,13 +1,20 @@
 import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette, Menu, X } from 'lucide-react';
 import './Header.css';
 
 export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
+  const navigate = useNavigate();
   const { admin, logout, isSuperAdmin } = useAuth();
   const { theme, toggleTheme, colorPreset, changeColorPreset } = useTheme();
   const [showColorPicker, setShowColorPicker] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const presets = [
     { id: 'indigo', name: 'Indigo Cobalt', color: '#6366f1' },
@@ -29,7 +36,7 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
           {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
 
-        <div className="header-brand">
+        <Link to="/dashboard" className="header-brand" style={{ textDecoration: 'none' }}>
           <div className="header-logo">
             <ShieldCheck size={20} className="brand-icon" />
             <span className="logo-beacon"></span>
@@ -41,7 +48,7 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
             </div>
             <span className="brand-tag">ADMIN CONTROL SUITE</span>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="header-center-info">
@@ -128,7 +135,7 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
         </div>
 
         {/* Logout Button */}
-        <button onClick={logout} className="btn-logout" title="Sign Out">
+        <button onClick={handleLogout} className="btn-logout" title="Sign Out">
           <LogOut size={16} />
           <span className="logout-text">Logout</span>
         </button>

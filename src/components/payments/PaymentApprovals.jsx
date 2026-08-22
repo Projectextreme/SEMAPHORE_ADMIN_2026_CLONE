@@ -126,8 +126,7 @@ export const PaymentApprovals = () => {
             setIsRefreshing(true);
             setTimeout(() => {
               setIsRefreshing(false);
-              setToastMessage('Payment queue refreshed from live transaction logs.');
-              setTimeout(() => setToastMessage(null), 3000);
+              showSuccess('Payment queue refreshed from live transaction logs.');
             }, 600);
           }} 
           className="btn btn-secondary"

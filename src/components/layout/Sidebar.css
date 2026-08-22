@@ -120,6 +120,7 @@
   width: 100%;
   text-align: left;
   font-family: var(--font-sans);
+  text-decoration: none;
 }
 
 .nav-item:hover {

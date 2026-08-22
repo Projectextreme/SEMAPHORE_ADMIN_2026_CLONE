@@ -401,7 +401,7 @@ export const RegistrationList = () => {
                           {/* Quick Approval Check */}
                           {!isApproved && (
                             <button
-                              onClick={() => handleQuickApprove(reg)}
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
                               className="btn-icon btn-approve"
                               title="Quick Approve Registration"
                             >

@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { ShieldCheck, Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import './LoginView.css';
 
 export const LoginView = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +27,11 @@ export const LoginView = () => {
     setLoading(true);
     try {
       const res = await login(email, password);
-      setSuccessMsg(`Welcome back, ${res.name}!`);
+      setSuccessMsg(`Welcome back, ${res.name}! Redirecting...`);
+      const targetPath = location.state?.from?.pathname || '/dashboard';
+      setTimeout(() => {
+        navigate(targetPath, { replace: true });
+      }, 400);
     } catch (err) {
       setErrorMessage(err.message || 'Invalid email or password');
     } finally {

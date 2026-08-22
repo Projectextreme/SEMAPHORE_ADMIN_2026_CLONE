@@ -666,20 +666,26 @@ code, pre, .code-font {
 
 /* Global Modal Styles */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   background: var(--modal-overlay-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 99999 !important;
+  padding: 1.5rem 1rem !important;
   animation: fadeIn 0.2s ease-out;
+  overflow-y: auto !important;
+  box-sizing: border-box;
 }
 
 .modal-content {
@@ -689,12 +695,15 @@ code, pre, .code-font {
   width: 100%;
   max-width: min(calc(100vw - 1.5rem), 560px);
   padding: 1.65rem;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
   animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   max-height: 88vh;
   max-height: 88dvh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  margin: auto !important;
+  position: relative;
+  z-index: 100000;
 }
 
 .modal-header {
