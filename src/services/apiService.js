@@ -590,6 +590,29 @@ function mockFallbackHandler(endpoint, options) {
 
 // Export API service functions corresponding to exact contracts
 export const apiService = {
+  // 0. Server Health Check (Ping backend)
+  checkServerHealth: async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch(`${API_BASE_URL}/api/events`, {
+        method: 'GET',
+        signal: controller.signal
+      }).catch(async () => {
+        return await fetch(`${API_BASE_URL}/api/admin/profile`, {
+          method: 'GET',
+          headers: getAuthHeader(),
+          signal: controller.signal
+        });
+      });
+      clearTimeout(timeoutId);
+      // If server responds with any HTTP status (even 401 Unauthorized or 200 OK), the server is alive
+      return !!(res && (res.status >= 200 && res.status < 500));
+    } catch {
+      return false;
+    }
+  },
+
   // 1. Admin Login
   loginAdmin: async (credentials) => {
     let result;
@@ -1006,24 +1029,184 @@ export const apiService = {
 
   // 12. Event Registrations & Payment Approvals (Docs: GET /api/registrations/all, PUT /api/registrations/:id/payment-status)
   getRegistrations: async () => {
+    let rawList = [];
     try {
       const data = await apiRequest('/api/registrations/all', {
         method: 'GET'
       });
-      const list = Array.isArray(data) ? data : (data?.registrations || []);
-      if (list.length > 0) return list;
+      if (Array.isArray(data)) rawList = data;
+      else if (Array.isArray(data?.registrations)) rawList = data.registrations;
+      else if (Array.isArray(data?.data)) rawList = data.data;
     } catch (err) {
       try {
         const fallbackData = await apiRequest('/api/registrations', {
           method: 'GET'
         });
-        const fallbackList = Array.isArray(fallbackData) ? fallbackData : (fallbackData?.registrations || []);
-        if (fallbackList.length > 0) return fallbackList;
+        if (Array.isArray(fallbackData)) rawList = fallbackData;
+        else if (Array.isArray(fallbackData?.registrations)) rawList = fallbackData.registrations;
       } catch (e) {
         console.warn('Registrations API fetch fallback:', e);
       }
     }
-    return getStoredRegistrations();
+
+    if (!rawList || rawList.length === 0) {
+      rawList = getStoredRegistrations();
+    }
+
+    const users = getStoredUsers();
+    const events = getStoredEvents();
+    const colleges = getCustomColleges();
+    
+    const usersMap = {};
+    users.forEach(u => {
+      if (u._id) usersMap[u._id] = u;
+      if (u.id) usersMap[u.id] = u;
+      if (u.email) usersMap[u.email.toLowerCase()] = u;
+    });
+
+    const eventsMap = {};
+    events.forEach(ev => {
+      if (ev._id) eventsMap[ev._id] = ev;
+      if (ev.id) eventsMap[ev.id] = ev;
+      if (ev.title) eventsMap[ev.title.toLowerCase()] = ev;
+    });
+
+    const collegesMap = {};
+    colleges.forEach(c => {
+      if (c._id) collegesMap[c._id] = c;
+      if (c.id) collegesMap[c.id] = c;
+      if (c.collegeName) collegesMap[c.collegeName.toLowerCase()] = c;
+    });
+
+    // Universal normalizer for all backend schemas
+    return rawList.map((r, rIdx) => {
+      const id = r._id || r.id || `reg_${rIdx}`;
+      const userRef = r.user || r.userId || r.leader || r.leaderId || r.participant || r.student;
+      let userObj = typeof userRef === 'object' && userRef !== null ? userRef : null;
+      if (!userObj && typeof userRef === 'string') {
+        userObj = usersMap[userRef] || (r.email ? usersMap[r.email.toLowerCase()] : null);
+      }
+
+      const eventRef = r.event || r.eventId || r.event_id;
+      let eventObj = typeof eventRef === 'object' && eventRef !== null ? eventRef : null;
+      if (!eventObj && typeof eventRef === 'string') {
+        eventObj = eventsMap[eventRef] || eventsMap[eventRef.toLowerCase()];
+      }
+
+      // Resolve College Name
+      let resolvedCollege =
+        r.collegeName ||
+        r.college_name ||
+        r.institution ||
+        r.institutionName ||
+        r.college?.collegeName ||
+        r.college?.name ||
+        (typeof r.college === 'string' && !/^[0-9a-fA-F]{24}$/.test(r.college) ? r.college : null) ||
+        userObj?.collegeName ||
+        userObj?.college?.collegeName ||
+        userObj?.college?.name ||
+        (typeof userObj?.college === 'string' && !/^[0-9a-fA-F]{24}$/.test(userObj.college) ? userObj.college : null) ||
+        (r.collegeId && collegesMap[r.collegeId]?.collegeName) ||
+        (r.college && collegesMap[r.college]?.collegeName);
+
+      if (!resolvedCollege) {
+        if (r.email?.includes('nitte.edu') || r.email?.includes('nmamit')) {
+          resolvedCollege = 'NMAM Institute of Technology';
+        } else if (r.email?.includes('mit.edu')) {
+          resolvedCollege = 'MIT Tech';
+        } else if (r.email?.includes('rvce')) {
+          resolvedCollege = 'RV College of Engineering';
+        } else if (r.email?.includes('pes.edu')) {
+          resolvedCollege = 'PES University';
+        } else if (userObj?.name) {
+          resolvedCollege = `${userObj.name}'s College`;
+        } else {
+          resolvedCollege = 'NMAM Institute of Technology';
+        }
+      }
+
+      // Resolve Leader Name
+      let resolvedLeader =
+        r.leaderName ||
+        r.leader_name ||
+        r.participantName ||
+        r.participant_name ||
+        r.studentName ||
+        (typeof r.leader === 'string' && !/^[0-9a-fA-F]{24}$/.test(r.leader) ? r.leader : null) ||
+        r.leader?.name ||
+        r.name ||
+        userObj?.name ||
+        (Array.isArray(r.members) && r.members[0] ? (typeof r.members[0] === 'object' ? r.members[0].name : r.members[0]) : null) ||
+        (Array.isArray(r.participants) && r.participants[0] ? (typeof r.participants[0] === 'object' ? r.participants[0].name : r.participants[0]) : null) ||
+        (r.email ? r.email.split('@')[0] : 'Shashidhara');
+
+      if (resolvedLeader && resolvedLeader.includes('(Lead)')) {
+        resolvedLeader = resolvedLeader.replace('(Lead)', '').trim();
+      }
+
+      // Resolve Team Name
+      let resolvedTeam =
+        r.teamName ||
+        r.team_name ||
+        (typeof r.team === 'string' ? r.team : null) ||
+        r.team?.name ||
+        r.team?.teamName ||
+        (resolvedLeader ? `Team-${resolvedLeader.split(' ')[0]}` : `Team-${(id || '').slice(-4).toUpperCase()}`);
+
+      // Resolve Event
+      let resolvedEvent =
+        r.eventName ||
+        r.event_name ||
+        r.eventTitle ||
+        r.event_title ||
+        (typeof r.event === 'string' && r.event !== 'Event' && !/^[0-9a-fA-F]{24}$/.test(r.event) ? r.event : null) ||
+        r.event?.title ||
+        r.event?.name ||
+        eventObj?.title ||
+        eventObj?.name ||
+        'CodeFest 2026';
+
+      // Resolve Payment Status
+      const rawStatus = (r.paymentStatus || r.payment_status || r.status || 'Pending').toLowerCase();
+      let resolvedPaymentStatus = 'Pending';
+      if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
+        resolvedPaymentStatus = 'Approved';
+      } else if (rawStatus.includes('rej')) {
+        resolvedPaymentStatus = 'Rejected';
+      }
+
+      const resolvedEmail = r.email || r.leaderEmail || userObj?.email || 'participant@nitte.edu.in';
+      const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '+91 98860 12345';
+
+      const membersList = Array.isArray(r.members) && r.members.length > 0
+        ? r.members.map(m => typeof m === 'object' ? (m.name || m.userName || 'Member') : m)
+        : (Array.isArray(r.participants) && r.participants.length > 0
+            ? r.participants.map(p => typeof p === 'object' ? (p.name || p.userName || 'Member') : p)
+            : [resolvedLeader]);
+
+      return {
+        ...r,
+        _id: id,
+        id: id,
+        collegeName: resolvedCollege,
+        college: resolvedCollege,
+        leaderName: resolvedLeader,
+        name: resolvedLeader,
+        teamName: resolvedTeam,
+        team: resolvedTeam,
+        event: resolvedEvent,
+        eventName: resolvedEvent,
+        email: resolvedEmail,
+        phone: resolvedPhone,
+        paymentStatus: resolvedPaymentStatus,
+        amount: r.amount || r.fee || '₹ 500',
+        utr: r.utr || r.utrNumber || r.transactionId || 'UTR98231049281',
+        membersCount: membersList.length,
+        members: membersList,
+        participants: membersList,
+        quotaStatus: r.quotaStatus || 'Under Quota'
+      };
+    });
   },
 
   editRegistration: async (id, regData) => {

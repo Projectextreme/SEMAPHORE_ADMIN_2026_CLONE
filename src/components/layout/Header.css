@@ -139,15 +139,54 @@
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-muted);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.api-status-badge:hover {
+  background: var(--nav-hover-bg);
+  border-color: var(--border-strong);
+}
+
+.api-status-badge.status-online {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.08);
+  color: #10b981;
+}
+
+.api-status-badge.status-offline {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+}
+
+.api-status-badge.status-checking {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
 }
 
 .pulse-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--success);
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  box-shadow: 0 0 6px var(--success);
   animation: pulseGlow 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+.pulse-dot.dot-online {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.pulse-dot.dot-offline {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+}
+
+.pulse-dot.dot-checking {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
 }
 
 @keyframes pulseGlow {

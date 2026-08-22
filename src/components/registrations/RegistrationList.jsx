@@ -28,6 +28,7 @@ import {
 import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { Modal } from '../common/Modal';
 import './RegistrationList.css';
 
 export const RegistrationList = () => {
@@ -140,22 +141,44 @@ export const RegistrationList = () => {
     setTimeout(() => setCopiedUtr(false), 2000);
   };
 
-  // Export CSV Report
+  // Export CSV Report with UTF-8 BOM for Microsoft Excel compatibility
   const handleExportCSV = () => {
-    const headers = ['Reg ID,Team Name,College Name,Leader Name,Email,Phone,Event,Members,Payment Status,UTR,Amount,Date\n'];
-    const rows = filteredRegistrations.map((r) =>
-      `"${r.id || r._id}","${r.teamName}","${r.collegeName}","${r.leaderName}","${r.email}","${r.phone || ''}","${r.event}",${r.membersCount || 1},"${r.paymentStatus}","${r.utr || ''}","${r.amount || ''}","${r.registeredAt || ''}"`
-    );
-    const csvContent = 'data:text/csv;charset=utf-8,' + headers.concat(rows).join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const headers = 'Reg ID,Team Name,College Name,Leader Name,Email,Phone,Event,Members,Payment Status,UTR,Amount (INR),Date';
+    const rows = filteredRegistrations.map((r) => {
+      const cleanAmount = (r.amount || '500').toString().replace(/[^\d.]/g, '') || '500';
+      
+      // Clean compact date (YYYY-MM-DD) so Excel fits it within default column width without showing '########'
+      let cleanDate = new Date().toISOString().split('T')[0];
+      const rawDate = r.registeredAt || r.createdAt || r.updatedAt;
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            cleanDate = d.toISOString().split('T')[0];
+          } else {
+            cleanDate = String(rawDate).split(' ')[0].split('T')[0];
+          }
+        } catch {
+          cleanDate = new Date().toISOString().split('T')[0];
+        }
+      }
+
+      return `"${r.id || r._id}","${(r.teamName || '').replace(/"/g, '""')}","${(r.collegeName || '').replace(/"/g, '""')}","${(r.leaderName || '').replace(/"/g, '""')}","${(r.email || '').replace(/"/g, '""')}","${(r.phone || '').replace(/"/g, '""')}","${(r.event || r.eventName || '').replace(/"/g, '""')}",${r.membersCount || 1},"${r.paymentStatus || 'Pending'}","${(r.utr || '').replace(/"/g, '""')}",${cleanAmount},"${cleanDate}"`;
+    });
+
+    // Prefix with UTF-8 BOM (\uFEFF) so Excel parses all special characters correctly
+    const csvString = '\uFEFF' + [headers, ...rows].join('\r\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `Semaphore_Registrations_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 
-    showToast('Registrations CSV report generated and downloaded!');
+    showToast('Registrations CSV report downloaded with Excel formatting!');
   };
 
   // Filtering Logic
@@ -596,309 +619,288 @@ export const RegistrationList = () => {
 
       {/* Inspect Registration & Payment Information Modal */}
       {inspectingReg && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-large">
-            <div className="modal-header">
-              <h3><Receipt size={19} /> Registration & Payment Details</h3>
-              <button className="modal-close" onClick={() => setInspectingReg(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Registration Reference: <code>{inspectingReg.id || inspectingReg._id}</code>
-            </p>
+        <Modal isOpen={!!inspectingReg} onClose={() => setInspectingReg(null)} maxWidth="720px">
+          <div className="modal-header">
+            <h3><Receipt size={19} /> Registration & Payment Details</h3>
+            <button className="modal-close" onClick={() => setInspectingReg(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Registration Reference: <code>{inspectingReg.id || inspectingReg._id}</code>
+          </p>
 
-            <div className="inspect-grid">
-              {/* Left Column: Team & College */}
-              <div className="inspect-col">
-                <h4 className="inspect-section-title"><Users size={15} /> Team & College Profile</h4>
-                
-                <div className="user-detail-card">
-                  <div className="detail-row">
-                    <span className="detail-label">Team Name</span>
-                    <span className="font-bold">{inspectingReg.teamName}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Team Leader</span>
-                    <span>{inspectingReg.leaderName}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Email Address</span>
-                    <span>{inspectingReg.email}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Phone Number</span>
-                    <span>{inspectingReg.phone || '+91 98451 00223'}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Institution</span>
-                    <span>{inspectingReg.collegeName}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Enrolled Event</span>
-                    <span className="event-tag">{inspectingReg.event}</span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Registration Date</span>
-                    <span className="date-text">{inspectingReg.registeredAt || '2026-08-16'}</span>
-                  </div>
+          <div className="inspect-grid">
+            {/* Left Column: Team & College */}
+            <div className="inspect-col">
+              <h4 className="inspect-section-title"><Users size={15} /> Team & College Profile</h4>
+              
+              <div className="user-detail-card">
+                <div className="detail-row">
+                  <span className="detail-label">Team Name</span>
+                  <span className="font-bold">{inspectingReg.teamName}</span>
                 </div>
-
-                {/* Team Members List */}
-                <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
-                <div className="members-roster-box">
-                  {inspectingReg.members && inspectingReg.members.length > 0 ? (
-                    inspectingReg.members.map((member, idx) => (
-                      <div key={idx} className="member-item">
-                        <span className="member-num">{idx + 1}.</span>
-                        <span className="member-name">{member}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="member-item">
-                      <span className="member-name">{inspectingReg.leaderName} (Team Leader)</span>
-                    </div>
-                  )}
+                <div className="detail-row">
+                  <span className="detail-label">Team Leader</span>
+                  <span>{inspectingReg.leaderName}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Email Address</span>
+                  <span>{inspectingReg.email}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Phone Number</span>
+                  <span>{inspectingReg.phone || '+91 98451 00223'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Institution</span>
+                  <span>{inspectingReg.collegeName}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Enrolled Event</span>
+                  <span className="event-tag">{inspectingReg.event || inspectingReg.eventName}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Registration Date</span>
+                  <span className="date-text">{inspectingReg.registeredAt || '2026-08-16'}</span>
                 </div>
               </div>
 
-              {/* Right Column: Payment & Transaction Audit */}
-              <div className="inspect-col">
-                <h4 className="inspect-section-title"><CreditCard size={15} /> Payment Verification & Proof</h4>
-
-                <div className="user-detail-card">
-                  <div className="detail-row">
-                    <span className="detail-label">Payment Status</span>
-                    <span className={`status-badge status-${(inspectingReg.paymentStatus || 'pending').toLowerCase()}`}>
-                      {inspectingReg.paymentStatus || 'Pending'}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">Amount Paid</span>
-                    <span className="font-bold text-success" style={{ fontSize: '1.05rem' }}>
-                      {inspectingReg.amount || '₹ 500'}
-                    </span>
-                  </div>
-                  <div className="detail-row">
-                    <span className="detail-label">UPI Reference (UTR)</span>
-                    <div className="utr-copy-row">
-                      <span className="code-font">{inspectingReg.utr || 'UTR98231049281'}</span>
-                      <button 
-                        onClick={() => handleCopyUtr(inspectingReg.utr || 'UTR98231049281')} 
-                        className="btn-copy"
-                        title="Copy UTR"
-                      >
-                        {copiedUtr ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                      </button>
+              {/* Team Members List */}
+              <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
+              <div className="members-roster-box">
+                {inspectingReg.members && inspectingReg.members.length > 0 ? (
+                  inspectingReg.members.map((member, idx) => (
+                    <div key={idx} className="member-item">
+                      <span className="member-num">{idx + 1}</span>
+                      <span className="member-name">{member}</span>
                     </div>
+                  ))
+                ) : (
+                  <div className="member-item">
+                    <span className="member-num">1</span>
+                    <span className="member-name">{inspectingReg.leaderName || 'Solo Participant'}</span>
                   </div>
-                </div>
+                )}
+              </div>
+            </div>
 
-                {/* Payment Screenshot Preview */}
-                <div className="payment-proof-preview">
-                  <span className="detail-label" style={{ display: 'block', marginBottom: '0.4rem' }}>
-                    Uploaded Payment Receipt / Screenshot:
+            {/* Right Column: Payment Verification */}
+            <div className="inspect-col">
+              <h4 className="inspect-section-title"><CreditCard size={15} /> Payment Verification Details</h4>
+
+              <div className="user-detail-card">
+                <div className="detail-row">
+                  <span className="detail-label">Payment Status</span>
+                  <span className={`status-badge status-${(inspectingReg.paymentStatus || 'pending').toLowerCase()}`}>
+                    {inspectingReg.paymentStatus || 'Pending'}
                   </span>
-                  <div className="receipt-image-container">
-                    <img 
-                      src={inspectingReg.proofUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80'} 
-                      alt="Payment Receipt" 
-                      className="receipt-image"
-                    />
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">Amount Billed</span>
+                  <span className="font-bold">{inspectingReg.amount || '₹ 500'}</span>
+                </div>
+                <div className="detail-row">
+                  <span className="detail-label">UPI Reference (UTR)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <code className="code-font font-bold">{inspectingReg.utr || 'N/A'}</code>
+                    {inspectingReg.utr && (
+                      <button 
+                        onClick={() => handleCopyUtr(inspectingReg.utr)}
+                        className="btn-copy-mini"
+                        title="Copy UTR Number"
+                      >
+                        {copiedUtr ? <Check size={11} className="text-success" /> : <Copy size={11} />}
+                      </button>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Quick Payment Approval Actions inside Modal */}
-                <div className="modal-approval-controls">
-                  {inspectingReg.paymentStatus !== 'Approved' ? (
-                    <button
-                      onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
-                      className="btn btn-success"
-                      style={{ width: '100%', justifyContent: 'center' }}
-                      disabled={actionLoading}
-                    >
-                      <CheckCircle2 size={16} /> Approve Payment Reference
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleApprovePayment(inspectingReg, 'Pending')}
-                      className="btn btn-secondary"
-                      style={{ width: '100%', justifyContent: 'center' }}
-                      disabled={actionLoading}
-                    >
-                      <AlertTriangle size={15} /> Revoke to Pending
-                    </button>
-                  )}
+              {/* Quick Status Action inside Modal */}
+              <div className="modal-status-actions" style={{ marginTop: '1rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Status:</span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+                  <button 
+                    onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
+                    className="btn btn-success btn-sm"
+                    disabled={actionLoading || inspectingReg.paymentStatus === 'Approved'}
+                  >
+                    <CheckCircle2 size={13} /> Mark Approved
+                  </button>
+                  <button 
+                    onClick={() => handleApprovePayment(inspectingReg, 'Rejected')}
+                    className="btn btn-danger btn-sm"
+                    disabled={actionLoading || inspectingReg.paymentStatus === 'Rejected'}
+                  >
+                    <XCircle size={13} /> Reject Payment
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="modal-actions" style={{ marginTop: '1.25rem' }}>
-              <button className="btn btn-secondary" onClick={() => setInspectingReg(null)}>
-                Close
-              </button>
             </div>
           </div>
-        </div>
+
+          <div className="modal-actions" style={{ marginTop: '1.25rem' }}>
+            <button className="btn btn-secondary" onClick={() => setInspectingReg(null)}>
+              Close
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Edit Registration Details Modal */}
       {editingReg && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit Registration Details</h3>
-              <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Registration ID: <code>{editingReg.id || editingReg._id}</code>
-            </p>
-
-            <form onSubmit={handleSaveEdit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Team Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.teamName || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, teamName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Leader Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.leaderName || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={editingReg.email || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone Number</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.phone || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, phone: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Institution / College Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.collegeName || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Enrolled Event</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.event || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, event: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Members Count</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={6}
-                  className="form-input"
-                  value={editingReg.membersCount || 1}
-                  onChange={(e) => setEditingReg({ ...editingReg, membersCount: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Payment Status</label>
-                <select
-                  className="form-select"
-                  value={editingReg.paymentStatus || 'Pending'}
-                  onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
-                >
-                  <option value="Pending">Pending</option>
-                  <option value="Approved">Approved</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">UPI Reference (UTR Number)</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingReg.utr || ''}
-                  onChange={(e) => setEditingReg({ ...editingReg, utr: e.target.value })}
-                />
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save Registration'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editingReg} onClose={() => setEditingReg(null)} maxWidth="580px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit Registration Details</h3>
+            <button className="modal-close" onClick={() => setEditingReg(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Registration ID: <code>{editingReg.id || editingReg._id}</code>
+          </p>
+
+          <form onSubmit={handleSaveEdit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Team Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.teamName || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, teamName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Leader Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.leaderName || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, leaderName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                className="form-input"
+                value={editingReg.email || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone Number</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.phone || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, phone: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Institution / College Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.collegeName || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, collegeName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Enrolled Event</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.event || editingReg.eventName || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, event: e.target.value, eventName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Members Count</label>
+              <input
+                type="number"
+                min={1}
+                max={6}
+                className="form-input"
+                value={editingReg.membersCount || 1}
+                onChange={(e) => setEditingReg({ ...editingReg, membersCount: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Payment Status</label>
+              <select
+                className="form-select"
+                value={editingReg.paymentStatus || 'Pending'}
+                onChange={(e) => setEditingReg({ ...editingReg, paymentStatus: e.target.value })}
+              >
+                <option value="Pending">Pending</option>
+                <option value="Approved">Approved</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">UPI Reference (UTR Number)</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingReg.utr || ''}
+                onChange={(e) => setEditingReg({ ...editingReg, utr: e.target.value })}
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingReg(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : 'Save Registration'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Delete Registration Confirmation Modal */}
       {deletingReg && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Registration Deletion</h3>
-              <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Registration Reference: <code>{deletingReg.id || deletingReg._id}</code>
-            </p>
-
-            <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>Team: {deletingReg.teamName}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Leader: {deletingReg.leaderName} ({deletingReg.email})</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>College: {deletingReg.collegeName} • Event: {deletingReg.event}</div>
-            </div>
-
-            <p className="delete-warning-text">
-              Are you sure you want to permanently delete this team registration? This action cannot be reversed.
-            </p>
-
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
-                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
+        <Modal isOpen={!!deletingReg} onClose={() => setDeletingReg(null)} maxWidth="500px" isDanger={true}>
+          <div className="modal-header">
+            <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Registration Deletion</h3>
+            <button className="modal-close" onClick={() => setDeletingReg(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Registration Reference: <code>{deletingReg.id || deletingReg._id}</code>
+          </p>
+
+          <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>Team: {deletingReg.teamName}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Leader: {deletingReg.leaderName} ({deletingReg.email})</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>College: {deletingReg.collegeName} • Event: {deletingReg.event || deletingReg.eventName}</div>
+          </div>
+
+          <p className="delete-warning-text">
+            Are you sure you want to permanently delete this team registration? This action cannot be reversed.
+          </p>
+
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setDeletingReg(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
+              {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { apiService } from '../../services/apiService';
 import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette, Menu, X } from 'lucide-react';
 import './Header.css';
 
@@ -10,6 +11,22 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
   const { admin, logout, isSuperAdmin } = useAuth();
   const { theme, toggleTheme, colorPreset, changeColorPreset } = useTheme();
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [serverStatus, setServerStatus] = useState('checking'); // 'online' | 'offline' | 'checking'
+
+  const pingServer = async () => {
+    try {
+      const isAlive = await apiService.checkServerHealth();
+      setServerStatus(isAlive ? 'online' : 'offline');
+    } catch {
+      setServerStatus('offline');
+    }
+  };
+
+  useEffect(() => {
+    pingServer();
+    const interval = setInterval(pingServer, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -52,9 +69,18 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
       </div>
 
       <div className="header-center-info">
-        <div className="api-status-badge">
-          <span className="pulse-dot"></span>
-          <span className="status-text">REST Engine Live</span>
+        <div 
+          className={`api-status-badge status-${serverStatus}`}
+          title={serverStatus === 'online' ? 'Live REST Backend Connected (https://13.201.89.79)' : (serverStatus === 'offline' ? 'Live Backend Unreachable (Local Fallback Active)' : 'Verifying Backend Server...')}
+          onClick={pingServer}
+          style={{ cursor: 'pointer' }}
+        >
+          <span className={`pulse-dot dot-${serverStatus}`}></span>
+          <span className="status-text">
+            {serverStatus === 'online' && 'REST Engine Live'}
+            {serverStatus === 'offline' && 'Backend Offline'}
+            {serverStatus === 'checking' && 'Checking Server...'}
+          </span>
         </div>
       </div>
 
