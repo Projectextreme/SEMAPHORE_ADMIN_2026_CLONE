@@ -19,7 +19,8 @@ import {
   User,
   ShieldCheck,
   ArrowUpRight,
-  Clock
+  Clock,
+  Tag
 } from 'lucide-react';
 import { PaymentDetailsModal } from './PaymentDetailsModal';
 import './PaymentApprovals.css';
@@ -128,33 +129,34 @@ export const PaymentApprovals = () => {
   };
 
   const handleCopyUtr = (utr) => {
-    if (!utr) return;
+    if (!utr || utr === 'N/A') return;
     navigator.clipboard.writeText(utr);
     showToast(`UTR '${utr}' copied to clipboard`);
   };
 
-  const eventsList = ['All', ...new Set(payments.map(p => p.event))];
+  const eventsList = ['All', ...new Set(payments.map(p => p.event).filter(Boolean))];
 
   const filteredPayments = payments.filter((p) => {
-    const matchesFilter = activeFilter === 'All' || p.status === activeFilter;
+    const matchesFilter = activeFilter === 'All' || (p.status || '').toLowerCase() === activeFilter.toLowerCase();
     const matchesEvent = selectedEvent === 'All' || p.event === selectedEvent;
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      p.utr.toLowerCase().includes(term) ||
-      p.teamName.toLowerCase().includes(term) ||
-      p.collegeName.toLowerCase().includes(term) ||
-      p.userName.toLowerCase().includes(term) ||
-      p.event.toLowerCase().includes(term);
+      (p.utr || '').toLowerCase().includes(term) ||
+      (p.teamName || '').toLowerCase().includes(term) ||
+      (p.collegeName || '').toLowerCase().includes(term) ||
+      (p.userName || '').toLowerCase().includes(term) ||
+      (p.event || '').toLowerCase().includes(term) ||
+      (p.userEmail || '').toLowerCase().includes(term);
     return matchesFilter && matchesEvent && matchesSearch;
   });
 
-  const pendingCount = payments.filter((p) => p.status === 'Pending').length;
-  const approvedCount = payments.filter((p) => p.status === 'Approved').length;
-  const rejectedCount = payments.filter((p) => p.status === 'Rejected').length;
+  const pendingCount = payments.filter((p) => p.rawStatus === 'pending').length;
+  const approvedCount = payments.filter((p) => p.rawStatus === 'approved').length;
+  const rejectedCount = payments.filter((p) => p.rawStatus === 'rejected').length;
 
   const totalVerifiedVolume = payments
-    .filter((p) => p.status === 'Approved')
-    .reduce((sum, p) => sum + (p.amountNum || 500), 0);
+    .filter((p) => p.rawStatus === 'approved')
+    .reduce((sum, p) => sum + (p.amountNum || 0), 0);
 
   return (
     <div className="payments-container">
@@ -214,7 +216,7 @@ export const PaymentApprovals = () => {
             ].map((tab) => (
               <button
                 key={tab.label}
-                className={`tab-btn ${activeFilter === tab.label ? 'tab-active' : ''}`}
+                className={`tab-btn ${activeFilter.toLowerCase() === tab.label.toLowerCase() ? 'tab-active' : ''}`}
                 onClick={() => setActiveFilter(tab.label)}
               >
                 <span>{tab.label}</span>
@@ -223,8 +225,8 @@ export const PaymentApprovals = () => {
             ))}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
-            <div className="filter-dropdown-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <div className="filter-controls-right">
+            <div className="filter-dropdown-wrapper">
               <Calendar size={14} style={{ color: 'var(--text-dim)' }} />
               <select
                 className="form-select select-compact"
@@ -244,7 +246,7 @@ export const PaymentApprovals = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Search by UTR, Student, Team or College..."
+                placeholder="Search UTR, Student, Team..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -264,7 +266,7 @@ export const PaymentApprovals = () => {
           </div>
         </div>
 
-        {/* Payments Cards Grid (Identical Design as Dashboard with User Avatar & Card Clickability) */}
+        {/* Payments Cards Grid */}
         <div className="payment-cards-grid">
           {filteredPayments.length === 0 ? (
             <EmptyState
@@ -293,165 +295,187 @@ export const PaymentApprovals = () => {
                   key={paymentId} 
                   className={`payment-card status-border-${rawStatus} clickable-card`}
                   onClick={(e) => {
-                    if (!e.target.closest('button') && !e.target.closest('.payment-img-thumbnail-wrap')) {
+                    if (!e.target.closest('button') && !e.target.closest('.payment-thumbnail-box')) {
                       handleViewPaymentDetails(paymentId);
                     }
                   }}
-                  title="Click card to view complete payment details"
                 >
-                  {/* Card Top Banner: Amount & Status Badge */}
+                  {/* Card Header: User Avatar, Team Name & Status Badge */}
                   <div className="payment-card-header">
-                    <div className="payment-amount-tag">
-                      <Receipt size={16} className="text-cyan" />
-                      <span className="payment-amount-val">{p.amount}</span>
+                    <div className="payment-user-info-cluster">
+                      <div 
+                        className="payment-avatar-wrap"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (p.rawItem?.user?._id) {
+                            navigate(`/user/${p.rawItem.user._id}`);
+                          }
+                        }}
+                        title={`View Profile: ${p.userName}`}
+                      >
+                        {userAvatar ? (
+                          <img src={userAvatar} alt={p.userName} className="payment-avatar-img" />
+                        ) : (
+                          <div className="payment-avatar-placeholder">
+                            <span>{(p.userName || 'U').charAt(0).toUpperCase()}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="payment-title-group">
+                        <h4 className="payment-team-name" title={p.teamName || 'Solo Participant'}>
+                          {p.teamName || 'Solo Participant'}
+                        </h4>
+                        <div 
+                          className="payment-user-sub clickable-user-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (p.rawItem?.user?._id) {
+                              navigate(`/user/${p.rawItem.user._id}`);
+                            }
+                          }}
+                          title="View User Profile"
+                        >
+                          <User size={12} className="text-muted" />
+                          <span className="user-name-text">{p.userName}</span>
+                        </div>
+                      </div>
                     </div>
+
                     <span className={`payment-status-badge status-${rawStatus}`}>
                       {rawStatus === 'approved' && <CheckCircle2 size={12} />}
                       {rawStatus === 'rejected' && <XCircle size={12} />}
                       {rawStatus === 'pending' && <Clock size={12} />}
-                      {rawStatus.toUpperCase()}
+                      {p.status}
                     </span>
                   </div>
 
-                  {/* Card Body: Image Screenshot & Details */}
-                  <div className="payment-card-body">
-                    {/* Thumbnail Screenshot */}
-                    {proofImg ? (
-                      <div 
-                        className="payment-img-thumbnail-wrap" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage({ url: proofImg, utr: p.utr });
-                        }}
-                        title="Click to expand payment proof screenshot"
-                      >
-                        <img src={proofImg} alt="Payment Receipt" className="payment-img-thumbnail" />
-                        <div className="payment-img-hover-overlay">
-                          <Eye size={16} />
-                          <span>Expand</span>
+                  {/* Card Main Body: Structured Column + Screenshot Preview */}
+                  <div className="payment-card-main-content">
+                    {/* Left: Meta details */}
+                    <div className="payment-details-column">
+                      {p.collegeName && (
+                        <div className="payment-meta-item" title={p.collegeName}>
+                          <Building2 size={13} className="meta-icon" />
+                          <span className="meta-val college-text">{p.collegeName}</span>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="payment-img-placeholder">
-                        <Receipt size={24} />
-                        <span>No Proof Image</span>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Meta Details */}
-                    <div className="payment-card-meta">
-                      {/* UTR Reference Code */}
-                      <div className="payment-meta-item utr-box">
-                        <span className="meta-label">UTR Ref:</span>
-                        <code className="utr-code">{p.utr || 'N/A'}</code>
-                        {p.utr && (
-                          <button
+                      <div className="payment-meta-item utr-item">
+                        <span className="meta-label">UTR:</span>
+                        <code className="utr-code" title={p.utr}>{p.utr || 'N/A'}</code>
+                        {p.utr && p.utr !== 'N/A' && (
+                          <button 
                             type="button"
-                            className="btn-icon-subtle"
+                            className="btn-copy-mini"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCopyUtr(p.utr);
                             }}
-                            title="Copy UTR to Clipboard"
+                            title="Copy UTR Reference"
                           >
-                            <Copy size={13} />
+                            <Copy size={11} />
                           </button>
                         )}
                       </div>
 
-                      {/* User Avatar & Details */}
-                      <div className="payment-user-info">
-                        <div 
-                          className="user-name-line clickable-user-link"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const targetUserId = p.user?._id || p.user?.id || p.userId || p._id || '66c89f1e1a2b3c4d5e6f7a80';
-                            navigate(`/user/${targetUserId}`);
-                          }}
-                          title={`Click to view full profile of ${p.userName}`}
-                        >
-                          {userAvatar ? (
-                            <img src={userAvatar} alt={p.userName} className="user-avatar-sm" />
-                          ) : (
-                            <div className="user-avatar-placeholder">
-                              <User size={12} />
-                            </div>
-                          )}
-                          <span className="user-name">{p.userName}</span>
-                        </div>
-                        {p.collegeName ? (
-                          <div className="college-name-line" title={p.collegeName}>
-                            <Building2 size={12} className="text-muted" />
-                            <span className="college-name">{p.collegeName}</span>
-                          </div>
-                        ) : null}
-                        {p.teamName ? (
-                          <div className="team-name-line">
-                            <span className="team-badge">Team: {p.teamName}</span>
-                          </div>
-                        ) : null}
+                      <div className="payment-meta-item">
+                        <span className="meta-label">Amount:</span>
+                        <strong className="amount-val-text">{p.amount}</strong>
                       </div>
 
-                      {/* Audit Info: Approved By / Rejected By & Message */}
-                      {(rawStatus === 'approved' || rawStatus === 'rejected' || p.approvedBy) && (
-                        <div className={`payment-audit-box audit-${rawStatus}`}>
-                          <div className="audit-header">
-                            <ShieldCheck size={13} />
-                            <span className="audit-admin-name">
-                              {rawStatus === 'approved' ? 'Approved by' : 'Rejected by'}:{' '}
-                              <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Admin'}</strong>
-                            </span>
-                          </div>
-                          {p.message && (
-                            <p className="audit-reason-text">"{p.message}"</p>
-                          )}
+                      <div className="payment-meta-item">
+                        <Tag size={12} className="meta-icon text-cyan" />
+                        <span className="event-tag-pill" title={p.event}>
+                          {p.event}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right: Receipt thumbnail */}
+                    {proofImg ? (
+                      <div 
+                        className="payment-thumbnail-box"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImage({ url: proofImg, utr: p.utr });
+                        }}
+                        title="Click to zoom receipt image"
+                      >
+                        <img src={proofImg} alt="Receipt Proof" className="payment-thumb-img" />
+                        <div className="thumb-hover-hint">
+                          <Eye size={14} />
+                          <span>Zoom</span>
                         </div>
+                      </div>
+                    ) : (
+                      <div className="payment-thumb-placeholder">
+                        <Receipt size={20} />
+                        <span>No Proof</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Footer: Timestamp & Action Buttons */}
+                  <div className="payment-card-footer">
+                    <div className="payment-timestamp" title={p.date}>
+                      <Clock size={12} className="time-icon" />
+                      <span className="time-text">{p.date}</span>
+                    </div>
+
+                    <div className="payment-actions-group">
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewPaymentDetails(paymentId);
+                        }}
+                        title="View Full Payment Breakdown"
+                      >
+                        <Eye size={12} /> Details
+                      </button>
+
+                      {rawStatus !== 'approved' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenActionModal(p, 'approved');
+                          }}
+                          title="Approve Payment"
+                        >
+                          <CheckCircle2 size={12} /> Approve
+                        </button>
+                      )}
+
+                      {rawStatus !== 'rejected' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenActionModal(p, 'rejected');
+                          }}
+                          title="Reject Payment"
+                        >
+                          <XCircle size={12} /> Reject
+                        </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Card Actions Bar */}
-                  <div className="payment-card-footer">
-                    <div className="action-btn-group">
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'approved' ? 'btn-success-active' : 'btn-outline-success'}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenActionModal(p, 'approved');
-                        }}
-                        disabled={actionLoading}
-                        title="Approve this payment"
-                      >
-                        <CheckCircle2 size={13} /> Approve
-                      </button>
-
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'rejected' ? 'btn-danger-active' : 'btn-outline-danger'}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenActionModal(p, 'rejected');
-                        }}
-                        disabled={actionLoading}
-                        title="Reject this payment"
-                      >
-                        <XCircle size={13} /> Reject
-                      </button>
+                  {/* Verification Note Banner */}
+                  {p.approvedBy && (
+                    <div className={`payment-audit-banner audit-${rawStatus}`}>
+                      <ShieldCheck size={13} className="audit-icon" />
+                      <span className="audit-text">
+                        Verified by <strong>{p.approvedBy.name || 'Admin'}</strong>
+                        {p.message ? `: ${p.message}` : ''}
+                      </span>
                     </div>
-
-                    <button
-                      type="button"
-                      className="btn btn-xs btn-outline-secondary btn-details"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewPaymentDetails(paymentId);
-                      }}
-                      title="View complete payment, team, user & event details"
-                    >
-                      <Eye size={13} /> View Details
-                    </button>
-                  </div>
+                  )}
                 </div>
               );
             })
@@ -459,7 +483,7 @@ export const PaymentApprovals = () => {
         </div>
       </div>
 
-      {/* 1. Action Modal (Approve / Reject) */}
+      {/* 1. Payment Approve / Reject Action Modal */}
       {actionModal && (
         <Modal
           isOpen={!!actionModal}
@@ -471,11 +495,11 @@ export const PaymentApprovals = () => {
             <h3>
               {actionModal.status === 'approved' ? (
                 <span className="text-success flex-align">
-                  <CheckCircle2 size={20} /> Approve Payment Status
+                  <CheckCircle2 size={20} /> Approve Payment
                 </span>
               ) : (
                 <span className="text-danger flex-align">
-                  <XCircle size={20} /> Reject Payment Status
+                  <XCircle size={20} /> Reject Payment
                 </span>
               )}
             </h3>
@@ -483,24 +507,20 @@ export const PaymentApprovals = () => {
           </div>
 
           <p className="modal-subtitle">
-            UTR Reference: <code>{actionModal.payment?.utr}</code> — Student: <strong>{actionModal.payment?.userName}</strong>
+            Payment UTR Reference: <code>{actionModal.payment?.utr}</code> — Amount: <strong>{actionModal.payment?.amount}</strong>
           </p>
 
           <form onSubmit={handleSubmitPaymentStatus} className="modal-form">
             <div className="form-group">
               <label className="form-label">
-                {actionModal.status === 'approved' ? 'Approval Verification Note' : 'Rejection Reason'} *
+                {actionModal.status === 'approved' ? 'Approval Message / Verification Note' : 'Rejection Reason'} *
               </label>
               <textarea
                 className="form-input"
                 rows={3}
                 value={actionModal.message}
                 onChange={(e) => setActionModal({ ...actionModal, message: e.target.value })}
-                placeholder={
-                  actionModal.status === 'approved'
-                    ? 'e.g. Payment verified via UTR bank statement'
-                    : 'e.g. Invalid UTR transaction reference code'
-                }
+                placeholder={actionModal.status === 'approved' ? 'e.g. Payment verified via UTR bank statement' : 'e.g. Invalid UTR transaction reference'}
                 required
               />
             </div>

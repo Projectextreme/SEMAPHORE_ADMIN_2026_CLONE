@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { apiService } from '../../services/apiService';
 import { 
   UserCheck, 
   Plus, 
@@ -10,53 +11,24 @@ import {
   Phone, 
   Mail, 
   Tag, 
-  CheckCircle2, 
   Calendar, 
   X,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
 export const CoordinatorManagement = () => {
   const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [coordinators, setCoordinators] = useState([
-    {
-      id: 'COORD-01',
-      name: 'Rohan Shenoy',
-      email: 'rohan.shenoy@semaphore.com',
-      phone: '+91 98860 12345',
-      assignedEvent: 'CodeFest 2026',
-      department: 'MCA 2nd Year',
-      status: 'Active'
-    },
-    {
-      id: 'COORD-02',
-      name: 'Ananya Prabhu',
-      email: 'ananya.p@semaphore.com',
-      phone: '+91 98450 67890',
-      assignedEvent: 'RoboWars Arena',
-      department: 'MCA 2nd Year',
-      status: 'Active'
-    },
-    {
-      id: 'COORD-03',
-      name: 'Karthik Rao',
-      email: 'karthik.rao@semaphore.com',
-      phone: '+91 97410 54321',
-      assignedEvent: 'DesignX UI/UX',
-      department: 'MCA 1st Year',
-      status: 'Active'
-    },
-    {
-      id: 'COORD-04',
-      name: 'Hanson DSouza',
-      email: 'hanson@semaphore.com',
-      phone: '+91 94488 12399',
-      assignedEvent: 'WebCrafters',
-      department: 'MCA 2nd Year',
-      status: 'Active'
-    }
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [coordinators, setCoordinators] = useState([]);
+  const [availableEvents, setAvailableEvents] = useState([
+    'CodeFest 2026',
+    'RoboWars Arena',
+    'WebCrafters',
+    'Gaming & Esports'
   ]);
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +41,7 @@ export const CoordinatorManagement = () => {
     email: '',
     phone: '',
     assignedEvent: 'CodeFest 2026',
-    department: 'MCA',
+    department: 'MCA 2nd Year',
     status: 'Active'
   });
 
@@ -81,46 +53,120 @@ export const CoordinatorManagement = () => {
     }
   };
 
-  const handleAddSubmit = (e) => {
+  const loadData = async (showToastNotice = false) => {
+    setIsRefreshing(true);
+    try {
+      const [coordsData, eventsData] = await Promise.all([
+        apiService.getCoordinators(),
+        apiService.getAllEvents()
+      ]);
+
+      const coordsList = Array.isArray(coordsData) ? coordsData : [];
+      setCoordinators(coordsList);
+
+      const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.events || []);
+      const eventTitles = eventsList.map(e => e.title || e.name).filter(Boolean);
+      
+      const allEventsSet = new Set([
+        'CodeFest 2026',
+        'RoboWars Arena',
+        'WebCrafters',
+        'Gaming & Esports',
+        ...eventTitles,
+        ...coordsList.map(c => c.assignedEvent).filter(Boolean)
+      ]);
+      const mergedEvents = Array.from(allEventsSet);
+      setAvailableEvents(mergedEvents);
+
+      if (mergedEvents.length > 0 && !mergedEvents.includes(newCoord.assignedEvent)) {
+        setNewCoord(prev => ({ ...prev, assignedEvent: mergedEvents[0] }));
+      }
+
+      if (showToastNotice) {
+        showSuccess('Event coordinators roster reloaded successfully.');
+      }
+    } catch (err) {
+      console.error('Failed to load coordinators:', err);
+      showError('Failed to load coordinators.');
+    } finally {
+      setIsRefreshing(false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    const created = {
-      id: `COORD-0${coordinators.length + 1}`,
-      ...newCoord
-    };
-    setCoordinators([...coordinators, created]);
-    setShowAddModal(false);
-    setNewCoord({
-      name: '',
-      email: '',
-      phone: '',
-      assignedEvent: 'CodeFest 2026',
-      department: 'MCA',
-      status: 'Active'
-    });
-    showToast(`Coordinator "${created.name}" assigned successfully!`);
+    setActionLoading(true);
+    try {
+      const created = await apiService.addCoordinator(newCoord);
+      setCoordinators(prev => [...prev, created]);
+      setShowAddModal(false);
+      setNewCoord({
+        name: '',
+        email: '',
+        phone: '',
+        assignedEvent: availableEvents[0] || 'CodeFest 2026',
+        department: 'MCA 2nd Year',
+        status: 'Active'
+      });
+      showToast(`Coordinator "${created.name}" created and assigned successfully!`);
+      loadData();
+    } catch (err) {
+      console.error('Error creating coordinator:', err);
+      showToast('Failed to save coordinator.', true);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
-    setCoordinators(coordinators.map(c => c.id === editingCoord.id ? editingCoord : c));
-    setEditingCoord(null);
-    showToast('Coordinator details updated!');
+    if (!editingCoord) return;
+    setActionLoading(true);
+    try {
+      const updated = await apiService.updateCoordinator(editingCoord.id || editingCoord._id, editingCoord);
+      setCoordinators(prev => prev.map(c => (c.id === editingCoord.id || c._id === editingCoord._id) ? updated : c));
+      setEditingCoord(null);
+      showToast(`Coordinator "${updated.name || editingCoord.name}" details updated!`);
+      loadData();
+    } catch (err) {
+      console.error('Error updating coordinator:', err);
+      showToast('Failed to update coordinator.', true);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleDelete = (id) => {
-    setCoordinators(coordinators.filter(c => c.id !== id));
-    showToast('Coordinator removed.');
+  const handleDelete = async (id) => {
+    const target = coordinators.find(c => c.id === id || c._id === id);
+    setActionLoading(true);
+    try {
+      await apiService.deleteCoordinator(id);
+      setCoordinators(prev => prev.filter(c => c.id !== id && c._id !== id));
+      showToast(`Coordinator "${target?.name || 'Entry'}" removed from roster.`);
+      loadData();
+    } catch (err) {
+      console.error('Error deleting coordinator:', err);
+      showToast('Failed to delete coordinator.', true);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const eventsList = ['All', ...new Set(coordinators.map(c => c.assignedEvent))];
+  const filterEventsList = ['All', ...new Set(coordinators.map(c => c.assignedEvent).filter(Boolean))];
 
   const filtered = coordinators.filter(c => {
     const matchesEvent = selectedEvent === 'All' || c.assignedEvent === selectedEvent;
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      c.name.toLowerCase().includes(term) ||
-      c.assignedEvent.toLowerCase().includes(term) ||
-      c.email.toLowerCase().includes(term);
+      (c.name || '').toLowerCase().includes(term) ||
+      (c.assignedEvent || '').toLowerCase().includes(term) ||
+      (c.email || '').toLowerCase().includes(term) ||
+      (c.department || '').toLowerCase().includes(term);
     return matchesEvent && matchesSearch;
   });
 
@@ -139,15 +185,9 @@ export const CoordinatorManagement = () => {
 
         <div className="title-actions-group">
           <button 
-            onClick={() => {
-              setIsRefreshing(true);
-              setTimeout(() => {
-                setIsRefreshing(false);
-                showSuccess('Coordinators roster reloaded from department directory.');
-              }, 500);
-            }} 
+            onClick={() => loadData(true)} 
             className="btn btn-secondary"
-            disabled={isRefreshing}
+            disabled={isRefreshing || loading}
             title="Refresh Coordinators Roster"
             aria-label="Refresh Coordinators"
           >
@@ -193,7 +233,7 @@ export const CoordinatorManagement = () => {
                 value={selectedEvent}
                 onChange={(e) => setSelectedEvent(e.target.value)}
               >
-                {eventsList.map((evt) => (
+                {filterEventsList.map((evt) => (
                   <option key={evt} value={evt}>
                     {evt === 'All' ? 'All Assigned Events' : evt}
                   </option>
@@ -206,7 +246,12 @@ export const CoordinatorManagement = () => {
       </div>
 
       {/* Coordinators Grid */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0', alignItems: 'center', gap: '0.6rem', color: 'var(--text-muted)' }}>
+          <Loader2 size={20} className="spin-icon text-primary" />
+          <span>Loading event coordinators roster...</span>
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           type="users"
           title="No event coordinators found"
@@ -226,37 +271,37 @@ export const CoordinatorManagement = () => {
       ) : (
         <div className="coords-grid">
           {filtered.map((coord) => (
-            <div key={coord.id} className="card coord-card">
+            <div key={coord.id || coord._id} className="card coord-card">
               <div className="coord-card-header">
                 <div className="coord-avatar">
-                  {coord.name.charAt(0)}
+                  {(coord.name || 'C').charAt(0).toUpperCase()}
                 </div>
                 <div className="coord-meta">
                   <h4 className="coord-name">{coord.name}</h4>
-                  <span className="coord-dept">{coord.department}</span>
+                  <span className="coord-dept">{coord.department || 'Department Lead'}</span>
                 </div>
-                <span className={`status-pill status-${coord.status.toLowerCase()}`}>
-                  {coord.status}
+                <span className={`status-pill status-${(coord.status || 'active').toLowerCase()}`}>
+                  {coord.status || 'Active'}
                 </span>
               </div>
 
               <div className="coord-body">
                 <div className="coord-detail-row">
                   <Tag size={13} className="detail-icon" />
-                  <span className="detail-val font-bold text-primary">{coord.assignedEvent}</span>
+                  <span className="detail-val font-bold text-primary">{coord.assignedEvent || 'General Event'}</span>
                 </div>
                 <div className="coord-detail-row">
                   <Mail size={13} className="detail-icon" />
-                  <span className="detail-val">{coord.email}</span>
+                  <span className="detail-val">{coord.email || 'N/A'}</span>
                 </div>
                 <div className="coord-detail-row">
                   <Phone size={13} className="detail-icon" />
-                  <span className="detail-val">{coord.phone}</span>
+                  <span className="detail-val">{coord.phone || 'N/A'}</span>
                 </div>
               </div>
 
               <div className="coord-card-footer">
-                <span className="coord-id-tag code-font">{coord.id}</span>
+                <span className="coord-id-tag code-font">{coord.id || coord._id}</span>
                 <div className="coord-actions">
                   <button
                     onClick={() => setEditingCoord({ ...coord })}
@@ -266,7 +311,7 @@ export const CoordinatorManagement = () => {
                     <Edit2 size={13} />
                   </button>
                   <button
-                    onClick={() => handleDelete(coord.id)}
+                    onClick={() => handleDelete(coord.id || coord._id)}
                     className="btn-icon btn-delete"
                     title="Remove Coordinator"
                   >
@@ -334,10 +379,11 @@ export const CoordinatorManagement = () => {
                     value={newCoord.assignedEvent}
                     onChange={(e) => setNewCoord({ ...newCoord, assignedEvent: e.target.value })}
                   >
-                    <option value="CodeFest 2026">CodeFest 2026</option>
-                    <option value="RoboWars Arena">RoboWars Arena</option>
-                    <option value="WebCrafters">WebCrafters</option>
-                    <option value="Gaming & Esports">Gaming & Esports</option>
+                    {availableEvents.map((evt) => (
+                      <option key={evt} value={evt}>
+                        {evt}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -354,11 +400,11 @@ export const CoordinatorManagement = () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)} disabled={actionLoading}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Assign Coordinator
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Assigning...' : 'Assign Coordinator'}
                 </button>
               </div>
             </form>
@@ -418,10 +464,11 @@ export const CoordinatorManagement = () => {
                     value={editingCoord.assignedEvent}
                     onChange={(e) => setEditingCoord({ ...editingCoord, assignedEvent: e.target.value })}
                   >
-                    <option value="CodeFest 2026">CodeFest 2026</option>
-                    <option value="RoboWars Arena">RoboWars Arena</option>
-                    <option value="WebCrafters">WebCrafters</option>
-                    <option value="Gaming & Esports">Gaming & Esports</option>
+                    {availableEvents.map((evt) => (
+                      <option key={evt} value={evt}>
+                        {evt}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -430,18 +477,18 @@ export const CoordinatorManagement = () => {
                   <input
                     type="text"
                     className="form-input"
-                    value={editingCoord.department}
+                    value={editingCoord.department || ''}
                     onChange={(e) => setEditingCoord({ ...editingCoord, department: e.target.value })}
                   />
                 </div>
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingCoord(null)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingCoord(null)} disabled={actionLoading}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Save Changes
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

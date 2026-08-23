@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
+import { DEFAULT_RECEIPT_PLACEHOLDER } from '../../mock/mockDatabase';
 import {
   Users,
   CreditCard,
@@ -27,7 +28,10 @@ import {
   User,
   ShieldCheck,
   Copy,
-  Eye
+  Eye,
+  Tag,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { PaymentDetailsModal } from '../payments/PaymentDetailsModal';
 import './DashboardOverview.css';
@@ -43,6 +47,7 @@ export const DashboardOverview = () => {
   const [events, setEvents] = useState([]);
   const [payments, setPayments] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+  const [approvingRegId, setApprovingRegId] = useState(null);
 
   const [stats, setStats] = useState({
     pendingPayments: 8,
@@ -65,6 +70,7 @@ export const DashboardOverview = () => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [copiedUtr, setCopiedUtr] = useState(null);
+  const [previewProof, setPreviewProof] = useState(null);
 
   // Payment modals state
   const [paymentActionModal, setPaymentActionModal] = useState(null);
@@ -102,23 +108,24 @@ export const DashboardOverview = () => {
       const pendingRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase() === 'pending');
       const approvedRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase() === 'approved');
 
-      // Calculate numeric amounts
-      const parseAmt = (amtStr) => {
-        if (!amtStr) return 500;
-        const num = Number(String(amtStr).replace(/[^0-9]/g, ''));
-        return isNaN(num) || num === 0 ? 500 : num;
+      // Calculate numeric amounts dynamically
+      const parseAmt = (r) => {
+        if (typeof r?.amountNumber === 'number') return r.amountNumber;
+        if (!r?.amount) return 0;
+        const num = Number(String(r.amount).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? 0 : num;
       };
 
-      const calcPendingAmt = pendingRegs.reduce((sum, r) => sum + parseAmt(r.amount), 0) || 2300;
-      const calcApprovedAmt = approvedRegs.reduce((sum, r) => sum + parseAmt(r.amount), 0) || 5000;
+      const calcPendingAmt = pendingRegs.reduce((sum, r) => sum + parseAmt(r), 0);
+      const calcApprovedAmt = approvedRegs.reduce((sum, r) => sum + parseAmt(r), 0);
 
       setStats({
-        pendingPayments: pendingRegs.length > 0 ? pendingRegs.length : 8,
+        pendingPayments: pendingRegs.length,
         pendingAmount: calcPendingAmt,
-        approvedPayments: approvedRegs.length > 0 ? approvedRegs.length : 10,
+        approvedPayments: approvedRegs.length,
         approvedAmount: calcApprovedAmt,
-        totalUsers: usersList.length > 0 ? usersList.length : 20,
-        totalTeams: regsList.length > 0 ? regsList.length : 21
+        totalUsers: usersList.length,
+        totalTeams: regsList.length
       });
     } catch (_err) {
       console.warn('Dashboard stats fallback mode:', _err);
@@ -199,17 +206,19 @@ export const DashboardOverview = () => {
   // 2. Quick Verify & Approve Payment
   const handleApprovePayment = async (reg, newStatus = 'Approved') => {
     const id = reg._id || reg.id;
+    setApprovingRegId(id);
     setActionLoading(true);
     try {
-      await apiService.approveRegistrationPayment(id, newStatus);
+      await apiService.approveRegistrationPayment(id, newStatus, reg);
       setRegistrations((prev) =>
-        prev.map((r) => ((r._id || r.id) === id ? { ...r, paymentStatus: newStatus } : r))
+        prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: newStatus } : r))
       );
       showToast(`Payment for "${reg.leaderName || reg.teamName}" verified & marked as ${newStatus}!`);
-      loadData();
+      await loadData();
     } catch {
       showToast('Failed to update payment status.', true);
     } finally {
+      setApprovingRegId(null);
       setActionLoading(false);
     }
   };
@@ -526,37 +535,14 @@ export const DashboardOverview = () => {
                     </span>
                   </div>
 
-                  {/* Card Body: Image Screenshot & Details */}
+                  {/* Card Body: Details & Image Screenshot */}
                   <div className="payment-card-body">
-                    {/* Thumbnail Screenshot */}
-                    {proofImg ? (
-                      <div 
-                        className="payment-img-thumbnail-wrap" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage({ url: proofImg, utr: p.utr });
-                        }}
-                        title="Click to expand payment proof screenshot"
-                      >
-                        <img src={proofImg} alt="Payment Receipt" className="payment-img-thumbnail" />
-                        <div className="payment-img-hover-overlay">
-                          <Eye size={16} />
-                          <span>Expand</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="payment-img-placeholder">
-                        <Receipt size={24} />
-                        <span>No Proof Image</span>
-                      </div>
-                    )}
-
                     {/* Meta Details */}
                     <div className="payment-card-meta">
                       {/* UTR Reference Code */}
                       <div className="payment-meta-item utr-box">
                         <span className="meta-label">UTR Ref:</span>
-                        <code className="utr-code">{p.utr || 'N/A'}</code>
+                        <code className="utr-code" title={p.utr}>{p.utr || 'N/A'}</code>
                         {p.utr && (
                           <button
                             type="button"
@@ -604,24 +590,47 @@ export const DashboardOverview = () => {
                           </div>
                         ) : null}
                       </div>
+                    </div>
 
-                      {/* Audit Info: Approved By / Rejected By & Message */}
-                      {(rawStatus === 'approved' || rawStatus === 'rejected' || p.approvedBy) && (
-                        <div className={`payment-audit-box audit-${rawStatus}`}>
-                          <div className="audit-header">
-                            <ShieldCheck size={13} />
-                            <span className="audit-admin-name">
-                              {rawStatus === 'approved' ? 'Approved by' : 'Rejected by'}:{' '}
-                              <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Admin'}</strong>
-                            </span>
-                          </div>
-                          {p.message && (
-                            <p className="audit-reason-text">"{p.message}"</p>
-                          )}
+                    {/* Thumbnail Screenshot on Right */}
+                    {proofImg ? (
+                      <div 
+                        className="payment-img-thumbnail-wrap" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImage({ url: proofImg, utr: p.utr });
+                        }}
+                        title="Click to expand payment proof screenshot"
+                      >
+                        <img src={proofImg} alt="Payment Receipt" className="payment-img-thumbnail" />
+                        <div className="payment-img-hover-overlay">
+                          <Eye size={15} />
+                          <span>Expand</span>
                         </div>
+                      </div>
+                    ) : (
+                      <div className="payment-img-placeholder">
+                        <Receipt size={22} />
+                        <span>No Proof</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Audit Info: Approved By / Rejected By & Message (Full Width) */}
+                  {(rawStatus === 'approved' || rawStatus === 'rejected' || p.approvedBy) && (
+                    <div className={`payment-audit-box audit-${rawStatus}`}>
+                      <div className="audit-header">
+                        <ShieldCheck size={13} />
+                        <span className="audit-admin-name">
+                          {rawStatus === 'approved' ? 'Approved by' : 'Rejected by'}:{' '}
+                          <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Admin'}</strong>
+                        </span>
+                      </div>
+                      {p.message && (
+                        <p className="audit-reason-text">"{p.message}"</p>
                       )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Card Actions Bar */}
                   <div className="payment-card-footer">
@@ -732,25 +741,47 @@ export const DashboardOverview = () => {
 
                     {/* 2. Participant / Leader Name */}
                     <div className="sketch-chip chip-name" title="Leader / Participant">
-                      <strong className="chip-text">{reg.leaderName || reg.name || 'Shashidhara'}</strong>
+                      <strong className="chip-text">{reg.leaderName || reg.name || 'Participant'}</strong>
                     </div>
 
                     {/* 3. College Name */}
                     <div className="sketch-chip chip-college" title="College Name">
                       <Building2 size={13} className="chip-icon" />
-                      <span className="chip-text">{reg.collegeName || 'NMAM Institute of Tech'}</span>
+                      <span className="chip-text">{reg.collegeName || 'College Not Specified'}</span>
                     </div>
 
                     {/* 4. Team Name */}
                     <div className="sketch-chip chip-team" title="Team Name">
                       <span className="chip-label">Team:</span>
-                      <strong className="chip-text">{reg.teamName || 'Team-X'}</strong>
+                      <strong className="chip-text">{reg.teamName || (reg.id ? `Team-${reg.id.slice(-4)}` : 'Team')}</strong>
+                    </div>
+
+                    {/* 4b. Assigned Event Name */}
+                    <div className="sketch-chip chip-event" title="Assigned Event">
+                      <Tag size={12} className="chip-icon text-cyan" />
+                      <span className="chip-text">{reg.event || reg.eventName || 'General Event'}</span>
                     </div>
 
                     {/* 5. Amount */}
                     <div className="sketch-chip chip-amount" title="Registration Fee">
-                      <strong className="chip-text">{reg.amount || '₹ 500'}</strong>
+                      <strong className="chip-text">{reg.amount || '₹ 0'}</strong>
                     </div>
+
+                    {/* Receipt Proof Badge in Row */}
+                    {(reg.imageUrl || reg.proofUrl) && (
+                      <button 
+                        type="button"
+                        className="sketch-chip chip-receipt-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewProof(reg);
+                        }}
+                        title="View Cloudinary Receipt Proof"
+                      >
+                        <Eye size={12} className="text-cyan" />
+                        <span className="chip-text">View Receipt</span>
+                      </button>
+                    )}
 
                     {/* 6. Payment Status */}
                     <span className={`sketch-status-pill status-${isApproved ? 'approved' : 'pending'}`}>
@@ -764,19 +795,29 @@ export const DashboardOverview = () => {
                         <button
                           onClick={() => handleApprovePayment(reg, 'Approved')}
                           className="btn btn-sm btn-verify-approve"
-                          disabled={actionLoading}
-                          title="Verify and Approve this payment"
+                          disabled={actionLoading || approvingRegId === regId}
+                          title="Click to approve payment"
                         >
-                          <Check size={13} /> Verify and Approve
+                          {approvingRegId === regId ? (
+                            <RefreshCw size={13} className="spin-icon" />
+                          ) : (
+                            <Check size={13} />
+                          )}
+                          <span>{approvingRegId === regId ? 'Verifying...' : 'Verify and Approve'}</span>
                         </button>
                       ) : (
                         <button
                           onClick={() => handleApprovePayment(reg, 'Pending')}
-                          className="btn btn-sm btn-approved-check"
-                          disabled={actionLoading}
-                          title="Click to revert status to Pending"
+                          className="btn btn-sm btn-revert"
+                          disabled={actionLoading || approvingRegId === regId}
+                          title="Revert to pending state"
                         >
-                          <CheckCircle2 size={14} className="text-emerald" /> Approved ✓
+                          {approvingRegId === regId ? (
+                            <RefreshCw size={13} className="spin-icon" />
+                          ) : (
+                            <Clock size={13} />
+                          )}
+                          <span>{approvingRegId === regId ? 'Updating...' : 'Mark Pending'}</span>
                         </button>
                       )}
 
@@ -798,7 +839,7 @@ export const DashboardOverview = () => {
                       <div className="details-grid">
                         <div className="detail-item">
                           <span className="detail-lbl">Assigned Event:</span>
-                          <span className="detail-val font-bold text-cyan">{reg.event || 'CodeFest 2026'}</span>
+                          <span className="detail-val font-bold text-cyan">{reg.event || reg.eventName || 'General Event'}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">Contact Email:</span>
@@ -806,13 +847,13 @@ export const DashboardOverview = () => {
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">Contact Phone:</span>
-                          <span className="detail-val">{reg.phone || 'N/A'}</span>
+                          <span className="detail-val font-bold">{reg.phone || 'N/A'}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">UTR Reference:</span>
                           <span className="detail-val utr-val">
-                            <code>{reg.utr || 'UTR-NOT-ENTERED'}</code>
-                            {reg.utr && (
+                            <code className="utr-code-badge">{reg.utr || 'N/A'}</code>
+                            {reg.utr && reg.utr !== 'N/A' && (
                               <button
                                 onClick={() => handleCopyUtr(reg.utr)}
                                 className="btn-copy-sm"
@@ -823,19 +864,88 @@ export const DashboardOverview = () => {
                             )}
                           </span>
                         </div>
+                        <div className="detail-item">
+                          <span className="detail-lbl">Registration Fee:</span>
+                          <span className="detail-val font-bold text-emerald">{reg.amount || '₹ 0'}</span>
+                        </div>
+                        <div className="detail-item">
+                          <span className="detail-lbl">Date Enrolled:</span>
+                          <span className="detail-val text-muted">
+                            {reg.registeredAt ? new Date(reg.registeredAt).toLocaleString() : 'N/A'}
+                          </span>
+                        </div>
+
+                        {/* Team Roster with Full Details */}
                         <div className="detail-item span-full">
-                          <span className="detail-lbl">Team Roster ({reg.membersCount || (reg.members ? reg.members.length : 1)} Members):</span>
+                          <span className="detail-lbl">
+                            Team Roster ({reg.membersCount || (reg.participants ? reg.participants.length : 1)} Member{(reg.membersCount > 1 || (reg.participants && reg.participants.length > 1)) ? 's' : ''}):
+                          </span>
                           <div className="members-tags-list">
-                            {(reg.members && Array.isArray(reg.members) && reg.members.length > 0) ? (
-                              reg.members.map((m, mIdx) => (
-                                <span key={mIdx} className="member-badge">
-                                  {m}
-                                </span>
-                              ))
+                            {reg.participants && Array.isArray(reg.participants) && reg.participants.length > 0 ? (
+                              reg.participants.map((p, pIdx) => {
+                                const pName = (typeof p === 'object' ? (p.name || p.userName || p.fullName) : p) || reg.leaderName || 'Participant';
+                                const pPhone = (typeof p === 'object' ? p.phone : null) || (pIdx === 0 ? reg.phone : null);
+                                const pEmail = (typeof p === 'object' ? p.email : null) || (pIdx === 0 ? reg.email : null);
+                                return (
+                                  <div key={pIdx} className="participant-chip">
+                                    <strong className="participant-name">{pName}</strong>
+                                    {pPhone && <span className="participant-sub"><Phone size={10} /> {pPhone}</span>}
+                                    {pEmail && <span className="participant-sub"><Mail size={10} /> {pEmail}</span>}
+                                  </div>
+                                );
+                              })
                             ) : (
-                              <span className="member-badge">{reg.leaderName || reg.name || 'Solo Participant'}</span>
+                              <div className="participant-chip">
+                                <strong className="participant-name">{reg.leaderName || reg.name || 'Participant'}</strong>
+                                {reg.phone && <span className="participant-sub"><Phone size={10} /> {reg.phone}</span>}
+                                {reg.email && <span className="participant-sub"><Mail size={10} /> {reg.email}</span>}
+                              </div>
                             )}
                           </div>
+                        </div>
+
+                        {/* Cloudinary Payment Receipt Screenshot Preview */}
+                        <div className="detail-item span-full proof-preview-item">
+                          <span className="detail-lbl">Payment Receipt Proof (Cloudinary Attached):</span>
+                          {(reg.proofUrl || reg.imageUrl) ? (
+                            <div className="receipt-preview-box">
+                              <img
+                                src={reg.proofUrl || reg.imageUrl}
+                                alt="Payment Receipt Screenshot"
+                                className="receipt-thumb"
+                                onClick={() => setPreviewProof(reg)}
+                                title="Click to view full receipt"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = DEFAULT_RECEIPT_PLACEHOLDER;
+                                }}
+                              />
+                              <div className="receipt-meta">
+                                <span>UTR: <code>{reg.utr || 'N/A'}</code> • <strong className="text-emerald">{reg.amount}</strong></span>
+                                <div className="receipt-btn-group">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewProof(reg)}
+                                    className="btn btn-xs btn-secondary"
+                                  >
+                                    <Eye size={12} /> Inspect Receipt
+                                  </button>
+                                  <a
+                                    href={reg.proofUrl || reg.imageUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="btn btn-xs btn-outline"
+                                  >
+                                    <ArrowUpRight size={12} /> Open URL
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-dim)', fontStyle: 'italic', padding: '0.4rem 0' }}>
+                              No receipt screenshot uploaded for this registration.
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -910,29 +1020,60 @@ export const DashboardOverview = () => {
               compact={true}
             />
           ) : (
-            users.slice(0, 4).map((usr, uIdx) => {
+            users.slice(0, 6).map((usr, uIdx) => {
               const uId = usr._id || usr.id || `usr-${uIdx}`;
-              const loginText = usr.loginTime || (uIdx === 0 ? '24 mins ago' : uIdx === 1 ? '1 hour ago' : `${uIdx + 1} hours ago`);
+              const avatarUrl = usr.avatar || usr.picture || usr.photo || usr.imageUrl || usr.image;
+              const formattedCreatedTime = usr.createdAt
+                ? new Date(usr.createdAt).toLocaleString(undefined, { 
+                    month: 'short', 
+                    day: 'numeric', 
+                    year: 'numeric', 
+                    hour: 'numeric', 
+                    minute: '2-digit', 
+                    hour12: true 
+                  })
+                : (usr.loginTime || 'Recently');
 
               return (
                 <div key={uId} className="sketch-user-row">
-                  {/* Avatar */}
-                  <div className="sketch-avatar avatar-cyan">
-                    <User size={16} />
+                  {/* 1. Avatar (with real profile photo support) */}
+                  <div className="sketch-avatar avatar-cyan" style={{ overflow: 'hidden', padding: 0 }}>
+                    {avatarUrl ? (
+                      <img 
+                        src={avatarUrl} 
+                        alt={usr.name || 'User'} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          if (e.currentTarget.parentElement) {
+                            e.currentTarget.parentElement.innerHTML = `<span style="font-size: 13px; font-weight: 700; color: var(--primary);">${(usr.name || 'U').charAt(0).toUpperCase()}</span>`;
+                          }
+                        }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>
+                        {(usr.name || 'U').charAt(0).toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Name Box */}
-                  <div className="sketch-chip chip-name">
-                    <strong className="chip-text">{usr.name || 'Akash'}</strong>
+                  {/* 2. Name & Email Box */}
+                  <div className="sketch-chip chip-name" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '0.4rem 0.85rem' }}>
+                    <strong className="chip-text">{usr.name || 'Student User'}</strong>
+                    {usr.email && (
+                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Mail size={11} className="text-cyan" /> {usr.email}
+                      </span>
+                    )}
                   </div>
 
-                  {/* College Box */}
+                  {/* 3. College Box */}
                   <div className="sketch-chip chip-college">
                     <Building2 size={13} className="chip-icon" />
-                    <span className="chip-text">{usr.collegeName || (usr.college?.collegeName) || 'XY College'}</span>
+                    <span className="chip-text">{usr.collegeName || (usr.college?.collegeName) || 'College Not Specified'}</span>
                   </div>
 
-                  {/* Delete User Button */}
+                  {/* 4. Delete User Button */}
                   <button
                     onClick={() => setDeletingUser(usr)}
                     className="btn btn-sm btn-delete-user"
@@ -941,10 +1082,10 @@ export const DashboardOverview = () => {
                     <Trash2 size={13} /> Delete user
                   </button>
 
-                  {/* Right Meta: Login Time */}
-                  <div className="sketch-user-time">
-                    <Clock size={13} className="time-icon" />
-                    <span>Login time: {loginText}</span>
+                  {/* 5. Right Meta: Registered / Created Time */}
+                  <div className="sketch-user-time" title={usr.createdAt ? new Date(usr.createdAt).toISOString() : ''}>
+                    <Calendar size={13} className="time-icon text-cyan" />
+                    <span>Registered: {formattedCreatedTime}</span>
                   </div>
                 </div>
               );
@@ -1462,6 +1603,68 @@ export const DashboardOverview = () => {
             <button type="button" className="btn btn-sm btn-primary" onClick={() => setPreviewImage(null)}>
               Close
             </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 9. Preview Cloudinary Receipt Proof Modal */}
+      {previewProof && (
+        <Modal isOpen={!!previewProof} onClose={() => setPreviewProof(null)} maxWidth="640px">
+          <div className="modal-header">
+            <h3><Receipt size={19} /> Cloudinary Payment Receipt Audit</h3>
+            <button className="modal-close" onClick={() => setPreviewProof(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Payment Audit for Team <strong>{previewProof.teamName}</strong> • {previewProof.leaderName}
+          </p>
+
+          <div className="proof-audit-view">
+            <div className="proof-audit-image-wrap">
+              <img
+                src={previewProof.proofUrl || previewProof.imageUrl || DEFAULT_RECEIPT_PLACEHOLDER}
+                alt="Cloudinary Payment Receipt"
+                className="proof-audit-full-img"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_RECEIPT_PLACEHOLDER;
+                }}
+              />
+            </div>
+
+            <div className="proof-audit-meta-grid">
+              <div className="audit-meta-item">
+                <span className="audit-lbl">UTR Reference:</span>
+                <strong className="code-font font-bold text-cyan">{previewProof.utr || 'N/A'}</strong>
+              </div>
+              <div className="audit-meta-item">
+                <span className="audit-lbl">Verified Amount:</span>
+                <strong className="text-emerald">{previewProof.amount}</strong>
+              </div>
+              <div className="audit-meta-item">
+                <span className="audit-lbl">Assigned Event:</span>
+                <span>{previewProof.event || previewProof.eventName}</span>
+              </div>
+              <div className="audit-meta-item">
+                <span className="audit-lbl">Current Status:</span>
+                <span className={`status-badge status-${(previewProof.paymentStatus || 'pending').toLowerCase()}`}>
+                  {previewProof.paymentStatus || 'Pending'}
+                </span>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '1rem' }}>
+              <a
+                href={previewProof.proofUrl || previewProof.imageUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-outline"
+              >
+                <ArrowUpRight size={14} /> Open Original in Cloudinary
+              </a>
+              <button type="button" className="btn btn-secondary" onClick={() => setPreviewProof(null)}>
+                Close Preview
+              </button>
+            </div>
           </div>
         </Modal>
       )}

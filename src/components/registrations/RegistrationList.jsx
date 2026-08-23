@@ -23,12 +23,15 @@ import {
   Mail,
   X,
   CreditCard,
-  UserCheck
+  UserCheck,
+  User,
+  Tag
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
+import { DEFAULT_RECEIPT_PLACEHOLDER } from '../../mock/mockDatabase';
 import './RegistrationList.css';
 
 export const RegistrationList = () => {
@@ -78,14 +81,15 @@ export const RegistrationList = () => {
     const id = reg._id || reg.id;
     setActionLoading(true);
     try {
-      await apiService.approveRegistrationPayment(id, newStatus);
+      await apiService.approveRegistrationPayment(id, newStatus, reg);
       setRegistrations((prev) =>
-        prev.map((r) => ((r._id || r.id) === id ? { ...r, paymentStatus: newStatus } : r))
+        prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: newStatus } : r))
       );
-      if (inspectingReg && (inspectingReg._id || inspectingReg.id) === id) {
+      if (inspectingReg && (inspectingReg._id === id || inspectingReg.id === id)) {
         setInspectingReg((prev) => ({ ...prev, paymentStatus: newStatus }));
       }
       showToast(`Payment for team "${reg.teamName}" marked as ${newStatus}!`);
+      await fetchRegistrations();
     } catch (err) {
       showToast('Failed to update payment status.', true);
     } finally {
@@ -390,7 +394,10 @@ export const RegistrationList = () => {
               ) : (
                 filteredRegistrations.map((reg) => {
                   const regId = reg.id || reg._id;
-                  const isApproved = reg.paymentStatus === 'Approved';
+                  const isApproved = (reg.paymentStatus || '').toLowerCase() === 'approved';
+                  const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
+                  const eventName = reg.event || reg.eventName || 'General Event';
+                  const receiptImg = reg.imageUrl || reg.proofUrl;
 
                   return (
                     <tr key={regId}>
@@ -402,25 +409,61 @@ export const RegistrationList = () => {
                       </td>
                       <td>
                         <div className="team-leader-cell">
-                          <strong className="team-highlight">{reg.teamName}</strong>
-                          <span className="leader-name-sub">Lead: {reg.leaderName}</span>
-                          <span className="leader-email-sub">{reg.email}</span>
+                          {receiptImg ? (
+                            <div 
+                              className="table-receipt-thumb-wrap"
+                              onClick={() => setInspectingReg(reg)}
+                              title="Click to view receipt proof"
+                            >
+                              <img
+                                src={receiptImg}
+                                alt="Receipt"
+                                className="table-receipt-thumb"
+                              />
+                              <div className="table-receipt-zoom">
+                                <Eye size={11} />
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="team-leader-info">
+                            <strong className="team-highlight" title={reg.teamName || 'Solo Participant'}>
+                              {reg.teamName || 'Solo Participant'}
+                            </strong>
+                            {reg.leaderName && (
+                              <span className="leader-name-sub" title={`Leader: ${reg.leaderName}`}>
+                                <User size={11} className="sub-icon" /> {reg.leaderName}
+                              </span>
+                            )}
+                            {reg.email && (
+                              <span className="leader-email-sub" title={reg.email}>
+                                <Mail size={11} className="sub-icon" /> {reg.email}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </td>
-                      <td>{reg.collegeName || 'N/A'}</td>
                       <td>
-                        <span className="event-tag-pill">{reg.eventName || 'Event'}</span>
-                      </td>
-                      <td className="center-cell">
-                        <span className="member-count-badge">
-                          <Users size={12} /> {reg.participants ? reg.participants.length : 1}
+                        <span className="college-cell-name" title={reg.collegeName || 'N/A'}>
+                          {reg.collegeName || 'N/A'}
                         </span>
                       </td>
                       <td>
-                        <span className="quota-tag">{reg.quotaStatus || 'Under Quota'}</span>
+                        <span className="event-tag-pill" title={eventName}>
+                          {eventName}
+                        </span>
+                      </td>
+                      <td className="center-cell">
+                        <span className="member-count-badge">
+                          <Users size={12} /> {reg.participants ? reg.participants.length : (reg.membersCount || 1)}
+                        </span>
                       </td>
                       <td>
-                        <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
+                        <span className="quota-tag">
+                          {reg.quotaStatus || 'Under Quota'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge status-${rawStatus}`}>
                           {reg.paymentStatus || 'Pending'}
                         </span>
                       </td>
@@ -432,6 +475,7 @@ export const RegistrationList = () => {
                               onClick={() => handleApprovePayment(reg, 'Approved')}
                               className="btn-icon btn-approve"
                               title="Quick Approve Registration"
+                              disabled={actionLoading}
                             >
                               <Check size={14} />
                             </button>
@@ -619,7 +663,7 @@ export const RegistrationList = () => {
 
       {/* Inspect Registration & Payment Information Modal */}
       {inspectingReg && (
-        <Modal isOpen={!!inspectingReg} onClose={() => setInspectingReg(null)} maxWidth="720px">
+        <Modal isOpen={!!inspectingReg} onClose={() => setInspectingReg(null)} maxWidth="740px">
           <div className="modal-header">
             <h3><Receipt size={19} /> Registration & Payment Details</h3>
             <button className="modal-close" onClick={() => setInspectingReg(null)}>&times;</button>
@@ -640,15 +684,15 @@ export const RegistrationList = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Team Leader</span>
-                  <span>{inspectingReg.leaderName}</span>
+                  <span className="font-bold">{inspectingReg.leaderName}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Email Address</span>
-                  <span>{inspectingReg.email}</span>
+                  <span>{inspectingReg.email || 'N/A'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Phone Number</span>
-                  <span>{inspectingReg.phone || '+91 98451 00223'}</span>
+                  <span className="font-bold">{inspectingReg.phone || 'N/A'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Institution</span>
@@ -660,20 +704,35 @@ export const RegistrationList = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Registration Date</span>
-                  <span className="date-text">{inspectingReg.registeredAt || '2026-08-16'}</span>
+                  <span className="date-text">
+                    {inspectingReg.registeredAt ? new Date(inspectingReg.registeredAt).toLocaleString() : 'N/A'}
+                  </span>
                 </div>
               </div>
 
               {/* Team Members List */}
               <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
               <div className="members-roster-box">
-                {inspectingReg.members && inspectingReg.members.length > 0 ? (
-                  inspectingReg.members.map((member, idx) => (
-                    <div key={idx} className="member-item">
-                      <span className="member-num">{idx + 1}</span>
-                      <span className="member-name">{member}</span>
-                    </div>
-                  ))
+                {inspectingReg.participants && Array.isArray(inspectingReg.participants) && inspectingReg.participants.length > 0 ? (
+                  inspectingReg.participants.map((p, idx) => {
+                    const pName = typeof p === 'object' ? (p.name || p.userName || 'Member') : p;
+                    const pPhone = typeof p === 'object' ? p.phone : null;
+                    const pEmail = typeof p === 'object' ? p.email : null;
+                    return (
+                      <div key={idx} className="member-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                          <span className="member-num">{idx + 1}</span>
+                          <strong className="member-name">{pName}</strong>
+                        </div>
+                        {(pPhone || pEmail) && (
+                          <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '1.75rem' }}>
+                            {pPhone && <span><Phone size={10} style={{ verticalAlign: 'middle' }} /> {pPhone}</span>}
+                            {pEmail && <span><Mail size={10} style={{ verticalAlign: 'middle' }} /> {pEmail}</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="member-item">
                     <span className="member-num">1</span>
@@ -696,13 +755,13 @@ export const RegistrationList = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Amount Billed</span>
-                  <span className="font-bold">{inspectingReg.amount || '₹ 500'}</span>
+                  <strong className="font-bold text-success" style={{ fontSize: '1.05rem' }}>{inspectingReg.amount || '₹ 0'}</strong>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">UPI Reference (UTR)</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <code className="code-font font-bold">{inspectingReg.utr || 'N/A'}</code>
-                    {inspectingReg.utr && (
+                    <code className="code-font font-bold text-cyan">{inspectingReg.utr || 'N/A'}</code>
+                    {inspectingReg.utr && inspectingReg.utr !== 'N/A' && (
                       <button 
                         onClick={() => handleCopyUtr(inspectingReg.utr)}
                         className="btn-copy-mini"
@@ -713,7 +772,45 @@ export const RegistrationList = () => {
                     )}
                   </div>
                 </div>
+                {inspectingReg.paymentTimestamp && (
+                  <div className="detail-row">
+                    <span className="detail-label">Payment Timestamp</span>
+                    <span className="date-text">{new Date(inspectingReg.paymentTimestamp).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
+
+              {/* Cloudinary Receipt Proof Preview */}
+              {(inspectingReg.proofUrl || inspectingReg.imageUrl) && (
+                <div style={{ marginTop: '1rem' }}>
+                  <h4 className="inspect-section-title"><Receipt size={14} /> Attached Cloudinary Receipt</h4>
+                  <div className="proof-image-wrapper" style={{ marginTop: '0.35rem' }}>
+                    <img 
+                      src={inspectingReg.proofUrl || inspectingReg.imageUrl} 
+                      alt="Payment Receipt Proof" 
+                      className="receipt-proof-img"
+                      style={{ maxHeight: '200px' }}
+                      onClick={() => window.open(inspectingReg.proofUrl || inspectingReg.imageUrl, '_blank')}
+                      title="Click to view full image in new tab"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_RECEIPT_PLACEHOLDER;
+                      }}
+                    />
+                    <div className="proof-meta-strip">
+                      <span className="proof-meta-badge">Verified Receipt</span>
+                      <a 
+                        href={inspectingReg.proofUrl || inspectingReg.imageUrl} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="link-external"
+                      >
+                        Open Full Image ↗
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Quick Status Action inside Modal */}
               <div className="modal-status-actions" style={{ marginTop: '1rem' }}>

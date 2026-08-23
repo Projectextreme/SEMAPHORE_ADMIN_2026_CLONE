@@ -156,28 +156,100 @@ export const initialEvents = [
   }
 ];
 
+export const initialCoordinators = [
+  {
+    id: 'COORD-01',
+    _id: 'coord_01',
+    name: 'Rohan Shenoy',
+    email: 'rohan.shenoy@semaphore.com',
+    phone: '+91 98860 12345',
+    assignedEvent: 'CodeFest 2026',
+    department: 'MCA 2nd Year',
+    status: 'Active',
+    createdAt: '2026-08-16T10:00:00.000Z'
+  },
+  {
+    id: 'COORD-02',
+    _id: 'coord_02',
+    name: 'Ananya Prabhu',
+    email: 'ananya.p@semaphore.com',
+    phone: '+91 98450 67890',
+    assignedEvent: 'RoboWars Arena',
+    department: 'MCA 2nd Year',
+    status: 'Active',
+    createdAt: '2026-08-16T10:30:00.000Z'
+  },
+  {
+    id: 'COORD-03',
+    _id: 'coord_03',
+    name: 'Karthik Rao',
+    email: 'karthik.rao@semaphore.com',
+    phone: '+91 97410 54321',
+    assignedEvent: 'DesignX UI/UX',
+    department: 'MCA 1st Year',
+    status: 'Active',
+    createdAt: '2026-08-16T11:00:00.000Z'
+  },
+  {
+    id: 'COORD-04',
+    _id: 'coord_04',
+    name: 'Hanson DSouza',
+    email: 'hanson@semaphore.com',
+    phone: '+91 94488 12399',
+    assignedEvent: 'WebCrafters',
+    department: 'MCA 2nd Year',
+    status: 'Active',
+    createdAt: '2026-08-16T11:30:00.000Z'
+  }
+];
+
+export const DEFAULT_RECEIPT_PLACEHOLDER = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="280" viewBox="0 0 400 280"><rect width="400" height="280" rx="12" fill="%23090d16" stroke="%231e293b" stroke-width="2"/><circle cx="200" cy="70" r="28" fill="%2310b981" fill-opacity="0.15"/><path d="M190 70l6 7 14-14" stroke="%2310b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/><text x="200" y="125" font-family="system-ui,-apple-system,sans-serif" font-size="15" font-weight="700" fill="%23ffffff" text-anchor="middle">UPI Verified Payment</text><text x="200" y="148" font-family="system-ui,-apple-system,sans-serif" font-size="12" fill="%2338bdf8" text-anchor="middle">Scan %26 Pay Digital Receipt</text><rect x="40" y="175" width="320" height="42" rx="8" fill="%23131d2e" stroke="%231e293b"/><text x="60" y="201" font-family="system-ui,sans-serif" font-size="12" fill="%2394a3b8">Status:</text><text x="340" y="201" font-family="system-ui,sans-serif" font-size="12" font-weight="700" fill="%2310b981" text-anchor="end">APPROVED ✓</text><text x="200" y="250" font-family="monospace" font-size="11" fill="%2364748b" text-anchor="middle">Semaphore 2026 Payment Hub</text></svg>';
+
 export const initialRegistrations = [
   {
     id: 'REG-892101',
     _id: 'reg_892101',
+    registrationFee: 300,
     collegeName: 'NMAM Institute of Technology',
-    teamName: 'Team-X',
-    leaderName: 'Shashidhara',
-    email: 'shashidhara@nitte.edu.in',
-    phone: '+91 98860 12345',
+    teamName: 'Team-NN25MCA081',
+    leaderName: 'Nikhil P',
+    email: 'nn25mca081@nmamit.in',
+    phone: '7019480750',
     event: 'CodeFest 2026',
-    membersCount: 4,
-    members: ['Shashidhara (Lead)', 'Rohan Shenoy', 'Pranav Kumar', 'Deepa Hegde'],
-    teamsInCollege: 2,
-    paymentStatus: 'Pending',
-    utr: 'UTR98231049281',
-    amount: '₹ 500',
-    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
-    registeredAt: '2026-08-22 10:30 AM'
+    membersCount: 1,
+    members: ['Nikhil P'],
+    participants: [
+      {
+        name: 'Nikhil P',
+        email: 'nn25mca081@nmamit.in',
+        phone: '7019480750',
+        college: 'NMAM Institute of Technology',
+        _id: '6a8a7b7f21690f7526bded3a'
+      }
+    ],
+    paymentId: {
+      _id: '6a8a86b41adfa1c1017ffbdc',
+      user: '6a84988ea0d80f8d8766706e',
+      imageUrl: DEFAULT_RECEIPT_PLACEHOLDER,
+      amount: 300,
+      utr: '23456787654',
+      timestamp: '2026-08-23T05:35:48.092Z',
+      status: 'approved',
+      createdAt: '2026-08-23T05:35:48.101Z',
+      updatedAt: '2026-08-23T05:36:16.938Z'
+    },
+    teamsInCollege: 1,
+    paymentStatus: 'Approved',
+    utr: '23456787654',
+    amount: '₹ 300',
+    amountNumber: 300,
+    proofUrl: DEFAULT_RECEIPT_PLACEHOLDER,
+    registeredAt: '2026-08-23T04:47:59.273Z'
   },
   {
     id: 'REG-892102',
     _id: 'reg_892102',
+    registrationFee: 500,
     collegeName: 'MIT Tech',
     teamName: 'CyberKnights',
     leaderName: 'Jane Smith',
@@ -185,17 +257,35 @@ export const initialRegistrations = [
     phone: '+91 98451 10022',
     event: 'WebCrafters',
     membersCount: 4,
-    members: ['Jane Smith (Lead)', 'Rohan Verma', 'Kavya S', 'Aditya Nair'],
+    members: ['Jane Smith', 'Rohan Verma', 'Kavya S', 'Aditya Nair'],
+    participants: [
+      { name: 'Jane Smith', email: 'jane@mit.edu', phone: '+91 98451 10022', college: 'MIT Tech', _id: '6a8a7b7f21690f7526bded3b' },
+      { name: 'Rohan Verma', email: 'rohan@mit.edu', phone: '+91 98451 10023', college: 'MIT Tech', _id: '6a8a7b7f21690f7526bded3c' },
+      { name: 'Kavya S', email: 'kavya@mit.edu', phone: '+91 98451 10024', college: 'MIT Tech', _id: '6a8a7b7f21690f7526bded3d' },
+      { name: 'Aditya Nair', email: 'aditya@mit.edu', phone: '+91 98451 10025', college: 'MIT Tech', _id: '6a8a7b7f21690f7526bded3e' }
+    ],
+    paymentId: {
+      _id: '6a8a86b41adfa1c1017ffbdd',
+      user: '6a84988ea0d80f8d8766706f',
+      imageUrl: DEFAULT_RECEIPT_PLACEHOLDER,
+      amount: 500,
+      utr: 'UTR19284019283',
+      timestamp: '2026-08-22T11:15:00.000Z',
+      status: 'pending',
+      createdAt: '2026-08-22T11:15:00.000Z'
+    },
     teamsInCollege: 2,
     paymentStatus: 'Pending',
     utr: 'UTR19284019283',
     amount: '₹ 500',
-    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    amountNumber: 500,
+    proofUrl: DEFAULT_RECEIPT_PLACEHOLDER,
     registeredAt: '2026-08-22 11:15 AM'
   },
   {
     id: 'REG-892103',
     _id: 'reg_892103',
+    registrationFee: 500,
     collegeName: 'RV College of Engineering',
     teamName: 'MatrixRunners',
     leaderName: 'Ananya Rao',
@@ -203,17 +293,35 @@ export const initialRegistrations = [
     phone: '+91 99002 33411',
     event: 'Gaming & Esports',
     membersCount: 4,
-    members: ['Ananya Rao (Lead)', 'Varun Gowda', 'Sameer Ali', 'Neha Patil'],
+    members: ['Ananya Rao', 'Varun Gowda', 'Sameer Ali', 'Neha Patil'],
+    participants: [
+      { name: 'Ananya Rao', email: 'ananya@rvce.edu.in', phone: '+91 99002 33411', college: 'RV College of Engineering', _id: '6a8a7b7f21690f7526bded3f' },
+      { name: 'Varun Gowda', email: 'varun@rvce.edu.in', phone: '+91 99002 33412', college: 'RV College of Engineering', _id: '6a8a7b7f21690f7526bded40' },
+      { name: 'Sameer Ali', email: 'sameer@rvce.edu.in', phone: '+91 99002 33413', college: 'RV College of Engineering', _id: '6a8a7b7f21690f7526bded41' },
+      { name: 'Neha Patil', email: 'neha@rvce.edu.in', phone: '+91 99002 33414', college: 'RV College of Engineering', _id: '6a8a7b7f21690f7526bded42' }
+    ],
+    paymentId: {
+      _id: '6a8a86b41adfa1c1017ffbde',
+      user: '6a84988ea0d80f8d87667070',
+      imageUrl: DEFAULT_RECEIPT_PLACEHOLDER,
+      amount: 500,
+      utr: 'UTR81920391823',
+      timestamp: '2026-08-22T09:00:00.000Z',
+      status: 'approved',
+      createdAt: '2026-08-22T09:00:00.000Z'
+    },
     teamsInCollege: 2,
     paymentStatus: 'Approved',
     utr: 'UTR81920391823',
     amount: '₹ 500',
-    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    amountNumber: 500,
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
     registeredAt: '2026-08-22 09:00 AM'
   },
   {
     id: 'REG-892104',
     _id: 'reg_892104',
+    registrationFee: 500,
     collegeName: 'BMS College of Engineering',
     teamName: 'ByteBrigade',
     leaderName: 'Kiran Kumar',
@@ -221,17 +329,35 @@ export const initialRegistrations = [
     phone: '+91 98860 44512',
     event: 'CodeFest 2026',
     membersCount: 4,
-    members: ['Kiran Kumar (Lead)', 'Siddharth M', 'Aishwarya K', 'Tejaswini R'],
+    members: ['Kiran Kumar', 'Siddharth M', 'Aishwarya K', 'Tejaswini R'],
+    participants: [
+      { name: 'Kiran Kumar', email: 'kiran@bmsce.ac.in', phone: '+91 98860 44512', college: 'BMS College of Engineering', _id: '6a8a7b7f21690f7526bded43' },
+      { name: 'Siddharth M', email: 'siddharth@bmsce.ac.in', phone: '+91 98860 44513', college: 'BMS College of Engineering', _id: '6a8a7b7f21690f7526bded44' },
+      { name: 'Aishwarya K', email: 'aishwarya@bmsce.ac.in', phone: '+91 98860 44514', college: 'BMS College of Engineering', _id: '6a8a7b7f21690f7526bded45' },
+      { name: 'Tejaswini R', email: 'tejaswini@bmsce.ac.in', phone: '+91 98860 44515', college: 'BMS College of Engineering', _id: '6a8a7b7f21690f7526bded46' }
+    ],
+    paymentId: {
+      _id: '6a8a86b41adfa1c1017ffbdf',
+      user: '6a84988ea0d80f8d87667071',
+      imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
+      amount: 500,
+      utr: 'UTR66219044231',
+      timestamp: '2026-08-22T14:15:00.000Z',
+      status: 'approved',
+      createdAt: '2026-08-22T14:15:00.000Z'
+    },
     teamsInCollege: 1,
     paymentStatus: 'Approved',
     utr: 'UTR66219044231',
     amount: '₹ 500',
-    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    amountNumber: 500,
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
     registeredAt: '2026-08-22 02:15 PM'
   },
   {
     id: 'REG-892105',
     _id: 'reg_892105',
+    registrationFee: 300,
     collegeName: 'PES University',
     teamName: 'PES Hackers',
     leaderName: 'Tanmay Joshi',
@@ -239,12 +365,27 @@ export const initialRegistrations = [
     phone: '+91 96112 55901',
     event: 'WebCrafters',
     membersCount: 2,
-    members: ['Tanmay Joshi (Lead)', 'Harish Patel'],
+    members: ['Tanmay Joshi', 'Harish Patel'],
+    participants: [
+      { name: 'Tanmay Joshi', email: 'tanmay@pes.edu', phone: '+91 96112 55901', college: 'PES University', _id: '6a8a7b7f21690f7526bded47' },
+      { name: 'Harish Patel', email: 'harish@pes.edu', phone: '+91 96112 55902', college: 'PES University', _id: '6a8a7b7f21690f7526bded48' }
+    ],
+    paymentId: {
+      _id: '6a8a86b41adfa1c1017ffbe0',
+      user: '6a84988ea0d80f8d87667072',
+      imageUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
+      amount: 300,
+      utr: 'UTR77109283419',
+      timestamp: '2026-08-22T16:30:00.000Z',
+      status: 'approved',
+      createdAt: '2026-08-22T16:30:00.000Z'
+    },
     teamsInCollege: 2,
     paymentStatus: 'Approved',
     utr: 'UTR77109283419',
     amount: '₹ 300',
-    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+    amountNumber: 300,
+    proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
     registeredAt: '2026-08-22 04:30 PM'
   }
 ];

@@ -223,9 +223,19 @@ export const UserManagement = () => {
                           title={`View full profile of ${user.name}`}
                           style={{ cursor: 'pointer' }}
                         >
-                          <div className="user-avatar">
-                            {user.avatar ? (
-                              <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          <div className="user-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                            {(user.avatar || user.picture || user.photo) ? (
+                              <img 
+                                src={user.avatar || user.picture || user.photo} 
+                                alt={user.name || 'User'} 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.parentElement) {
+                                    e.currentTarget.parentElement.innerText = (user.name || 'U').charAt(0).toUpperCase();
+                                  }
+                                }}
+                              />
                             ) : (
                               user.name?.charAt(0).toUpperCase() || 'U'
                             )}

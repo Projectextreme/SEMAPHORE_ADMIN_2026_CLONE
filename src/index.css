@@ -827,7 +827,9 @@ code, pre, .code-font {
 }
 
 .table-responsive::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 table {

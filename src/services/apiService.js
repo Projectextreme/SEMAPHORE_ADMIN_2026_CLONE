@@ -1,10 +1,32 @@
 // Service module mapping to all Semaphore 2026 Admin API Endpoints
 
 import { API_BASE_URL, getAuthHeader } from './apiConfig';
-import { initialAdmins, initialUsers, initialEvents, initialRegistrations, initialPayments, generateMockJWT } from '../mock/mockDatabase';
+import { initialAdmins, initialUsers, initialEvents, initialRegistrations, initialPayments, initialCoordinators, generateMockJWT, DEFAULT_RECEIPT_PLACEHOLDER } from '../mock/mockDatabase';
 
 // In-memory state for mock fallback mode
 let mockAdmins = [...initialAdmins];
+
+const COORDINATORS_STORAGE_KEY = 'semaphore_coordinators_v1';
+
+const getStoredCoordinators = () => {
+  try {
+    const stored = localStorage.getItem(COORDINATORS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading stored coordinators:', e);
+  }
+  localStorage.setItem(COORDINATORS_STORAGE_KEY, JSON.stringify(initialCoordinators || []));
+  return [...(initialCoordinators || [])];
+};
+
+const saveCoordinators = (coordinators) => {
+  localStorage.setItem(COORDINATORS_STORAGE_KEY, JSON.stringify(coordinators));
+};
 
 const getStoredPayments = () => {
   try {
@@ -18,8 +40,8 @@ const getStoredPayments = () => {
   } catch (e) {
     console.warn('Error reading stored payments:', e);
   }
-  localStorage.setItem('semaphore_payments', JSON.stringify(initialPayments));
-  return [...initialPayments];
+  localStorage.setItem('semaphore_payments', JSON.stringify(initialPayments || []));
+  return [...(initialPayments || [])];
 };
 
 const savePayments = (payments) => {
@@ -52,9 +74,15 @@ const saveUsers = (users) => {
 
 let mockUsers = getStoredUsers();
 
+const REGISTRATIONS_STORAGE_KEY = 'semaphore_registrations_v3';
+
 const getStoredRegistrations = () => {
   try {
-    const stored = localStorage.getItem('semaphore_registrations');
+    // Clear outdated legacy keys with stale mock data
+    localStorage.removeItem('semaphore_registrations');
+    localStorage.removeItem('semaphore_registrations_v2');
+
+    const stored = localStorage.getItem(REGISTRATIONS_STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -64,12 +92,12 @@ const getStoredRegistrations = () => {
   } catch (e) {
     console.warn('Error reading stored registrations:', e);
   }
-  localStorage.setItem('semaphore_registrations', JSON.stringify(initialRegistrations));
+  localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(initialRegistrations));
   return [...initialRegistrations];
 };
 
 const saveRegistrations = (registrations) => {
-  localStorage.setItem('semaphore_registrations', JSON.stringify(registrations));
+  localStorage.setItem(REGISTRATIONS_STORAGE_KEY, JSON.stringify(registrations));
 };
 
 const getCustomEvents = () => {
@@ -238,13 +266,19 @@ async function apiRequest(endpoint, options = {}) {
       headers
     });
     if (!response.ok) {
-      console.warn(`Backend at ${API_BASE_URL} returned status ${response.status} for ${endpoint}. Falling back to live mock engine.`);
+      if (options.noMockFallback) {
+        const error = new Error(`Request to ${endpoint} failed with status ${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
       return mockFallbackHandler(endpoint, options);
     }
     const data = await response.json();
     return data;
   } catch (err) {
-    console.warn(`Backend at ${API_BASE_URL} unavailable for ${endpoint}. Using live mock engine.`, err);
+    if (options.noMockFallback) {
+      throw err;
+    }
     return mockFallbackHandler(endpoint, options);
   }
 }
@@ -609,6 +643,40 @@ function mockFallbackHandler(endpoint, options) {
     return { success: true, message: 'College removed successfully', id };
   }
 
+  // 20. GET /api/registrations/all, /api/registrations, /all
+  if ((endpoint.startsWith('/api/registrations') || endpoint === '/all' || endpoint === '/registrations') && method === 'GET') {
+    return getStoredRegistrations();
+  }
+
+  // 21. GET /api/payments, /api/admin/payments
+  if ((endpoint.startsWith('/api/payments') || endpoint.startsWith('/api/admin/payments')) && method === 'GET') {
+    return getStoredRegistrations();
+  }
+
+  // 22. PUT / PATCH /api/registrations/:id/payment-status
+  if (endpoint.includes('/payment') && (method === 'PUT' || method === 'PATCH')) {
+    const list = getStoredRegistrations();
+    const id = endpoint.split('/')[3] || endpoint.split('/')[2];
+    const item = list.find(r => (
+      r._id === id || 
+      r.id === id || 
+      (r.paymentId && (r.paymentId._id === id || r.paymentId.id === id || r.paymentId === id))
+    ));
+    if (item) {
+      const rawStatus = body.paymentStatus || body.status || 'Approved';
+      const normStatus = rawStatus.toLowerCase();
+      const displayStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
+      item.paymentStatus = displayStatus;
+      item.status = normStatus;
+      if (item.paymentId && typeof item.paymentId === 'object') {
+        item.paymentId.status = normStatus;
+      }
+      saveRegistrations(list);
+      return { success: true, registration: item };
+    }
+    return { success: true, message: 'Status updated' };
+  }
+
   throw new Error(`Endpoint ${endpoint} not found`);
 }
 
@@ -931,6 +999,92 @@ export const apiService = {
     });
   },
 
+  // 10b. Coordinators Roster API with Event Sync and Persistent Storage
+  getCoordinators: async () => {
+    const list = getStoredCoordinators();
+    try {
+      const events = await apiService.getAllEvents();
+      (events || []).forEach(evt => {
+        const evtTitle = evt.title || evt.name || 'Event';
+        const coords = Array.isArray(evt.coordinators) 
+          ? evt.coordinators 
+          : (typeof evt.coordinators === 'string' && evt.coordinators ? evt.coordinators.split(',').map(c => c.trim()) : []);
+        coords.forEach((cName, cIdx) => {
+          const nameStr = typeof cName === 'object' ? (cName.name || cName.userName || cName._id) : cName;
+          if (nameStr && !list.some(item => (item.name || '').toLowerCase() === String(nameStr).toLowerCase() && (item.assignedEvent || '').toLowerCase() === evtTitle.toLowerCase())) {
+            list.push({
+              id: `COORD-EVT-${(evt._id || evt.id || 'E').slice(-4)}-${cIdx + 1}`,
+              _id: `coord_evt_${(evt._id || evt.id || 'E').slice(-4)}_${cIdx + 1}`,
+              name: nameStr,
+              email: `${nameStr.toLowerCase().replace(/\s+/g, '.')}@semaphore.com`,
+              phone: '+91 98860 ' + Math.floor(10000 + Math.random() * 90000),
+              assignedEvent: evtTitle,
+              department: 'Event Department',
+              status: 'Active',
+              createdAt: new Date().toISOString()
+            });
+          }
+        });
+      });
+      saveCoordinators(list);
+    } catch (e) {
+      console.warn('Error syncing event coordinators:', e);
+    }
+    return list;
+  },
+
+  addCoordinator: async (coordData) => {
+    const list = getStoredCoordinators();
+    const newId = `COORD-${String(list.length + 1).padStart(2, '0')}`;
+    const newEntry = {
+      id: newId,
+      _id: `coord_${Date.now()}`,
+      status: 'Active',
+      department: 'MCA',
+      createdAt: new Date().toISOString(),
+      ...coordData
+    };
+    list.push(newEntry);
+    saveCoordinators(list);
+
+    // Sync to backend event coordinators array if assigned to an event
+    if (newEntry.assignedEvent) {
+      try {
+        const events = await apiService.getAllEvents();
+        const targetEvt = events.find(e => (e.title || '').toLowerCase() === newEntry.assignedEvent.toLowerCase());
+        if (targetEvt && (targetEvt._id || targetEvt.id)) {
+          const evtId = targetEvt._id || targetEvt.id;
+          const currentCoords = Array.isArray(targetEvt.coordinators) 
+            ? targetEvt.coordinators.map(c => typeof c === 'object' ? (c.name || c._id) : c) 
+            : [];
+          if (!currentCoords.some(c => String(c).toLowerCase() === newEntry.name.toLowerCase())) {
+            currentCoords.push(newEntry.name);
+            await apiService.updateCoordinators(evtId, currentCoords).catch(() => {});
+          }
+        }
+      } catch (e) {}
+    }
+
+    return newEntry;
+  },
+
+  updateCoordinator: async (id, updatedData) => {
+    const list = getStoredCoordinators();
+    const idx = list.findIndex(c => (c.id === id || c._id === id));
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updatedData, updatedAt: new Date().toISOString() };
+      saveCoordinators(list);
+      return list[idx];
+    }
+    return updatedData;
+  },
+
+  deleteCoordinator: async (id) => {
+    const list = getStoredCoordinators().filter(c => (c.id !== id && c._id !== id));
+    saveCoordinators(list);
+    return { success: true, id };
+  },
+
   // PATCH /api/events/:id/timings
   updateTimings: async (id, timings) => {
     return await apiRequest(`/api/events/${id}/timings`, {
@@ -1073,23 +1227,118 @@ export const apiService = {
       }
     }
 
-    if (!rawList || rawList.length === 0) {
-      rawList = getStoredRegistrations();
+    if (!rawList) {
+      rawList = [];
     }
 
-    const users = getStoredUsers();
-    const events = getStoredEvents();
+    // Fetch live users, live payments, and live events to build relational lookup maps
+    let liveUsers = [];
+    try {
+      const uRes = await apiRequest('/api/admin/users', { method: 'GET', noMockFallback: true })
+        .catch(() => apiRequest('/api/users', { method: 'GET', noMockFallback: true }))
+        .catch(() => apiRequest('/api/admin/all-users', { method: 'GET', noMockFallback: true }));
+      liveUsers = Array.isArray(uRes) ? uRes : (uRes?.users || uRes?.data || []);
+    } catch (e) {}
+
+    let livePayments = [];
+    try {
+      const pRes = await apiRequest('/api/payments', { method: 'GET', noMockFallback: true })
+        .catch(() => apiRequest('/api/admin/payments', { method: 'GET', noMockFallback: true }))
+        .catch(() => apiRequest('/api/payments/all', { method: 'GET', noMockFallback: true }))
+        .catch(() => apiRequest('/api/payment/all', { method: 'GET', noMockFallback: true }))
+        .catch(() => apiRequest('/api/admin/payment', { method: 'GET', noMockFallback: true }))
+        .catch(() => apiRequest('/api/admin/all-payments', { method: 'GET', noMockFallback: true }));
+      livePayments = Array.isArray(pRes) ? pRes : (pRes?.payments || pRes?.data || pRes?.allPayments || []);
+    } catch (e) {}
+
+    let liveEvents = [];
+    try {
+      const eRes = await apiRequest('/api/events', { method: 'GET', noMockFallback: true })
+        .catch(() => apiRequest('/api/events/all', { method: 'GET', noMockFallback: true }));
+      liveEvents = Array.isArray(eRes) ? eRes : (eRes?.events || eRes?.data || []);
+    } catch (e) {}
+
     const colleges = getCustomColleges();
     
     const usersMap = {};
-    users.forEach(u => {
+    liveUsers.forEach(u => {
       if (u._id) usersMap[u._id] = u;
       if (u.id) usersMap[u.id] = u;
       if (u.email) usersMap[u.email.toLowerCase()] = u;
+      if (u.name) usersMap[u.name.toLowerCase()] = u;
     });
 
+    const paymentsMap = {};
+    const paymentsMapByUser = {};
+    const paymentsMapByReg = {};
+    const paymentsMapByUserAndEvent = {};
+
+    livePayments.forEach(p => {
+      const pId = p._id || p.id;
+      if (pId) paymentsMap[pId] = p;
+      if (p.utr) paymentsMap[p.utr] = p;
+
+      const uId = typeof p.user === 'object' ? (p.user?._id || p.user?.id) : (p.user || p.userId || p.user_id);
+      if (uId) {
+        paymentsMapByUser[uId] = p;
+      }
+
+      const regRef = typeof p.registration === 'object' ? (p.registration?._id || p.registration?.id) : (p.registration || p.registrationId || p.regId || p.reg);
+      if (regRef) {
+        paymentsMapByReg[regRef] = p;
+      }
+
+      const eId = typeof p.event === 'object' ? (p.event?._id || p.event?.id) : (p.event || p.eventId || p.event_id);
+      if (uId && eId) {
+        paymentsMapByUserAndEvent[`${uId}_${eId}`] = p;
+      }
+    });
+
+    // Extract embedded payment objects from live rawList
+    rawList.forEach(r => {
+      const pItems = Array.isArray(r.paymentId) ? r.paymentId : (Array.isArray(r.payment) ? r.payment : [r.paymentId || r.payment].filter(Boolean));
+      pItems.forEach(pObj => {
+        if (pObj && typeof pObj === 'object') {
+          if (pObj._id) paymentsMap[pObj._id] = pObj;
+          if (pObj.id) paymentsMap[pObj.id] = pObj;
+          if (pObj.utr) paymentsMap[pObj.utr] = pObj;
+          if (pObj.user) paymentsMapByUser[pObj.user] = pObj;
+          if (r.user) paymentsMapByUser[r.user] = pObj;
+          if (r.userId?._id) paymentsMapByUser[r.userId._id] = pObj;
+          if (r.userid?._id) paymentsMapByUser[r.userid._id] = pObj;
+          if (r._id) paymentsMapByReg[r._id] = pObj;
+          if (r.id) paymentsMapByReg[r.id] = pObj;
+        }
+      });
+    });
+
+    // Auto-fetch unpopulated payment ObjectIds in parallel (e.g. if paymentId is a 24-hex string)
+    const unpopulatedPaymentIds = rawList
+      .map(r => typeof r.paymentId === 'string' ? r.paymentId : (typeof r.payment === 'string' ? r.payment : null))
+      .filter(pId => pId && /^[0-9a-fA-F]{24}$/.test(pId) && !paymentsMap[pId]);
+
+    if (unpopulatedPaymentIds.length > 0) {
+      await Promise.all(
+        [...new Set(unpopulatedPaymentIds)].slice(0, 30).map(async (pId) => {
+          try {
+            const pData = await apiRequest(`/api/payments/${pId}`, { method: 'GET', noMockFallback: true })
+              .catch(() => apiRequest(`/api/admin/payments/${pId}`, { method: 'GET', noMockFallback: true }))
+              .catch(() => apiRequest(`/api/payment/${pId}`, { method: 'GET', noMockFallback: true }));
+            const p = pData?.payment || pData?.data || pData;
+            if (p && (p._id || p.utr || p.imageUrl || p.amount)) {
+              paymentsMap[pId] = p;
+              if (p._id) paymentsMap[p._id] = p;
+              if (p.utr) paymentsMap[p.utr] = p;
+              const uId = typeof p.user === 'object' ? (p.user?._id || p.user?.id) : p.user;
+              if (uId) paymentsMapByUser[uId] = p;
+            }
+          } catch (e) {}
+        })
+      );
+    }
+
     const eventsMap = {};
-    events.forEach(ev => {
+    liveEvents.forEach(ev => {
       if (ev._id) eventsMap[ev._id] = ev;
       if (ev.id) eventsMap[ev.id] = ev;
       if (ev.title) eventsMap[ev.title.toLowerCase()] = ev;
@@ -1102,23 +1351,291 @@ export const apiService = {
       if (c.collegeName) collegesMap[c.collegeName.toLowerCase()] = c;
     });
 
-    // Universal normalizer for all backend schemas
+    // Universal normalizer strictly using database properties
     return rawList.map((r, rIdx) => {
-      const id = r._id || r.id || `reg_${rIdx}`;
-      const userRef = r.user || r.userId || r.leader || r.leaderId || r.participant || r.student;
+      const id = r._id || r.id || (r.paymentId && typeof r.paymentId === 'object' ? r.paymentId._id : null) || `reg_${rIdx}`;
+      const userRef = r.user || r.userId || r.userid || r.leader || r.leaderId || r.participant || r.student;
       let userObj = typeof userRef === 'object' && userRef !== null ? userRef : null;
       if (!userObj && typeof userRef === 'string') {
         userObj = usersMap[userRef] || (r.email ? usersMap[r.email.toLowerCase()] : null);
       }
 
-      const eventRef = r.event || r.eventId || r.event_id;
+      const eventRef = r.event || r.eventId || r.eventid || r.event_id;
       let eventObj = typeof eventRef === 'object' && eventRef !== null ? eventRef : null;
       if (!eventObj && typeof eventRef === 'string') {
         eventObj = eventsMap[eventRef] || eventsMap[eventRef.toLowerCase()];
       }
 
-      // Resolve College Name
+      // 1. Resolve raw participants list from database
+      let rawParticipants = Array.isArray(r.participants) ? r.participants : [];
+      rawParticipants = rawParticipants.map(p => {
+        if (typeof p === 'string' && usersMap[p]) {
+          return usersMap[p];
+        }
+        return p;
+      });
+
+      if (rawParticipants.length === 0 && userObj) {
+        rawParticipants = [userObj];
+      }
+
+      const firstParticipant = rawParticipants[0] || userObj || {};
+
+      // 2. Resolve Payment Object from database (cross-referencing multi-index, handling Array / Object / unpopulated)
+      let paymentObj = null;
+      if (Array.isArray(r.paymentId) && r.paymentId.length > 0) {
+        paymentObj = typeof r.paymentId[0] === 'object' ? r.paymentId[0] : (paymentsMap[r.paymentId[0]] || null);
+      } else if (r.paymentId && typeof r.paymentId === 'object') {
+        paymentObj = r.paymentId;
+      } else if (Array.isArray(r.payment) && r.payment.length > 0) {
+        paymentObj = typeof r.payment[0] === 'object' ? r.payment[0] : (paymentsMap[r.payment[0]] || null);
+      } else if (r.payment && typeof r.payment === 'object') {
+        paymentObj = r.payment;
+      } else if (typeof r.paymentDetails === 'object' && r.paymentDetails !== null) {
+        paymentObj = r.paymentDetails;
+      }
+
+      if (!paymentObj || (!paymentObj.utr && !paymentObj.imageUrl && !paymentObj.status)) {
+        const pIdStr = typeof r.paymentId === 'string' ? r.paymentId : (typeof r.payment === 'string' ? r.payment : null);
+        const uIdStr = typeof r.user === 'string' ? r.user : (userObj?._id || userObj?.id);
+        const eIdStr = typeof r.event === 'string' ? r.event : (eventObj?._id || eventObj?.id);
+
+        if (pIdStr && paymentsMap[pIdStr]) {
+          paymentObj = paymentsMap[pIdStr];
+        } else if (r._id && paymentsMapByReg[r._id]) {
+          paymentObj = paymentsMapByReg[r._id];
+        } else if (r.id && paymentsMapByReg[r.id]) {
+          paymentObj = paymentsMapByReg[r.id];
+        } else if (uIdStr && eIdStr && paymentsMapByUserAndEvent[`${uIdStr}_${eIdStr}`]) {
+          paymentObj = paymentsMapByUserAndEvent[`${uIdStr}_${eIdStr}`];
+        } else if (uIdStr && paymentsMapByUser[uIdStr]) {
+          paymentObj = paymentsMapByUser[uIdStr];
+        } else if (r._id && paymentsMap[r._id]) {
+          paymentObj = paymentsMap[r._id];
+        }
+      }
+      paymentObj = paymentObj || {};
+
+      // 3. Resolve Leader / Participant Name from database
+      let resolvedLeader =
+        (typeof firstParticipant === 'object' ? (firstParticipant.name || firstParticipant.userName || firstParticipant.fullName) : null) ||
+        r.leaderName ||
+        r.leader_name ||
+        r.participantName ||
+        r.participant_name ||
+        r.studentName ||
+        (typeof r.leader === 'string' && !/^[0-9a-fA-F]{24}$/.test(r.leader) ? r.leader : null) ||
+        r.leader?.name ||
+        r.name ||
+        userObj?.name ||
+        userObj?.userName ||
+        (r.email ? r.email.split('@')[0] : (firstParticipant?.email ? firstParticipant.email.split('@')[0] : ''));
+
+      if (resolvedLeader && typeof resolvedLeader === 'string' && resolvedLeader.includes('(Lead)')) {
+        resolvedLeader = resolvedLeader.replace('(Lead)', '').trim();
+      }
+
+      // 4. Resolve Contact Email from database
+      const resolvedEmail =
+        (typeof firstParticipant === 'object' ? firstParticipant.email : null) ||
+        r.email ||
+        r.leaderEmail ||
+        userObj?.email ||
+        '';
+
+      // 5. Resolve Contact Phone from database
+      const resolvedPhone =
+        (typeof firstParticipant === 'object' ? firstParticipant.phone : null) ||
+        r.phone ||
+        r.contactNumber ||
+        userObj?.phone ||
+        '';
+
+      // 6. Deep Multi-Property UTR Extraction from database
+      const extractUtr = (rec, pay) => {
+        const candidates = [
+          pay?.utr,
+          pay?.UTR,
+          pay?.utrNumber,
+          pay?.utr_number,
+          pay?.utrNo,
+          pay?.utr_no,
+          pay?.transactionId,
+          pay?.transaction_id,
+          pay?.transactionNo,
+          pay?.transaction_no,
+          pay?.txnId,
+          pay?.txn_id,
+          pay?.transactionNumber,
+          pay?.transactionRef,
+          pay?.txnRef,
+          pay?.referenceId,
+          pay?.reference_id,
+          pay?.referenceNo,
+          pay?.reference_no,
+          pay?.refId,
+          pay?.ref_id,
+          pay?.refNo,
+          pay?.ref_no,
+          pay?.paymentReference,
+          pay?.payment_reference,
+          pay?.paymentRef,
+          pay?.payment_ref,
+          pay?.paymentUtr,
+          pay?.payment_utr,
+          pay?.receiptUtr,
+          pay?.receipt_utr,
+          pay?.upiRef,
+          pay?.upi_ref,
+          pay?.upiReference,
+          pay?.upiTransactionId,
+          pay?.upiId,
+          pay?.receiptId,
+          pay?.receiptNo,
+          pay?.bankRef,
+          pay?.rrn,
+          pay?.RRN,
+          pay?.orderId,
+          rec?.utr,
+          rec?.UTR,
+          rec?.utrNumber,
+          rec?.utr_number,
+          rec?.utrNo,
+          rec?.utr_no,
+          rec?.transactionId,
+          rec?.transaction_id,
+          rec?.transactionNo,
+          rec?.transaction_no,
+          rec?.txnId,
+          rec?.txn_id,
+          rec?.referenceId,
+          rec?.reference_id,
+          rec?.referenceNo,
+          rec?.reference_no,
+          rec?.refId,
+          rec?.refNo,
+          rec?.paymentReference,
+          rec?.payment_reference,
+          rec?.paymentRef,
+          rec?.payment_ref,
+          rec?.paymentUtr,
+          rec?.payment_utr,
+          rec?.receiptUtr,
+          rec?.upiRef,
+          rec?.upi_ref,
+          rec?.rrn,
+          rec?.RRN,
+          rec?.paymentDetails?.utr,
+          rec?.paymentDetails?.UTR,
+          rec?.paymentDetails?.transactionId,
+          rec?.paymentDetails?.txnId,
+          rec?.paymentDetails?.referenceId,
+          rec?.paymentId?.utr,
+          rec?.paymentId?.UTR,
+          rec?.paymentId?.transactionId,
+          rec?.paymentId?.txnId,
+          rec?.paymentProof?.utr,
+          rec?.paymentProof?.transactionId
+        ];
+
+        for (const c of candidates) {
+          if (c !== undefined && c !== null) {
+            const str = String(c).trim();
+            if (str && str.toLowerCase() !== 'null' && str.toLowerCase() !== 'undefined' && str.toLowerCase() !== 'n/a' && str.toLowerCase() !== 'none') {
+              return str;
+            }
+          }
+        }
+
+        // Check if any key on pay or rec includes 'utr' or 'txn'
+        const checkObjectKeys = (obj) => {
+          if (!obj || typeof obj !== 'object') return '';
+          for (const [k, v] of Object.entries(obj)) {
+            const lowerK = k.toLowerCase();
+            if (lowerK.includes('utr') || lowerK.includes('txn') || lowerK.includes('upi') || lowerK.includes('reference') || lowerK.includes('receipt')) {
+              if (typeof v === 'string' && v.trim() && v.toLowerCase() !== 'null' && v.toLowerCase() !== 'undefined' && !/^[0-9a-fA-F]{24}$/.test(v)) {
+                return v.trim();
+              }
+              if (typeof v === 'number') {
+                return String(v);
+              }
+            }
+          }
+          return '';
+        };
+
+        const fromPayKeys = checkObjectKeys(pay);
+        if (fromPayKeys) return fromPayKeys;
+
+        const fromRecKeys = checkObjectKeys(rec);
+        if (fromRecKeys) return fromRecKeys;
+
+        return '';
+      };
+
+      const resolvedUtr = extractUtr(r, paymentObj);
+
+      // 7. Resolve Numeric Amount & Formatted Amount from database
+      let rawAmt =
+        paymentObj.amount !== undefined ? paymentObj.amount :
+        (r.registrationFee !== undefined ? r.registrationFee :
+        (r.fee !== undefined ? r.fee : r.amount));
+
+      let amountNumber = 0;
+      if (typeof rawAmt === 'number') {
+        amountNumber = rawAmt;
+      } else if (typeof rawAmt === 'string') {
+        const parsed = Number(rawAmt.replace(/[^0-9.]/g, ''));
+        amountNumber = isNaN(parsed) ? 0 : parsed;
+      } else if (eventObj && (eventObj.registrationFee !== undefined || eventObj.fee !== undefined)) {
+        const evAmt = eventObj.registrationFee !== undefined ? eventObj.registrationFee : eventObj.fee;
+        amountNumber = typeof evAmt === 'number' ? evAmt : (Number(String(evAmt).replace(/[^0-9.]/g, '')) || 0);
+      }
+
+      const formattedAmount = `₹ ${amountNumber.toLocaleString()}`;
+
+      // 8. Resolve Payment Status from database
+      const rawStatus = (paymentObj.status || r.paymentStatus || r.payment_status || r.status || 'Pending').toLowerCase();
+      let resolvedPaymentStatus = 'Pending';
+      if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
+        resolvedPaymentStatus = 'Approved';
+      } else if (rawStatus.includes('rej')) {
+        resolvedPaymentStatus = 'Rejected';
+      }
+
+      // 9. Resolve Image Proof / Receipt URL from database (Cloudinary)
+      let resolvedImageUrl =
+        paymentObj.imageUrl ||
+        paymentObj.image_url ||
+        paymentObj.image ||
+        paymentObj.proofUrl ||
+        paymentObj.proof_url ||
+        paymentObj.receiptUrl ||
+        paymentObj.receipt_url ||
+        paymentObj.receipt ||
+        paymentObj.url ||
+        paymentObj.secure_url ||
+        paymentObj.screenshot ||
+        paymentObj.paymentProof ||
+        paymentObj.payment_proof ||
+        r.imageUrl ||
+        r.image_url ||
+        r.proofUrl ||
+        r.proof_url ||
+        r.receiptUrl ||
+        r.receipt_url ||
+        r.receipt ||
+        r.paymentProof ||
+        r.payment_proof ||
+        r.paymentScreenshot ||
+        r.screenshot ||
+        r.secure_url ||
+        (r.image && typeof r.image === 'string' && (r.image.startsWith('http') || r.image.startsWith('data:')) ? r.image : '') ||
+        '';
+
+      // 10. Resolve College Name from database
       let resolvedCollege =
+        (typeof firstParticipant === 'object' ? firstParticipant.college : null) ||
         r.collegeName ||
         r.college_name ||
         r.institution ||
@@ -1131,82 +1648,42 @@ export const apiService = {
         userObj?.college?.name ||
         (typeof userObj?.college === 'string' && !/^[0-9a-fA-F]{24}$/.test(userObj.college) ? userObj.college : null) ||
         (r.collegeId && collegesMap[r.collegeId]?.collegeName) ||
-        (r.college && collegesMap[r.college]?.collegeName);
+        (r.college && collegesMap[r.college]?.collegeName) ||
+        '';
 
-      if (!resolvedCollege) {
-        if (r.email?.includes('nitte.edu') || r.email?.includes('nmamit')) {
-          resolvedCollege = 'NMAM Institute of Technology';
-        } else if (r.email?.includes('mit.edu')) {
-          resolvedCollege = 'MIT Tech';
-        } else if (r.email?.includes('rvce')) {
-          resolvedCollege = 'RV College of Engineering';
-        } else if (r.email?.includes('pes.edu')) {
-          resolvedCollege = 'PES University';
-        } else if (userObj?.name) {
-          resolvedCollege = `${userObj.name}'s College`;
-        } else {
-          resolvedCollege = 'NMAM Institute of Technology';
-        }
-      }
-
-      // Resolve Leader Name
-      let resolvedLeader =
-        r.leaderName ||
-        r.leader_name ||
-        r.participantName ||
-        r.participant_name ||
-        r.studentName ||
-        (typeof r.leader === 'string' && !/^[0-9a-fA-F]{24}$/.test(r.leader) ? r.leader : null) ||
-        r.leader?.name ||
-        r.name ||
-        userObj?.name ||
-        (Array.isArray(r.members) && r.members[0] ? (typeof r.members[0] === 'object' ? r.members[0].name : r.members[0]) : null) ||
-        (Array.isArray(r.participants) && r.participants[0] ? (typeof r.participants[0] === 'object' ? r.participants[0].name : r.participants[0]) : null) ||
-        (r.email ? r.email.split('@')[0] : 'Shashidhara');
-
-      if (resolvedLeader && resolvedLeader.includes('(Lead)')) {
-        resolvedLeader = resolvedLeader.replace('(Lead)', '').trim();
-      }
-
-      // Resolve Team Name
+      // 11. Resolve Team Name from database
       let resolvedTeam =
         r.teamName ||
         r.team_name ||
         (typeof r.team === 'string' ? r.team : null) ||
         r.team?.name ||
         r.team?.teamName ||
-        (resolvedLeader ? `Team-${resolvedLeader.split(' ')[0]}` : `Team-${(id || '').slice(-4).toUpperCase()}`);
+        (resolvedLeader ? `Team-${resolvedLeader.replace(/\s+/g, '')}` : (id ? `Team-${id.slice(-4).toUpperCase()}` : ''));
 
-      // Resolve Event
+      // 12. Resolve Event Name from database
       let resolvedEvent =
+        r.title ||
         r.eventName ||
         r.event_name ||
         r.eventTitle ||
         r.event_title ||
-        (typeof r.event === 'string' && r.event !== 'Event' && !/^[0-9a-fA-F]{24}$/.test(r.event) ? r.event : null) ||
+        (typeof r.event === 'object' && r.event !== null ? (r.event.title || r.event.name) : (typeof r.event === 'string' && r.event !== 'Event' && !/^[0-9a-fA-F]{24}$/.test(r.event) ? r.event : null)) ||
         r.event?.title ||
         r.event?.name ||
         eventObj?.title ||
         eventObj?.name ||
-        'CodeFest 2026';
+        'Event';
 
-      // Resolve Payment Status
-      const rawStatus = (r.paymentStatus || r.payment_status || r.status || 'Pending').toLowerCase();
-      let resolvedPaymentStatus = 'Pending';
-      if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
-        resolvedPaymentStatus = 'Approved';
-      } else if (rawStatus.includes('rej')) {
-        resolvedPaymentStatus = 'Rejected';
-      }
-
-      const resolvedEmail = r.email || r.leaderEmail || userObj?.email || 'participant@nitte.edu.in';
-      const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '+91 98860 12345';
-
-      const membersList = Array.isArray(r.members) && r.members.length > 0
-        ? r.members.map(m => typeof m === 'object' ? (m.name || m.userName || 'Member') : m)
-        : (Array.isArray(r.participants) && r.participants.length > 0
-            ? r.participants.map(p => typeof p === 'object' ? (p.name || p.userName || 'Member') : p)
+      // 12. Resolve Members
+      const membersList = rawParticipants.length > 0
+        ? rawParticipants.map(p => typeof p === 'object' ? (p.name || p.userName || p.email || 'Member') : p)
+        : (Array.isArray(r.members) && r.members.length > 0
+            ? r.members.map(m => typeof m === 'object' ? (m.name || m.userName || m.fullName || 'Member') : m)
             : [resolvedLeader]);
+
+      // 13. Resolve Timestamps
+      const paymentTimestamp = paymentObj.timestamp || paymentObj.createdAt || '';
+      const registeredAt = r.addedAt || r.createdAt || paymentTimestamp || new Date().toISOString();
 
       return {
         ...r,
@@ -1223,14 +1700,57 @@ export const apiService = {
         email: resolvedEmail,
         phone: resolvedPhone,
         paymentStatus: resolvedPaymentStatus,
-        amount: r.amount || r.fee || '₹ 500',
-        utr: r.utr || r.utrNumber || r.transactionId || 'UTR98231049281',
+        amount: formattedAmount,
+        amountNumber: amountNumber,
+        utr: resolvedUtr,
+        proofUrl: resolvedImageUrl,
+        imageUrl: resolvedImageUrl,
+        paymentId: paymentObj,
+        paymentIdStr: paymentObj._id || (typeof r.paymentId === 'string' ? r.paymentId : id),
+        paymentTimestamp: paymentTimestamp,
+        registeredAt: registeredAt,
         membersCount: membersList.length,
         members: membersList,
-        participants: membersList,
+        participants: rawParticipants.length > 0 ? rawParticipants : membersList.map(m => ({ name: m, email: resolvedEmail, phone: resolvedPhone })),
         quotaStatus: r.quotaStatus || 'Under Quota'
       };
     });
+  },
+
+  // 12b. Retrieve Payments Queue (Unified payment records from registrations & payments)
+  getPayments: async () => {
+    try {
+      const regs = await apiService.getRegistrations();
+      return regs.map((reg, idx) => {
+        const paymentIdVal = reg.paymentId?._id || reg.paymentIdStr || reg._id || `PAY-${8920 + idx}`;
+        return {
+          id: paymentIdVal,
+          _id: paymentIdVal,
+          regId: reg._id || reg.id,
+          utr: reg.utr || 'N/A',
+          teamName: reg.teamName,
+          leaderName: reg.leaderName,
+          email: reg.email,
+          phone: reg.phone,
+          collegeName: reg.collegeName,
+          amount: reg.amount,
+          amountNumber: reg.amountNumber,
+          event: reg.event || reg.eventName,
+          date: reg.paymentTimestamp 
+            ? new Date(reg.paymentTimestamp).toLocaleString() 
+            : (reg.registeredAt ? new Date(reg.registeredAt).toLocaleString() : 'N/A'),
+          status: reg.paymentStatus,
+          proofUrl: reg.proofUrl || reg.imageUrl || '',
+          imageUrl: reg.imageUrl || reg.proofUrl || '',
+          participants: reg.participants || [],
+          members: reg.members || [],
+          paymentIdObj: reg.paymentId || {}
+        };
+      });
+    } catch (err) {
+      console.warn('Get payments failed:', err);
+      return [];
+    }
   },
 
   editRegistration: async (id, regData) => {
@@ -1265,34 +1785,77 @@ export const apiService = {
     }
   },
 
-  approveRegistrationPayment: async (id, status = 'approved') => {
+  approveRegistrationPayment: async (id, status = 'approved', regObj = null) => {
     const normStatus = status.toLowerCase();
     const displayStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
+
+    // Extract potential payment ID from passed registration object or ID
+    const payId = regObj?.paymentIdStr || 
+                  (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id) : null) || 
+                  (Array.isArray(regObj?.paymentId) && regObj.paymentId[0] ? (regObj.paymentId[0]._id || regObj.paymentId[0].id) : null) ||
+                  (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null);
+
     const list = getStoredRegistrations();
-    const idx = list.findIndex(r => (r._id || r.id) === id);
+    const idx = list.findIndex(r => (
+      r._id === id || 
+      r.id === id || 
+      (payId && (r._id === payId || r.id === payId)) ||
+      (r.paymentId && (r.paymentId._id === id || r.paymentId.id === id || r.paymentId === id || (Array.isArray(r.paymentId) && r.paymentId[0]?._id === id)))
+    ));
     if (idx !== -1) {
-      list[idx] = { ...list[idx], paymentStatus: displayStatus, updatedAt: new Date().toISOString() };
+      list[idx] = { 
+        ...list[idx], 
+        paymentStatus: displayStatus, 
+        status: normStatus,
+        updatedAt: new Date().toISOString() 
+      };
+      if (list[idx].paymentId) {
+        if (Array.isArray(list[idx].paymentId) && list[idx].paymentId.length > 0) {
+          list[idx].paymentId[0].status = normStatus;
+          list[idx].paymentId[0].updatedAt = new Date().toISOString();
+        } else if (typeof list[idx].paymentId === 'object') {
+          list[idx].paymentId.status = normStatus;
+          list[idx].paymentId.updatedAt = new Date().toISOString();
+        }
+      }
       saveRegistrations(list);
     }
 
-    try {
-      // Documented Endpoint: PUT /api/registrations/:id/payment-status
-      const data = await apiRequest(`/api/registrations/${id}/payment-status`, {
-        method: 'PUT',
-        body: JSON.stringify({ paymentStatus: normStatus })
-      });
-      return data?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
-    } catch (err) {
+    // Try live backend: Priority 1: Payment ID, Priority 2: Reg ID
+    const idsToTry = [...new Set([payId, id])].filter(Boolean);
+    let successData = null;
+
+    for (const targetId of idsToTry) {
       try {
-        const altData = await apiRequest(`/api/registrations/${id}/payment`, {
-          method: 'PATCH',
-          body: JSON.stringify({ paymentStatus: normStatus })
+        const data = await apiRequest(`/api/registrations/${targetId}/payment-status`, {
+          method: 'PUT',
+          body: JSON.stringify({ paymentStatus: normStatus, status: normStatus })
         });
-        return altData?.registration || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
-      } catch {
-        return idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus };
+        if (data && (data.success || data.message || data.payment || data.registration)) {
+          successData = data;
+          break;
+        }
+      } catch (err) {
+        console.warn(`Failed /api/registrations/${targetId}/payment-status:`, err);
       }
     }
+
+    if (successData) {
+      return successData.registration || successData.payment || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
+    }
+
+    // Fallback attempts
+    for (const targetId of idsToTry) {
+      try {
+        const altData = await apiRequest(`/api/registrations/${targetId}/payment`, {
+          method: 'PATCH',
+          body: JSON.stringify({ paymentStatus: normStatus, status: normStatus })
+        });
+        if (altData) return altData.registration || altData.payment || (idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus });
+      } catch (e) {}
+    }
+
+    return idx !== -1 ? list[idx] : { id, paymentStatus: displayStatus };
   },
 
   // 13. Timetable API (Docs: GET, POST, PUT, DELETE /api/timetable)
