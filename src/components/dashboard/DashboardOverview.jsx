@@ -46,6 +46,7 @@ export const DashboardOverview = () => {
   const [registrations, setRegistrations] = useState([]);
   const [users, setUsers] = useState([]);
   const [events, setEvents] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Accordion state for expanded registration rows (track expanded IDs)
@@ -60,6 +61,11 @@ export const DashboardOverview = () => {
   const [editingEvent, setEditingEvent] = useState(null);
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [copiedUtr, setCopiedUtr] = useState(null);
+
+  // Payment modals state
+  const [paymentActionModal, setPaymentActionModal] = useState(null);
+  const [paymentDetailModal, setPaymentDetailModal] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const [stats, setStats] = useState({
     pendingPayments: 8,
@@ -81,19 +87,22 @@ export const DashboardOverview = () => {
   const loadData = async () => {
     setIsRefreshing(true);
     try {
-      const [usersData, eventsData, regsData] = await Promise.all([
+      const [usersData, eventsData, regsData, paymentsData] = await Promise.all([
         apiService.getAllUsers(),
         apiService.getAllEvents(),
-        apiService.getRegistrations()
+        apiService.getRegistrations(),
+        apiService.getRecentPayments()
       ]);
 
       const usersList = Array.isArray(usersData) ? usersData : (usersData?.users || []);
       const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.events || []);
       const regsList = Array.isArray(regsData) ? regsData : (regsData?.registrations || []);
+      const paymentsList = paymentsData?.payments || (Array.isArray(paymentsData) ? paymentsData : []);
 
       setUsers(usersList);
       setEvents(eventsList);
       setRegistrations(regsList);
+      setPayments(paymentsList);
 
       const pendingRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase() === 'pending');
       const approvedRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase() === 'approved');
@@ -126,6 +135,56 @@ export const DashboardOverview = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Payment Handlers
+  const handleOpenPaymentActionModal = (payment, status) => {
+    const defaultMsg = status === 'approved'
+      ? 'Payment verified via UTR bank statement'
+      : 'Invalid UTR transaction reference';
+    setPaymentActionModal({
+      payment,
+      status,
+      message: payment.message && payment.status === status ? payment.message : defaultMsg
+    });
+  };
+
+  const handleSubmitPaymentStatus = async (e) => {
+    e.preventDefault();
+    if (!paymentActionModal) return;
+    const { payment, status, message } = paymentActionModal;
+    const paymentId = payment._id || payment.paymentid;
+
+    setActionLoading(true);
+    try {
+      const res = await apiService.updatePaymentStatus(paymentId, status, message);
+      showToast(res?.message || `Payment status updated to '${status}' successfully`);
+      setPaymentActionModal(null);
+      loadData();
+    } catch (err) {
+      showToast('Failed to update payment status.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleViewPaymentDetails = async (paymentId) => {
+    setPaymentDetailModal({ loading: true, data: null });
+    try {
+      const data = await apiService.getPaymentDetails(paymentId);
+      setPaymentDetailModal({ loading: false, data });
+    } catch (err) {
+      showToast('Failed to load payment details.', true);
+      setPaymentDetailModal(null);
+    }
+  };
+
+  const handleCopyUtr = (utr) => {
+    if (!utr) return;
+    navigator.clipboard.writeText(utr);
+    setCopiedUtr(utr);
+    showToast(`UTR '${utr}' copied to clipboard`);
+    setTimeout(() => setCopiedUtr(null), 2500);
+  };
 
   // 1. Toggle Accordion Registration Details
   const toggleRegDetails = (id) => {
@@ -255,15 +314,6 @@ export const DashboardOverview = () => {
     } finally {
       setActionLoading(false);
     }
-  };
-
-  // Copy UTR helper
-  const handleCopyUtr = (utr) => {
-    if (!utr) return;
-    navigator.clipboard.writeText(utr);
-    setCopiedUtr(utr);
-    showToast('UTR reference copied to clipboard!');
-    setTimeout(() => setCopiedUtr(null), 2500);
   };
 
   return (
@@ -409,6 +459,183 @@ export const DashboardOverview = () => {
             <span>Across All Events</span>
             <ArrowUpRight size={13} />
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* SECTION 0: Recent Payments Audit & Approvals (Above Recent Event Registrations) */}
+      {/* ========================================================================= */}
+      <div className="card sketch-section-card payments-section priority-section mb-6">
+        <div className="sketch-section-header">
+          <div className="section-title-group">
+            <div className="section-icon-badge icon-badge-cyan">
+              <CreditCard size={18} />
+            </div>
+            <div>
+              <div className="section-title-row">
+                <h3 className="sketch-section-title">Recent Payments</h3>
+                <span className="priority-pill badge-cyan">SCAN & PAY VERIFICATION</span>
+              </div>
+              <p className="sketch-section-subtitle">
+                Review submitted payment receipts, UTR bank statement references, approve or reject payments, and inspect student team details
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/payments')}
+            className="btn btn-sm btn-secondary"
+            title="Navigate to Payment Approvals Hub"
+          >
+            View All Payments ({payments.length}) <ArrowUpRight size={14} />
+          </button>
+        </div>
+
+        {/* Payments Grid / Cards Container */}
+        <div className="payment-cards-grid">
+          {payments.length === 0 ? (
+            <EmptyState
+              type="registrations"
+              title="No payment submissions found"
+              description="New payment receipts and UTR reference submissions will appear here in real-time."
+              compact={true}
+            />
+          ) : (
+            payments.map((p) => {
+              const paymentId = p._id || p.paymentid;
+              const rawStatus = (p.status || 'pending').toLowerCase();
+              const amountDisplay = typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹0');
+              const proofImg = p.imageUrl || p.imageurl || p.proofUrl;
+
+              return (
+                <div key={paymentId} className={`payment-card status-border-${rawStatus}`}>
+                  {/* Card Top Banner: Amount & Status Badge */}
+                  <div className="payment-card-header">
+                    <div className="payment-amount-tag">
+                      <Receipt size={16} className="text-cyan" />
+                      <span className="payment-amount-val">{amountDisplay}</span>
+                    </div>
+                    <span className={`payment-status-badge status-${rawStatus}`}>
+                      {rawStatus === 'approved' && <CheckCircle2 size={12} />}
+                      {rawStatus === 'rejected' && <XCircle size={12} />}
+                      {rawStatus === 'pending' && <Clock size={12} />}
+                      {rawStatus.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Card Body: Image Screenshot & Details */}
+                  <div className="payment-card-body">
+                    {/* Thumbnail Screenshot */}
+                    {proofImg ? (
+                      <div 
+                        className="payment-img-thumbnail-wrap" 
+                        onClick={() => setPreviewImage({ url: proofImg, utr: p.utr })}
+                        title="Click to expand payment proof screenshot"
+                      >
+                        <img src={proofImg} alt="Payment Receipt" className="payment-img-thumbnail" />
+                        <div className="payment-img-hover-overlay">
+                          <Eye size={16} />
+                          <span>Expand</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="payment-img-placeholder">
+                        <Receipt size={24} />
+                        <span>No Proof Image</span>
+                      </div>
+                    )}
+
+                    {/* Meta Details */}
+                    <div className="payment-card-meta">
+                      {/* UTR Reference Code */}
+                      <div className="payment-meta-item utr-box">
+                        <span className="meta-label">UTR Ref:</span>
+                        <code className="utr-code">{p.utr || 'N/A'}</code>
+                        {p.utr && (
+                          <button
+                            type="button"
+                            className="btn-icon-subtle"
+                            onClick={() => handleCopyUtr(p.utr)}
+                            title="Copy UTR to Clipboard"
+                          >
+                            <Copy size={13} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* User & Team Details */}
+                      <div className="payment-user-info">
+                        <div className="user-name-line">
+                          <User size={13} className="text-muted" />
+                          <span className="user-name">{p.user?.name || p.leaderName || 'Student Participant'}</span>
+                        </div>
+                        {p.user?.collegeName || p.collegeName ? (
+                          <div className="college-name-line" title={p.user?.collegeName || p.collegeName}>
+                            <Building2 size={12} className="text-muted" />
+                            <span className="college-name">{p.user?.collegeName || p.collegeName}</span>
+                          </div>
+                        ) : null}
+                        {p.user?.team?.name || p.teamName ? (
+                          <div className="team-name-line">
+                            <span className="team-badge">Team: {p.user?.team?.name || p.teamName}</span>
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {/* Audit Info: Approved By / Rejected By & Message */}
+                      {(rawStatus === 'approved' || rawStatus === 'rejected' || p.approvedBy) && (
+                        <div className={`payment-audit-box audit-${rawStatus}`}>
+                          <div className="audit-header">
+                            <ShieldCheck size={13} />
+                            <span className="audit-admin-name">
+                              {rawStatus === 'approved' ? 'Approved by' : 'Rejected by'}:{' '}
+                              <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Admin'}</strong>
+                            </span>
+                          </div>
+                          {p.message && (
+                            <p className="audit-reason-text">"{p.message}"</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Card Actions Bar */}
+                  <div className="payment-card-footer">
+                    <div className="action-btn-group">
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${rawStatus === 'approved' ? 'btn-success-active' : 'btn-outline-success'}`}
+                        onClick={() => handleOpenPaymentActionModal(p, 'approved')}
+                        disabled={actionLoading}
+                        title="Approve this payment"
+                      >
+                        <CheckCircle2 size={13} /> Approve
+                      </button>
+
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${rawStatus === 'rejected' ? 'btn-danger-active' : 'btn-outline-danger'}`}
+                        onClick={() => handleOpenPaymentActionModal(p, 'rejected')}
+                        disabled={actionLoading}
+                        title="Reject this payment"
+                      >
+                        <XCircle size={13} /> Reject
+                      </button>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn btn-xs btn-outline-secondary btn-details"
+                      onClick={() => handleViewPaymentDetails(paymentId)}
+                      title="View complete payment, team, user & event details"
+                    >
+                      <Eye size={13} /> View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -1101,6 +1328,227 @@ export const DashboardOverview = () => {
               disabled={actionLoading}
             >
               {actionLoading ? 'Deleting...' : 'Delete Event'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 6. Payment Approve / Reject Action Modal */}
+      {paymentActionModal && (
+        <Modal
+          isOpen={!!paymentActionModal}
+          onClose={() => setPaymentActionModal(null)}
+          maxWidth="520px"
+          isDanger={paymentActionModal.status === 'rejected'}
+        >
+          <div className="modal-header">
+            <h3>
+              {paymentActionModal.status === 'approved' ? (
+                <span className="text-success flex-align">
+                  <CheckCircle2 size={20} /> Approve Payment
+                </span>
+              ) : (
+                <span className="text-danger flex-align">
+                  <XCircle size={20} /> Reject Payment
+                </span>
+              )}
+            </h3>
+            <button className="modal-close" onClick={() => setPaymentActionModal(null)}>&times;</button>
+          </div>
+
+          <p className="modal-subtitle">
+            Payment UTR Reference: <code>{paymentActionModal.payment?.utr}</code> — Amount: <strong>₹{paymentActionModal.payment?.amount}</strong>
+          </p>
+
+          <form onSubmit={handleSubmitPaymentStatus} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">
+                {paymentActionModal.status === 'approved' ? 'Approval Message / Verification Note' : 'Rejection Reason'} *
+              </label>
+              <textarea
+                className="form-input"
+                rows={3}
+                value={paymentActionModal.message}
+                onChange={(e) => setPaymentActionModal({ ...paymentActionModal, message: e.target.value })}
+                placeholder={
+                  paymentActionModal.status === 'approved'
+                    ? 'e.g. Payment verified via UTR bank statement'
+                    : 'e.g. Invalid UTR transaction reference code'
+                }
+                required
+              />
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setPaymentActionModal(null)}>
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className={`btn ${paymentActionModal.status === 'approved' ? 'btn-success' : 'btn-danger'}`}
+                disabled={actionLoading}
+              >
+                {actionLoading
+                  ? 'Updating...'
+                  : paymentActionModal.status === 'approved'
+                  ? 'Confirm Approval'
+                  : 'Confirm Rejection'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* 7. Payment Full Details Modal (fetches GET /api/admin/payment-details/:paymentId) */}
+      {paymentDetailModal && (
+        <Modal
+          isOpen={!!paymentDetailModal}
+          onClose={() => setPaymentDetailModal(null)}
+          maxWidth="700px"
+        >
+          <div className="modal-header">
+            <h3><Receipt size={20} className="text-cyan" /> Payment & Registration Full Details</h3>
+            <button className="modal-close" onClick={() => setPaymentDetailModal(null)}>&times;</button>
+          </div>
+
+          {paymentDetailModal.loading ? (
+            <div className="modal-loading-state">
+              <RefreshCw className="spinner-icon" size={24} />
+              <span>Fetching payment details from API endpoint...</span>
+            </div>
+          ) : paymentDetailModal.data ? (
+            <div className="payment-details-view">
+              {/* Payment Summary Header */}
+              <div className="details-header-card">
+                <div className="details-status-row">
+                  <span className={`payment-status-badge status-${(paymentDetailModal.data.payment?.status || 'pending').toLowerCase()}`}>
+                    {(paymentDetailModal.data.payment?.status || 'pending').toUpperCase()}
+                  </span>
+                  <span className="details-timestamp">
+                    Timestamp: {new Date(paymentDetailModal.data.payment?.timestamp || paymentDetailModal.data.payment?.createdAt || Date.now()).toLocaleString()}
+                  </span>
+                </div>
+                <div className="details-amount-row">
+                  <div>
+                    <span className="details-label">Amount Paid</span>
+                    <h2 className="details-amount-val">₹{paymentDetailModal.data.payment?.amount}</h2>
+                  </div>
+                  <div>
+                    <span className="details-label">UTR Reference</span>
+                    <div className="utr-copy-row">
+                      <code className="utr-code-lg">{paymentDetailModal.data.payment?.utr}</code>
+                      <button
+                        type="button"
+                        className="btn-icon-subtle"
+                        onClick={() => handleCopyUtr(paymentDetailModal.data.payment?.utr)}
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Audit notes if updated by an admin */}
+                {paymentDetailModal.data.payment?.approvedBy && (
+                  <div className="details-audit-alert">
+                    <ShieldCheck size={16} />
+                    <div>
+                      <strong>Action By: {paymentDetailModal.data.payment.approvedBy.name}</strong> ({paymentDetailModal.data.payment.approvedBy.email})
+                      {paymentDetailModal.data.payment.message && <p className="audit-msg-text">Reason: "{paymentDetailModal.data.payment.message}"</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Grid with User, College, Team Info */}
+              <div className="details-grid-2col">
+                {/* User Info Box */}
+                <div className="details-card-box">
+                  <h4 className="details-card-title"><User size={15} /> Student User Details</h4>
+                  <div className="user-profile-summary">
+                    {paymentDetailModal.data.user?.avatar && (
+                      <img src={paymentDetailModal.data.user.avatar} alt="User Avatar" className="user-avatar-lg" />
+                    )}
+                    <div>
+                      <h5 className="user-name-text">{paymentDetailModal.data.user?.name || 'N/A'}</h5>
+                      <p className="user-email-text">{paymentDetailModal.data.user?.email || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* College & Team Info Box */}
+                <div className="details-card-box">
+                  <h4 className="details-card-title"><Building2 size={15} /> College & Team Details</h4>
+                  <p className="detail-field"><strong>College:</strong> {paymentDetailModal.data.college?.collegeName || paymentDetailModal.data.user?.collegeName || 'N/A'}</p>
+                  <p className="detail-field"><strong>Team Name:</strong> {paymentDetailModal.data.team?.name || 'N/A'}</p>
+                  <p className="detail-field"><strong>Team ID:</strong> <code>{paymentDetailModal.data.team?.teamid || 'N/A'}</code></p>
+                </div>
+              </div>
+
+              {/* Payment Proof Image Screenshot */}
+              {(paymentDetailModal.data.payment?.imageUrl || paymentDetailModal.data.payment?.imageurl) && (
+                <div className="details-card-box">
+                  <h4 className="details-card-title"><Eye size={15} /> Payment Proof Screenshot</h4>
+                  <div className="details-proof-img-container">
+                    <img 
+                      src={paymentDetailModal.data.payment.imageUrl || paymentDetailModal.data.payment.imageurl} 
+                      alt="Proof Screenshot" 
+                      className="details-proof-img" 
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Events Registered Associated with this Payment */}
+              <div className="details-card-box">
+                <h4 className="details-card-title"><Calendar size={15} /> Associated Event Registrations</h4>
+                {paymentDetailModal.data.events && paymentDetailModal.data.events.length > 0 ? (
+                  <div className="events-list-mini">
+                    {paymentDetailModal.data.events.map((evt, idx) => (
+                      <div key={evt._id || idx} className="event-item-row">
+                        <div>
+                          <h5 className="evt-title">{evt.title}</h5>
+                          {evt.description && <p className="evt-desc">{evt.description}</p>}
+                        </div>
+                        <div className="evt-fee-pill">
+                          <span>Fee: ₹{evt.registrationFee || evt.fee || 500}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-muted">No specific event items mapped to this payment id.</p>
+                )}
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setPaymentDetailModal(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-danger">Failed to load details for payment.</p>
+          )}
+        </Modal>
+      )}
+
+      {/* 8. Image Lightbox Modal */}
+      {previewImage && (
+        <Modal isOpen={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth="800px">
+          <div className="modal-header">
+            <h3><Receipt size={18} /> Payment Screenshot Preview {previewImage.utr ? `(${previewImage.utr})` : ''}</h3>
+            <button className="modal-close" onClick={() => setPreviewImage(null)}>&times;</button>
+          </div>
+          <div className="preview-image-container">
+            <img src={previewImage.url} alt="Payment Receipt Large" className="preview-image-full" />
+          </div>
+          <div className="modal-actions">
+            <a href={previewImage.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary">
+              Open Original Image <ArrowUpRight size={13} />
+            </a>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => setPreviewImage(null)}>
+              Close
             </button>
           </div>
         </Modal>

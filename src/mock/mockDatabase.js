@@ -256,3 +256,144 @@ export const generateMockJWT = (admin) => {
   const signature = btoa("semaphore2026_secret_sig");
   return `${header}.${payload}.${signature}`;
 };
+
+export const initialPayments = [
+  {
+    paymentid: "66c89f1e1a2b3c4d5e6f7p99",
+    _id: "66c89f1e1a2b3c4d5e6f7p99",
+    amount: 1000,
+    utr: "UTR987654321012",
+    imageUrl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    imageurl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    status: "approved",
+    message: "Payment verified via UTR bank statement",
+    approvedBy: {
+      _id: "66c89f1e2a3b4c5d6e7fadmin1",
+      name: "Super Admin",
+      email: "admin@example.com",
+      role: "superadmin"
+    },
+    timestamp: "2026-08-23T13:12:00.000Z",
+    createdAt: "2026-08-23T13:12:00.000Z",
+    updatedAt: "2026-08-23T14:00:00.000Z",
+    user: {
+      _id: "66c89f1e1a2b3c4d5e6f7a80",
+      name: "John Doe",
+      email: "john@example.com",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
+      collegeName: "Stanford University",
+      college: {
+        _id: "66c89f1e1a2b3c4d5e6f7c00",
+        collegeName: "Stanford University",
+        totalTeams: 1
+      },
+      team: {
+        _id: "66c89f1e1a2b3c4d5e6f7a81",
+        name: "CyberKnights",
+        teamid: "TEAM-1724419200000-4821"
+      }
+    },
+    events: [
+      {
+        _id: "66c89f1e1a2b3c4d5e6f7b01",
+        title: "CodeSprint Hackathon",
+        description: "24-hour coding marathon",
+        date: "2026-09-15T09:00:00.000Z",
+        registrationFee: 500
+      },
+      {
+        _id: "66c89f1e1a2b3c4d5e6f7b02",
+        title: "Robo Wars",
+        description: "Bot combat tournament",
+        date: "2026-09-16T10:00:00.000Z",
+        registrationFee: 500
+      }
+    ]
+  },
+  {
+    paymentid: "66c89f1e1a2b3c4d5e6f7p98",
+    _id: "66c89f1e1a2b3c4d5e6f7p98",
+    amount: 500,
+    utr: "UTR98231049281",
+    imageUrl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    imageurl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    status: "pending",
+    message: "Awaiting bank statement confirmation",
+    approvedBy: null,
+    timestamp: "2026-08-23T14:10:00.000Z",
+    createdAt: "2026-08-23T14:10:00.000Z",
+    updatedAt: "2026-08-23T14:10:00.000Z",
+    user: {
+      _id: "66c89f1e1a2b3c4d5e6f7a82",
+      name: "Shashidhara",
+      email: "shashidhara@nitte.edu.in",
+      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80",
+      collegeName: "NMAM Institute of Technology",
+      college: {
+        _id: "66c89f1e1a2b3c4d5e6f7c01",
+        collegeName: "NMAM Institute of Technology",
+        totalTeams: 2
+      },
+      team: {
+        _id: "66c89f1e1a2b3c4d5e6f7a83",
+        name: "Team-X",
+        teamid: "TEAM-1724419200000-9912"
+      }
+    },
+    events: [
+      {
+        _id: "66c89f1e1a2b3c4d5e6f7b03",
+        title: "CodeFest 2026",
+        description: "Speed coding and algorithmic optimization competition",
+        date: "2026-09-15T10:00:00.000Z",
+        registrationFee: 500
+      }
+    ]
+  },
+  {
+    paymentid: "66c89f1e1a2b3c4d5e6f7p97",
+    _id: "66c89f1e1a2b3c4d5e6f7p97",
+    amount: 750,
+    utr: "UTR19284019283",
+    imageUrl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    imageurl: "https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80",
+    status: "rejected",
+    message: "Invalid UTR transaction reference",
+    approvedBy: {
+      _id: "66c89f1e2a3b4c5d6e7fadmin2",
+      name: "John Doe Admin",
+      email: "john@example.com",
+      role: "admin"
+    },
+    timestamp: "2026-08-23T11:45:00.000Z",
+    createdAt: "2026-08-23T11:45:00.000Z",
+    updatedAt: "2026-08-23T12:00:00.000Z",
+    user: {
+      _id: "66c89f1e1a2b3c4d5e6f7a84",
+      name: "Jane Smith",
+      email: "jane@mit.edu",
+      avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
+      collegeName: "MIT Tech",
+      college: {
+        _id: "66c89f1e1a2b3c4d5e6f7c02",
+        collegeName: "MIT Tech",
+        totalTeams: 2
+      },
+      team: {
+        _id: "66c89f1e1a2b3c4d5e6f7a85",
+        name: "AlgoWizards",
+        teamid: "TEAM-1724419200000-1102"
+      }
+    },
+    events: [
+      {
+        _id: "66c89f1e1a2b3c4d5e6f7b04",
+        title: "RoboWars Arena",
+        description: "Heavyweight combat robot arena battles",
+        date: "2026-09-16T11:00:00.000Z",
+        registrationFee: 750
+      }
+    ]
+  }
+];
+

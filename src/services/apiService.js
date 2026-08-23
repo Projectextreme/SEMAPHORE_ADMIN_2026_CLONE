@@ -1,10 +1,34 @@
 // Service module mapping to all Semaphore 2026 Admin API Endpoints
 
 import { API_BASE_URL, getAuthHeader } from './apiConfig';
-import { initialAdmins, initialUsers, initialEvents, initialRegistrations, generateMockJWT } from '../mock/mockDatabase';
+import { initialAdmins, initialUsers, initialEvents, initialRegistrations, initialPayments, generateMockJWT } from '../mock/mockDatabase';
 
 // In-memory state for mock fallback mode
 let mockAdmins = [...initialAdmins];
+
+const getStoredPayments = () => {
+  try {
+    const stored = localStorage.getItem('semaphore_payments');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading stored payments:', e);
+  }
+  localStorage.setItem('semaphore_payments', JSON.stringify(initialPayments));
+  return [...initialPayments];
+};
+
+const savePayments = (payments) => {
+  try {
+    localStorage.setItem('semaphore_payments', JSON.stringify(payments));
+  } catch (e) {
+    console.warn('Error saving payments:', e);
+  }
+};
 
 const getStoredUsers = () => {
   try {
@@ -1303,6 +1327,134 @@ export const apiService = {
     return await apiRequest(`/api/timetable/${id}`, {
       method: 'DELETE'
     });
+  },
+
+  // 14. Admin Recent Payments & Status API (Docs: GET /api/admin/recent-payments, POST /api/admin/payment-status, GET /api/admin/payment-details/:paymentId)
+  getRecentPayments: async () => {
+    try {
+      const data = await apiRequest('/api/admin/recent-payments', {
+        method: 'GET'
+      });
+      return {
+        count: data?.count || (data?.payments ? data.payments.length : 0),
+        payments: data?.payments || (Array.isArray(data) ? data : [])
+      };
+    } catch (err) {
+      console.warn('Backend recent payments API offline, using local store fallback:', err);
+      const list = getStoredPayments();
+      return {
+        count: list.length,
+        payments: list
+      };
+    }
+  },
+
+  updatePaymentStatus: async (paymentId, status, message = '') => {
+    const normStatus = (status || '').toLowerCase(); // 'approved' or 'rejected'
+    try {
+      const data = await apiRequest('/api/admin/payment-status', {
+        method: 'POST',
+        body: JSON.stringify({ paymentId, status: normStatus, message })
+      });
+      return data;
+    } catch (err) {
+      console.warn('Backend payment status update API offline, updating local store:', err);
+      const list = getStoredPayments();
+      const idx = list.findIndex(p => (p.paymentid || p._id) === paymentId);
+      
+      let currentAdmin = { _id: 'admin_1', name: 'Super Admin', email: 'admin@example.com', role: 'superadmin' };
+      try {
+        const storedAdmin = localStorage.getItem('semaphore_admin_user');
+        if (storedAdmin) {
+          const parsed = JSON.parse(storedAdmin);
+          if (parsed && parsed.name) currentAdmin = parsed;
+        }
+      } catch (e) {}
+
+      const defaultMsg = normStatus === 'approved' ? 'Payment verified via UTR bank statement' : 'Invalid UTR transaction reference';
+
+      if (idx !== -1) {
+        list[idx] = {
+          ...list[idx],
+          status: normStatus,
+          message: message || defaultMsg,
+          approvedBy: currentAdmin,
+          updatedAt: new Date().toISOString()
+        };
+        savePayments(list);
+        return {
+          message: `Payment status updated to '${normStatus}' successfully`,
+          payment: list[idx]
+        };
+      }
+      return {
+        message: `Payment status updated to '${normStatus}' successfully`,
+        payment: { paymentid: paymentId, _id: paymentId, status: normStatus, message: message || defaultMsg, approvedBy: currentAdmin }
+      };
+    }
+  },
+
+  getPaymentDetails: async (paymentId) => {
+    try {
+      const data = await apiRequest(`/api/admin/payment-details/${paymentId}`, {
+        method: 'GET'
+      });
+      return data;
+    } catch (err) {
+      console.warn('Backend payment details API offline, deriving from local store:', err);
+      const list = getStoredPayments();
+      const item = list.find(p => (p.paymentid || p._id) === paymentId) || list[0];
+      
+      return {
+        payment: {
+          paymentid: item?.paymentid || item?._id || paymentId,
+          _id: item?._id || item?.paymentid || paymentId,
+          amount: item?.amount || 1000,
+          utr: item?.utr || 'UTR987654321012',
+          imageUrl: item?.imageUrl || item?.imageurl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
+          imageurl: item?.imageurl || item?.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
+          status: item?.status || 'approved',
+          message: item?.message || 'Payment verified via UTR statement',
+          approvedBy: item?.approvedBy || { _id: 'admin_1', name: 'Super Admin', email: 'admin@example.com', role: 'superadmin' },
+          timestamp: item?.timestamp || item?.createdAt || new Date().toISOString(),
+          createdAt: item?.createdAt || new Date().toISOString(),
+          updatedAt: item?.updatedAt || new Date().toISOString()
+        },
+        user: item?.user || {
+          _id: 'usr_101',
+          name: 'John Doe',
+          email: 'john@example.com',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+          collegeName: 'Stanford University'
+        },
+        college: item?.user?.college || {
+          _id: 'col_101',
+          collegeName: item?.user?.collegeName || 'Stanford University',
+          totalTeams: 1
+        },
+        team: item?.user?.team || {
+          _id: 'tm_101',
+          name: 'CyberKnights',
+          teamid: 'TEAM-1724419200000-4821'
+        },
+        events: item?.events || [
+          {
+            _id: 'evt_101',
+            title: 'CodeSprint Hackathon',
+            description: '24-hour coding marathon',
+            date: '2026-09-15T09:00:00.000Z',
+            registrationFee: 500
+          },
+          {
+            _id: 'evt_102',
+            title: 'Robo Wars',
+            description: 'Bot combat tournament',
+            date: '2026-09-16T10:00:00.000Z',
+            registrationFee: 500
+          }
+        ]
+      };
+    }
   }
 };
 

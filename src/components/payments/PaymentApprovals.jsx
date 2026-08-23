@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { apiService } from '../../services/apiService';
 import { 
   CreditCard, 
   CheckCircle2, 
@@ -24,41 +25,7 @@ import './PaymentApprovals.css';
 export const PaymentApprovals = () => {
   const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [payments, setPayments] = useState([
-    {
-      id: 'PAY-8921',
-      utr: 'UTR98231049281',
-      teamName: 'CyberKnights',
-      collegeName: 'MIT Tech',
-      amount: '₹ 500',
-      event: 'CodeFest Hackathon',
-      date: '2026-08-16 10:30 AM',
-      status: 'Pending',
-      proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=400&q=80'
-    },
-    {
-      id: 'PAY-8922',
-      utr: 'UTR19284019283',
-      teamName: 'AlgoWizards',
-      collegeName: 'NMAM Institute of Technology',
-      amount: '₹ 750',
-      event: 'RoboWars & Flagship',
-      date: '2026-08-16 11:15 AM',
-      status: 'Pending',
-      proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=400&q=80'
-    },
-    {
-      id: 'PAY-8919',
-      utr: 'UTR81920391823',
-      teamName: 'MatrixRunners',
-      collegeName: 'RV College of Engineering',
-      amount: '₹ 500',
-      event: 'WebCrafters',
-      date: '2026-08-16 09:00 AM',
-      status: 'Approved',
-      proofUrl: 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=400&q=80'
-    }
-  ]);
+  const [payments, setPayments] = useState([]);
 
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedEvent, setSelectedEvent] = useState('All');
@@ -74,14 +41,59 @@ export const PaymentApprovals = () => {
     }
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setPayments((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: newStatus } : p))
-    );
-    if (selectedPayment?.id === id) {
-      setSelectedPayment((prev) => ({ ...prev, status: newStatus }));
+  const loadPayments = async () => {
+    setIsRefreshing(true);
+    try {
+      const data = await apiService.getRecentPayments();
+      const rawList = data?.payments || (Array.isArray(data) ? data : []);
+      // Map API object fields to PaymentApprovals display structure
+      const formatted = rawList.map(p => ({
+        id: p._id || p.paymentid || p.id,
+        _id: p._id || p.paymentid,
+        paymentid: p.paymentid || p._id,
+        utr: p.utr || 'N/A',
+        teamName: p.user?.team?.name || p.teamName || 'Team Participant',
+        collegeName: p.user?.collegeName || p.collegeName || 'College',
+        userName: p.user?.name || p.leaderName || 'User',
+        userEmail: p.user?.email || p.email || '',
+        amount: typeof p.amount === 'number' ? `₹ ${p.amount}` : (p.amount || '₹ 0'),
+        event: (p.events && p.events[0]?.title) || p.event || 'General Festival Fee',
+        events: p.events || [],
+        date: p.timestamp ? new Date(p.timestamp).toLocaleString() : (p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Recent'),
+        status: (p.status || 'Pending').charAt(0).toUpperCase() + (p.status || 'Pending').slice(1).toLowerCase(),
+        rawStatus: (p.status || 'pending').toLowerCase(),
+        message: p.message || '',
+        approvedBy: p.approvedBy || null,
+        proofUrl: p.imageUrl || p.imageurl || p.proofUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=400&q=80'
+      }));
+      setPayments(formatted);
+    } catch (err) {
+      console.warn('Error loading payments:', err);
+    } finally {
+      setIsRefreshing(false);
     }
-    showToast(`Payment ${id} marked as ${newStatus}`);
+  };
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
+
+  const handleStatusChange = async (id, newStatus) => {
+    const normStatus = newStatus.toLowerCase();
+    const message = normStatus === 'approved' ? 'Payment verified via UTR statement' : 'Invalid UTR reference';
+    try {
+      await apiService.updatePaymentStatus(id, normStatus, message);
+      setPayments((prev) =>
+        prev.map((p) => (p.id === id || p._id === id ? { ...p, status: newStatus, rawStatus: normStatus, message } : p))
+      );
+      if (selectedPayment?.id === id || selectedPayment?._id === id) {
+        setSelectedPayment((prev) => ({ ...prev, status: newStatus, rawStatus: normStatus, message }));
+      }
+      showToast(`Payment status updated to '${newStatus}'!`);
+      loadPayments();
+    } catch (err) {
+      showToast(`Failed to update status for ${id}`, true);
+    }
   };
 
   const handleCopyUtr = (utr) => {
