@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -22,24 +22,19 @@ import {
   XCircle,
   AlertTriangle,
   Receipt,
-  X,
   ChevronDown,
   ChevronUp,
   User,
   ShieldCheck,
   Copy,
-  Eye,
-  Tag,
-  Phone,
-  Mail,
-  Layers,
-  Sparkles
+  Eye
 } from 'lucide-react';
+import { PaymentDetailsModal } from '../payments/PaymentDetailsModal';
 import './DashboardOverview.css';
 
 export const DashboardOverview = () => {
   const navigate = useNavigate();
-  const { admin, isSuperAdmin } = useAuth();
+  const { admin } = useAuth();
   const { showSuccess, showError } = useToast();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -48,6 +43,15 @@ export const DashboardOverview = () => {
   const [events, setEvents] = useState([]);
   const [payments, setPayments] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
+
+  const [stats, setStats] = useState({
+    pendingPayments: 8,
+    pendingAmount: 2300,
+    approvedPayments: 10,
+    approvedAmount: 5000,
+    totalUsers: 20,
+    totalTeams: 21
+  });
 
   // Accordion state for expanded registration rows (track expanded IDs)
   const [expandedRegs, setExpandedRegs] = useState({});
@@ -67,29 +71,15 @@ export const DashboardOverview = () => {
   const [paymentDetailModal, setPaymentDetailModal] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
-  // Event Participant Expansion state inside Payment Details Modal
-  const [expandedEventId, setExpandedEventId] = useState(null);
-  const [eventParticipantsData, setEventParticipantsData] = useState({});
-  const [loadingParticipants, setLoadingParticipants] = useState({});
-
-  const [stats, setStats] = useState({
-    pendingPayments: 8,
-    pendingAmount: 2300,
-    approvedPayments: 10,
-    approvedAmount: 5000,
-    totalUsers: 20,
-    totalTeams: 21
-  });
-
-  const showToast = (msg, isError = false) => {
+  const showToast = useCallback((msg, isError = false) => {
     if (isError) {
       showError(msg);
     } else {
       showSuccess(msg);
     }
-  };
+  }, [showError, showSuccess]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsRefreshing(true);
     try {
       const [usersData, eventsData, regsData, paymentsData] = await Promise.all([
@@ -130,16 +120,22 @@ export const DashboardOverview = () => {
         totalUsers: usersList.length > 0 ? usersList.length : 20,
         totalTeams: regsList.length > 0 ? regsList.length : 21
       });
-    } catch (err) {
-      console.warn('Dashboard stats fallback mode:', err);
+    } catch (_err) {
+      console.warn('Dashboard stats fallback mode:', _err);
     } finally {
       setTimeout(() => setIsRefreshing(false), 400);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    let isSubscribed = true;
+    queueMicrotask(() => {
+      if (isSubscribed) loadData();
+    });
+    return () => {
+      isSubscribed = false;
+    };
+  }, [loadData]);
 
   // Payment Handlers
   const handleOpenPaymentActionModal = (payment, status) => {
@@ -165,44 +161,15 @@ export const DashboardOverview = () => {
       showToast(res?.message || `Payment status updated to '${status}' successfully`);
       setPaymentActionModal(null);
       loadData();
-    } catch (err) {
+    } catch {
       showToast('Failed to update payment status.', true);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleViewPaymentDetails = async (paymentId) => {
-    setPaymentDetailModal({ loading: true, data: null });
-    setExpandedEventId(null);
-    try {
-      const data = await apiService.getPaymentDetails(paymentId);
-      setPaymentDetailModal({ loading: false, data });
-    } catch (err) {
-      showToast('Failed to load payment details.', true);
-      setPaymentDetailModal(null);
-    }
-  };
-
-  const handleToggleEventExpand = async (eventId, userId) => {
-    if (expandedEventId === eventId) {
-      setExpandedEventId(null);
-      return;
-    }
-
-    setExpandedEventId(eventId);
-
-    if (!eventParticipantsData[eventId]) {
-      setLoadingParticipants((prev) => ({ ...prev, [eventId]: true }));
-      try {
-        const data = await apiService.getEventParticipants(eventId, userId);
-        setEventParticipantsData((prev) => ({ ...prev, [eventId]: data }));
-      } catch (err) {
-        showToast('Failed to load event participants', true);
-      } finally {
-        setLoadingParticipants((prev) => ({ ...prev, [eventId]: false }));
-      }
-    }
+  const handleViewPaymentDetails = (paymentId) => {
+    setPaymentDetailModal({ id: paymentId });
   };
 
   const handleCopyUtr = (utr) => {
@@ -1470,244 +1437,13 @@ export const DashboardOverview = () => {
         </Modal>
       )}
 
-      {/* 7. Payment Full Details Modal (fetches GET /api/admin/payment-details/:paymentId) */}
-      {paymentDetailModal && (
-        <Modal
-          isOpen={!!paymentDetailModal}
-          onClose={() => setPaymentDetailModal(null)}
-          maxWidth="700px"
-        >
-          <div className="modal-header">
-            <h3><Receipt size={20} className="text-cyan" /> Payment & Registration Full Details</h3>
-            <button className="modal-close" onClick={() => setPaymentDetailModal(null)}>&times;</button>
-          </div>
-
-          {paymentDetailModal.loading ? (
-            <div className="modal-loading-state">
-              <RefreshCw className="spinner-icon" size={24} />
-              <span>Fetching payment details from API endpoint...</span>
-            </div>
-          ) : paymentDetailModal.data ? (
-            <div className="payment-details-view">
-              {/* Payment Summary Header */}
-              <div className="details-header-card">
-                <div className="details-status-row">
-                  <span className={`payment-status-badge status-${(paymentDetailModal.data.payment?.status || 'pending').toLowerCase()}`}>
-                    {(paymentDetailModal.data.payment?.status || 'pending').toUpperCase()}
-                  </span>
-                  <span className="details-timestamp">
-                    Timestamp: {new Date(paymentDetailModal.data.payment?.timestamp || paymentDetailModal.data.payment?.createdAt || Date.now()).toLocaleString()}
-                  </span>
-                </div>
-                <div className="details-amount-row">
-                  <div>
-                    <span className="details-label">Amount Paid</span>
-                    <h2 className="details-amount-val">₹{paymentDetailModal.data.payment?.amount}</h2>
-                  </div>
-                  <div>
-                    <span className="details-label">UTR Reference</span>
-                    <div className="utr-copy-row">
-                      <code className="utr-code-lg">{paymentDetailModal.data.payment?.utr}</code>
-                      <button
-                        type="button"
-                        className="btn-icon-subtle"
-                        onClick={() => handleCopyUtr(paymentDetailModal.data.payment?.utr)}
-                      >
-                        <Copy size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Audit notes if updated by an admin */}
-                {paymentDetailModal.data.payment?.approvedBy && (
-                  <div className="details-audit-alert">
-                    <ShieldCheck size={16} />
-                    <div>
-                      <strong>Action By: {paymentDetailModal.data.payment.approvedBy.name}</strong> ({paymentDetailModal.data.payment.approvedBy.email})
-                      {paymentDetailModal.data.payment.message && <p className="audit-msg-text">Reason: "{paymentDetailModal.data.payment.message}"</p>}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Grid with User, College, Team Info */}
-              <div className="details-grid-2col">
-                {/* User Info Box */}
-                <div className="details-card-box">
-                  <h4 className="details-card-title"><User size={15} /> Student User Details</h4>
-                  <div className="user-profile-summary">
-                    {paymentDetailModal.data.user?.avatar && (
-                      <img src={paymentDetailModal.data.user.avatar} alt="User Avatar" className="user-avatar-lg" />
-                    )}
-                    <div>
-                      <h5 className="user-name-text">{paymentDetailModal.data.user?.name || 'N/A'}</h5>
-                      <p className="user-email-text">{paymentDetailModal.data.user?.email || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* College & Team Info Box */}
-                <div className="details-card-box">
-                  <h4 className="details-card-title"><Building2 size={15} /> College & Team Details</h4>
-                  <p className="detail-field"><strong>College:</strong> {paymentDetailModal.data.college?.collegeName || paymentDetailModal.data.user?.collegeName || 'N/A'}</p>
-                  <p className="detail-field"><strong>Team Name:</strong> {paymentDetailModal.data.team?.name || 'N/A'}</p>
-                  <p className="detail-field"><strong>Team ID:</strong> <code>{paymentDetailModal.data.team?.teamid || 'N/A'}</code></p>
-                </div>
-              </div>
-
-              {/* Payment Proof Image Screenshot */}
-              {(paymentDetailModal.data.payment?.imageUrl || paymentDetailModal.data.payment?.imageurl) && (
-                <div className="details-card-box">
-                  <h4 className="details-card-title"><Eye size={15} /> Payment Proof Screenshot</h4>
-                  <div className="details-proof-img-container">
-                    <img 
-                      src={paymentDetailModal.data.payment.imageUrl || paymentDetailModal.data.payment.imageurl} 
-                      alt="Proof Screenshot" 
-                      className="details-proof-img" 
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Events Registered Associated with this Payment */}
-              <div className="details-card-box">
-                <h4 className="details-card-title">
-                  <Calendar size={15} /> Associated Event Registrations
-                </h4>
-                {paymentDetailModal.data.events && paymentDetailModal.data.events.length > 0 ? (
-                  <div className="events-list-mini">
-                    {paymentDetailModal.data.events.map((evt, idx) => {
-                      const eventId = evt._id || evt.id || `evt_${idx}`;
-                      const userId = paymentDetailModal.data.user?._id || paymentDetailModal.data.user?.id || 'usr_101';
-                      const isExpanded = expandedEventId === eventId;
-                      const isLoading = loadingParticipants[eventId];
-                      const partData = eventParticipantsData[eventId];
-
-                      return (
-                        <div key={eventId} className={`event-item-wrapper ${isExpanded ? 'expanded' : ''}`}>
-                          {/* Event Header Line (Click to expand & call API) */}
-                          <div 
-                            className="event-item-row clickable-event-row"
-                            onClick={() => handleToggleEventExpand(eventId, userId)}
-                            title="Click to view participant list and event specifications"
-                          >
-                            <div className="evt-title-group">
-                              <h5 className="evt-title">{evt.title}</h5>
-                              {evt.description && <p className="evt-desc">{evt.description}</p>}
-                            </div>
-                            <div className="evt-right-group">
-                              <div className="evt-fee-pill">
-                                <span>Fee: ₹{evt.registrationFee || evt.actualPrice || evt.fee || 500}</span>
-                              </div>
-                              <button type="button" className="btn-icon-subtle expand-btn">
-                                {isLoading ? (
-                                  <RefreshCw size={14} className="spin-icon" />
-                                ) : isExpanded ? (
-                                  <ChevronUp size={16} />
-                                ) : (
-                                  <ChevronDown size={16} />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Expanded Details & Participants List */}
-                          {isExpanded && (
-                            <div className="event-expanded-details-container">
-                              {isLoading ? (
-                                <div className="event-details-loading">
-                                  <RefreshCw size={16} className="spin-icon text-cyan" />
-                                  <span>Fetching participant list from <code>/api/admin/event-participants</code>...</span>
-                                </div>
-                              ) : partData ? (
-                                <div className="event-expanded-body">
-                                  {/* Specs Bar */}
-                                  <div className="event-specs-strip">
-                                    {partData.event?.location && (
-                                      <span className="spec-badge">
-                                        <strong>Location:</strong> {partData.event.location}
-                                      </span>
-                                    )}
-                                    {partData.event?.date && (
-                                      <span className="spec-badge">
-                                        <strong>Date:</strong> {new Date(partData.event.date).toLocaleDateString()}
-                                      </span>
-                                    )}
-                                    {partData.event?.capacity && (
-                                      <span className="spec-badge">
-                                        <strong>Capacity:</strong> {partData.event.capacity}
-                                      </span>
-                                    )}
-                                    <span className="spec-badge">
-                                      <strong>Team Limits:</strong> {partData.event?.minParticipants || 1} - {partData.event?.maxParticipants || 4} Members
-                                    </span>
-                                  </div>
-
-                                  {/* Participants List Header */}
-                                  <div className="participants-section-header">
-                                    <h5 className="participants-title">
-                                      <Users size={14} className="text-cyan" /> Event Registered Participants ({partData.participantsCount || partData.participants?.length || 0})
-                                    </h5>
-                                    {partData.team?.name && (
-                                      <span className="team-badge">Team: {partData.team.name}</span>
-                                    )}
-                                  </div>
-
-                                  {/* Participants Grid */}
-                                  <div className="participants-grid">
-                                    {partData.participants && partData.participants.length > 0 ? (
-                                      partData.participants.map((part, pIdx) => (
-                                        <div key={part._id || pIdx} className="participant-card-item">
-                                          <div className="participant-avatar-wrap">
-                                            {part.avatar ? (
-                                              <img src={part.avatar} alt={part.name} className="participant-avatar" />
-                                            ) : (
-                                              <div className="participant-avatar-placeholder">
-                                                <User size={16} />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <div className="participant-info">
-                                            <h6 className="participant-name">
-                                              {part.name}
-                                              {part.role && <span className="participant-role-pill">{part.role}</span>}
-                                            </h6>
-                                            <p className="participant-email">{part.email}</p>
-                                            <p className="participant-college">{part.collegeName || partData.college?.collegeName}</p>
-                                          </div>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <p className="text-muted text-sm">No participant records attached to this event registration.</p>
-                                    )}
-                                  </div>
-                                </div>
-                              ) : (
-                                <p className="text-danger text-sm">Could not load participant details.</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-muted">No specific event items mapped to this payment id.</p>
-                )}
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setPaymentDetailModal(null)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          ) : (
-            <p className="text-danger">Failed to load details for payment.</p>
-          )}
-        </Modal>
-      )}
+      {/* 7. Payment Full Details Modal */}
+      <PaymentDetailsModal
+        isOpen={!!paymentDetailModal}
+        onClose={() => setPaymentDetailModal(null)}
+        paymentId={paymentDetailModal?.id}
+        onOpenActionModal={handleOpenPaymentActionModal}
+      />
 
       {/* 8. Image Lightbox Modal */}
       {previewImage && (

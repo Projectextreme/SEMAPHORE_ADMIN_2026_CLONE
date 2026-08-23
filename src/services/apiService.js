@@ -1396,63 +1396,110 @@ export const apiService = {
 
   getPaymentDetails: async (paymentId) => {
     try {
-      const data = await apiRequest(`/api/admin/payment-details/${paymentId}`, {
-        method: 'GET'
-      });
+      let data;
+      try {
+        data = await apiRequest(`/api/admin/payment-details/${paymentId}`, { method: 'GET' });
+      } catch (_e1) {
+        data = await apiRequest(`/api/admin/payments/${paymentId}`, { method: 'GET' });
+      }
       return data;
     } catch (err) {
       console.warn('Backend payment details API offline, deriving from local store:', err);
       const list = getStoredPayments();
       const item = list.find(p => (p.paymentid || p._id) === paymentId) || list[0];
       
+      const rawEvents = item?.events || [
+        {
+          registrationId: "66c89f1e1a2b3c4d5e6f7r01",
+          eventId: "66c89f1e1a2b3c4d5e6f7b01",
+          title: "CodeSprint Hackathon",
+          description: "24-hour coding marathon",
+          actualPrice: 500,
+          registrationFee: 500,
+          location: "Auditorium Hall A",
+          date: "2026-09-15T09:00:00.000Z",
+          minParticipants: 1,
+          maxParticipants: 4,
+          participantsCount: 2,
+          participants: [
+            { name: "Alex Johnson", phone: "+19876543210" },
+            { name: "Sam Lee", phone: "+19876543211" }
+          ],
+          createdAt: "2026-08-23T13:12:00.000Z"
+        },
+        {
+          registrationId: "66c89f1e1a2b3c4d5e6f7r02",
+          eventId: "66c89f1e1a2b3c4d5e6f7b02",
+          title: "Robo Wars",
+          description: "Bot combat tournament",
+          actualPrice: 500,
+          registrationFee: 500,
+          location: "Robotics Lab B",
+          date: "2026-09-16T10:00:00.000Z",
+          minParticipants: 1,
+          maxParticipants: 2,
+          participantsCount: 1,
+          participants: [
+            { name: item?.user?.name || "John Doe", phone: "+19876543212" }
+          ],
+          createdAt: "2026-08-23T13:12:00.000Z"
+        }
+      ];
+
+      const formattedEvents = rawEvents.map(evt => ({
+        registrationId: evt.registrationId || evt._id || evt.id,
+        eventId: evt.eventId || evt._id || evt.id,
+        title: evt.title || evt.name || 'Event Registration',
+        description: evt.description || '',
+        actualPrice: evt.actualPrice || evt.registrationFee || evt.fee || 500,
+        registrationFee: evt.registrationFee || evt.actualPrice || evt.fee || 500,
+        location: evt.location || 'Auditorium Hall A',
+        date: evt.date || '2026-09-15T09:00:00.000Z',
+        minParticipants: evt.minParticipants || 1,
+        maxParticipants: evt.maxParticipants || 4,
+        participantsCount: evt.participantsCount || (evt.participants ? evt.participants.length : 1),
+        participants: evt.participants || [
+          { name: item?.user?.name || item?.leaderName || 'Student Participant', phone: '+19876543210' }
+        ],
+        createdAt: evt.createdAt || new Date().toISOString()
+      }));
+
       return {
         payment: {
           paymentid: item?.paymentid || item?._id || paymentId,
           _id: item?._id || item?.paymentid || paymentId,
           amount: item?.amount || 1000,
           utr: item?.utr || 'UTR987654321012',
-          imageUrl: item?.imageUrl || item?.imageurl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
-          imageurl: item?.imageurl || item?.imageUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=800&q=80',
+          imageUrl: item?.imageUrl || item?.imageurl || 'https://res.cloudinary.com/demo/image/upload/v1724419200/payment.jpg',
+          imageurl: item?.imageurl || item?.imageUrl || 'https://res.cloudinary.com/demo/image/upload/v1724419200/payment.jpg',
           status: item?.status || 'approved',
-          message: item?.message || 'Payment verified via UTR statement',
-          approvedBy: item?.approvedBy || { _id: 'admin_1', name: 'Super Admin', email: 'admin@example.com', role: 'superadmin' },
+          message: item?.message || 'Payment verified via bank statement',
+          approvedBy: item?.approvedBy || { _id: '66c89f1e1a2b3c4d5e6f7admin1', name: 'Super Admin', email: 'admin@example.com', role: 'superadmin' },
+          approved_by: item?.approvedBy || { _id: '66c89f1e1a2b3c4d5e6f7admin1', name: 'Super Admin', email: 'admin@example.com', role: 'superadmin' },
           timestamp: item?.timestamp || item?.createdAt || new Date().toISOString(),
           createdAt: item?.createdAt || new Date().toISOString(),
           updatedAt: item?.updatedAt || new Date().toISOString()
         },
-        user: item?.user || {
-          _id: 'usr_101',
-          name: 'John Doe',
-          email: 'john@example.com',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-          collegeName: 'Stanford University'
+        user: {
+          _id: item?.user?._id || '66c89f1e1a2b3c4d5e6f7a80',
+          name: item?.user?.name || item?.userName || item?.leaderName || 'John Doe',
+          email: item?.user?.email || item?.userEmail || item?.email || 'john@example.com',
+          avatar: item?.user?.avatar || item?.userAvatar || item?.avatar || 'https://lh3.googleusercontent.com/a/avatar',
+          collegeName: item?.user?.collegeName || item?.collegeName || 'Stanford University'
         },
         college: item?.user?.college || {
-          _id: 'col_101',
-          collegeName: item?.user?.collegeName || 'Stanford University',
+          _id: '66c89f1e1a2b3c4d5e6f7c00',
+          collegeName: item?.user?.collegeName || item?.collegeName || 'Stanford University',
           totalTeams: 1
         },
         team: item?.user?.team || {
-          _id: 'tm_101',
-          name: 'CyberKnights',
-          teamid: 'TEAM-1724419200000-4821'
+          _id: '66c89f1e1a2b3c4d5e6f7a81',
+          name: item?.user?.team?.name || item?.teamName || 'CyberKnights',
+          teamid: item?.user?.team?.teamid || 'TEAM-1724419200000-4821'
         },
-        events: item?.events || [
-          {
-            _id: 'evt_101',
-            title: 'CodeSprint Hackathon',
-            description: '24-hour coding marathon',
-            date: '2026-09-15T09:00:00.000Z',
-            registrationFee: 500
-          },
-          {
-            _id: 'evt_102',
-            title: 'Robo Wars',
-            description: 'Bot combat tournament',
-            date: '2026-09-16T10:00:00.000Z',
-            registrationFee: 500
-          }
-        ]
+        eventsCount: formattedEvents.length,
+        events: formattedEvents,
+        associatedEvents: formattedEvents
       };
     }
   },

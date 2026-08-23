@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
@@ -19,11 +19,10 @@ import {
   Receipt, 
   Clock, 
   ShieldCheck,
-  Award,
   MapPin,
-  Phone,
   ArrowUpRight
 } from 'lucide-react';
+import { PaymentDetailsModal } from '../payments/PaymentDetailsModal';
 import './UserProfileView.css';
 
 export const UserProfileView = () => {
@@ -39,26 +38,33 @@ export const UserProfileView = () => {
 
   // Modals state for payment operations on user profile
   const [actionModal, setActionModal] = useState(null); // { payment, status, message }
+  const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
-  const loadUserDetails = async () => {
+  const loadUserDetails = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiService.getUserFullDetails(userId);
       setUserData(data);
-    } catch (err) {
-      showError(err.message || 'Failed to load user profile details');
+    } catch {
+      showError('Failed to load user details');
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, showError]);
 
   useEffect(() => {
+    let isSubscribed = true;
     if (userId) {
-      loadUserDetails();
+      queueMicrotask(() => {
+        if (isSubscribed) loadUserDetails();
+      });
     }
-  }, [userId]);
+    return () => {
+      isSubscribed = false;
+    };
+  }, [userId, loadUserDetails]);
 
   const handleCopyUtr = (utr) => {
     if (!utr) return;
@@ -89,7 +95,7 @@ export const UserProfileView = () => {
       showSuccess(res?.message || `Payment status updated to '${status}' successfully!`);
       setActionModal(null);
       loadUserDetails();
-    } catch (err) {
+    } catch {
       showError('Failed to update payment status');
     } finally {
       setActionLoading(false);
@@ -176,7 +182,7 @@ export const UserProfileView = () => {
               )}
               <div className="meta-item">
                 <Clock size={14} className="text-muted" />
-                <span>Joined: {new Date(user.createdAt || Date.now()).toLocaleDateString()}</span>
+                <span>Joined: {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Recent'}</span>
               </div>
             </div>
           </div>
@@ -326,7 +332,7 @@ export const UserProfileView = () => {
                       </div>
                     </div>
 
-                    {/* Payment Action Operations (Approve / Reject) */}
+                    {/* Payment Action Operations (Approve / Reject / View Details) */}
                     <div className="pay-card-actions">
                       <button
                         type="button"
@@ -341,6 +347,14 @@ export const UserProfileView = () => {
                         onClick={() => handleOpenActionModal(p, 'rejected')}
                       >
                         <XCircle size={13} /> Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-secondary"
+                        onClick={() => setSelectedPaymentId(paymentId)}
+                        title="View details, associated events and participants"
+                      >
+                        <Eye size={13} /> View Details
                       </button>
                     </div>
                   </div>
@@ -551,6 +565,14 @@ export const UserProfileView = () => {
           </div>
         </Modal>
       )}
+
+      {/* Payment Details Modal */}
+      <PaymentDetailsModal
+        isOpen={!!selectedPaymentId}
+        onClose={() => setSelectedPaymentId(null)}
+        paymentId={selectedPaymentId}
+        onOpenActionModal={handleOpenActionModal}
+      />
     </div>
   );
 };
