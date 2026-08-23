@@ -350,3 +350,61 @@
     font-size: 0.75rem;
   }
 }
+
+.payment-table-img-wrap {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  background: var(--bg-input);
+}
+
+.payment-table-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.payment-table-img-wrap:hover .payment-table-img {
+  transform: scale(1.1);
+}
+
+.utr-code-cell {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cyan);
+  background: var(--badge-bg);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--cyan-border);
+}
+
+.status-audit-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.audit-sub-text {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.btn-view-more-payments {
+  width: 100%;
+  justify-content: center;
+  padding: 0.75rem 1rem;
+  font-weight: 700;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.payments-section-footer {
+  padding: 0.75rem 1.25rem 1.25rem 1.25rem;
+}
+

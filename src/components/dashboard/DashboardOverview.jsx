@@ -500,7 +500,7 @@ export const DashboardOverview = () => {
               compact={true}
             />
           ) : (
-            payments.map((p) => {
+            payments.slice(0, 3).map((p) => {
               const paymentId = p._id || p.paymentid;
               const rawStatus = (p.status || 'pending').toLowerCase();
               const amountDisplay = typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹0');
@@ -637,6 +637,20 @@ export const DashboardOverview = () => {
             })
           )}
         </div>
+
+        {/* View More Button Footer if more than 3 payments exist */}
+        {payments.length > 3 && (
+          <div className="payments-section-footer">
+            <button
+              type="button"
+              className="btn btn-secondary btn-view-more-payments"
+              onClick={() => navigate('/payments')}
+              title="Navigate to All Payments Hub"
+            >
+              View More ({payments.length - 3} More Payment Records) <ArrowUpRight size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
