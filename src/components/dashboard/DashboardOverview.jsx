@@ -67,6 +67,11 @@ export const DashboardOverview = () => {
   const [paymentDetailModal, setPaymentDetailModal] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
 
+  // Event Participant Expansion state inside Payment Details Modal
+  const [expandedEventId, setExpandedEventId] = useState(null);
+  const [eventParticipantsData, setEventParticipantsData] = useState({});
+  const [loadingParticipants, setLoadingParticipants] = useState({});
+
   const [stats, setStats] = useState({
     pendingPayments: 8,
     pendingAmount: 2300,
@@ -169,12 +174,34 @@ export const DashboardOverview = () => {
 
   const handleViewPaymentDetails = async (paymentId) => {
     setPaymentDetailModal({ loading: true, data: null });
+    setExpandedEventId(null);
     try {
       const data = await apiService.getPaymentDetails(paymentId);
       setPaymentDetailModal({ loading: false, data });
     } catch (err) {
       showToast('Failed to load payment details.', true);
       setPaymentDetailModal(null);
+    }
+  };
+
+  const handleToggleEventExpand = async (eventId, userId) => {
+    if (expandedEventId === eventId) {
+      setExpandedEventId(null);
+      return;
+    }
+
+    setExpandedEventId(eventId);
+
+    if (!eventParticipantsData[eventId]) {
+      setLoadingParticipants((prev) => ({ ...prev, [eventId]: true }));
+      try {
+        const data = await apiService.getEventParticipants(eventId, userId);
+        setEventParticipantsData((prev) => ({ ...prev, [eventId]: data }));
+      } catch (err) {
+        showToast('Failed to load event participants', true);
+      } finally {
+        setLoadingParticipants((prev) => ({ ...prev, [eventId]: false }));
+      }
     }
   };
 
@@ -1537,20 +1564,125 @@ export const DashboardOverview = () => {
 
               {/* Events Registered Associated with this Payment */}
               <div className="details-card-box">
-                <h4 className="details-card-title"><Calendar size={15} /> Associated Event Registrations</h4>
+                <h4 className="details-card-title">
+                  <Calendar size={15} /> Associated Event Registrations
+                </h4>
                 {paymentDetailModal.data.events && paymentDetailModal.data.events.length > 0 ? (
                   <div className="events-list-mini">
-                    {paymentDetailModal.data.events.map((evt, idx) => (
-                      <div key={evt._id || idx} className="event-item-row">
-                        <div>
-                          <h5 className="evt-title">{evt.title}</h5>
-                          {evt.description && <p className="evt-desc">{evt.description}</p>}
+                    {paymentDetailModal.data.events.map((evt, idx) => {
+                      const eventId = evt._id || evt.id || `evt_${idx}`;
+                      const userId = paymentDetailModal.data.user?._id || paymentDetailModal.data.user?.id || 'usr_101';
+                      const isExpanded = expandedEventId === eventId;
+                      const isLoading = loadingParticipants[eventId];
+                      const partData = eventParticipantsData[eventId];
+
+                      return (
+                        <div key={eventId} className={`event-item-wrapper ${isExpanded ? 'expanded' : ''}`}>
+                          {/* Event Header Line (Click to expand & call API) */}
+                          <div 
+                            className="event-item-row clickable-event-row"
+                            onClick={() => handleToggleEventExpand(eventId, userId)}
+                            title="Click to view participant list and event specifications"
+                          >
+                            <div className="evt-title-group">
+                              <h5 className="evt-title">{evt.title}</h5>
+                              {evt.description && <p className="evt-desc">{evt.description}</p>}
+                            </div>
+                            <div className="evt-right-group">
+                              <div className="evt-fee-pill">
+                                <span>Fee: ₹{evt.registrationFee || evt.actualPrice || evt.fee || 500}</span>
+                              </div>
+                              <button type="button" className="btn-icon-subtle expand-btn">
+                                {isLoading ? (
+                                  <RefreshCw size={14} className="spin-icon" />
+                                ) : isExpanded ? (
+                                  <ChevronUp size={16} />
+                                ) : (
+                                  <ChevronDown size={16} />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Expanded Details & Participants List */}
+                          {isExpanded && (
+                            <div className="event-expanded-details-container">
+                              {isLoading ? (
+                                <div className="event-details-loading">
+                                  <RefreshCw size={16} className="spin-icon text-cyan" />
+                                  <span>Fetching participant list from <code>/api/admin/event-participants</code>...</span>
+                                </div>
+                              ) : partData ? (
+                                <div className="event-expanded-body">
+                                  {/* Specs Bar */}
+                                  <div className="event-specs-strip">
+                                    {partData.event?.location && (
+                                      <span className="spec-badge">
+                                        <strong>Location:</strong> {partData.event.location}
+                                      </span>
+                                    )}
+                                    {partData.event?.date && (
+                                      <span className="spec-badge">
+                                        <strong>Date:</strong> {new Date(partData.event.date).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                    {partData.event?.capacity && (
+                                      <span className="spec-badge">
+                                        <strong>Capacity:</strong> {partData.event.capacity}
+                                      </span>
+                                    )}
+                                    <span className="spec-badge">
+                                      <strong>Team Limits:</strong> {partData.event?.minParticipants || 1} - {partData.event?.maxParticipants || 4} Members
+                                    </span>
+                                  </div>
+
+                                  {/* Participants List Header */}
+                                  <div className="participants-section-header">
+                                    <h5 className="participants-title">
+                                      <Users size={14} className="text-cyan" /> Event Registered Participants ({partData.participantsCount || partData.participants?.length || 0})
+                                    </h5>
+                                    {partData.team?.name && (
+                                      <span className="team-badge">Team: {partData.team.name}</span>
+                                    )}
+                                  </div>
+
+                                  {/* Participants Grid */}
+                                  <div className="participants-grid">
+                                    {partData.participants && partData.participants.length > 0 ? (
+                                      partData.participants.map((part, pIdx) => (
+                                        <div key={part._id || pIdx} className="participant-card-item">
+                                          <div className="participant-avatar-wrap">
+                                            {part.avatar ? (
+                                              <img src={part.avatar} alt={part.name} className="participant-avatar" />
+                                            ) : (
+                                              <div className="participant-avatar-placeholder">
+                                                <User size={16} />
+                                              </div>
+                                            )}
+                                          </div>
+                                          <div className="participant-info">
+                                            <h6 className="participant-name">
+                                              {part.name}
+                                              {part.role && <span className="participant-role-pill">{part.role}</span>}
+                                            </h6>
+                                            <p className="participant-email">{part.email}</p>
+                                            <p className="participant-college">{part.collegeName || partData.college?.collegeName}</p>
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-muted text-sm">No participant records attached to this event registration.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-danger text-sm">Could not load participant details.</p>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="evt-fee-pill">
-                          <span>Fee: ₹{evt.registrationFee || evt.fee || 500}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-muted">No specific event items mapped to this payment id.</p>
