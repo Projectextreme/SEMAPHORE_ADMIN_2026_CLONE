@@ -34,6 +34,9 @@ export const UserProfileView = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Event registration status filter tab ('All', 'Confirmed', 'Unconfirmed')
+  const [eventFilterTab, setEventFilterTab] = useState('All');
+
   // Modals state for payment operations on user profile
   const [actionModal, setActionModal] = useState(null); // { payment, status, message }
   const [actionLoading, setActionLoading] = useState(false);
@@ -348,54 +351,120 @@ export const UserProfileView = () => {
         </div>
       </div>
 
-      {/* Registered Events Section */}
+      {/* Registered Events Section with Confirmed vs Unconfirmed Filters */}
       <div className="card section-card mt-6">
-        <div className="section-header">
+        <div className="section-header flex-wrap-header">
           <h3 className="section-title">
             <Calendar size={18} className="text-cyan" /> Registered Events ({registeredEvents.length})
           </h3>
+
+          {/* Status Tabs: All, Confirmed, Unconfirmed */}
+          <div className="tab-group-sm">
+            {[
+              { label: 'All', key: 'All', count: registeredEvents.length },
+              { 
+                label: 'Confirmed', 
+                key: 'Confirmed', 
+                count: registeredEvents.filter(evt => {
+                  const pay = (evt.payments && evt.payments[0]) || payments[0];
+                  return (pay?.status || evt.paymentStatus || evt.status || 'pending').toLowerCase() === 'approved';
+                }).length 
+              },
+              { 
+                label: 'Unconfirmed / Pending', 
+                key: 'Unconfirmed', 
+                count: registeredEvents.filter(evt => {
+                  const pay = (evt.payments && evt.payments[0]) || payments[0];
+                  return (pay?.status || evt.paymentStatus || evt.status || 'pending').toLowerCase() !== 'approved';
+                }).length 
+              }
+            ].map(t => (
+              <button
+                key={t.key}
+                className={`tab-btn-sm ${eventFilterTab === t.key ? 'active' : ''}`}
+                onClick={() => setEventFilterTab(t.key)}
+              >
+                <span>{t.label}</span>
+                <span className="tab-cnt">{t.count}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {registeredEvents.length === 0 ? (
           <p className="text-muted text-sm p-4 text-center">No event registrations associated with this user account.</p>
         ) : (
           <div className="events-grid-2col">
-            {registeredEvents.map((evt) => (
-              <div key={evt.registrationId || evt.eventId} className="user-event-card">
-                {evt.image && (
-                  <div className="event-cover-wrap">
-                    <img src={evt.image} alt={evt.title} className="event-cover-img" />
-                  </div>
-                )}
-                <div className="event-card-content">
-                  <div className="event-header-line">
-                    <h4 className="event-title">{evt.title}</h4>
-                    <span className="event-fee-badge">Fee: ₹{evt.registrationFee || evt.actualPrice || 500}</span>
-                  </div>
-                  <p className="event-desc">{evt.description}</p>
+            {registeredEvents
+              .filter(evt => {
+                const pay = (evt.payments && evt.payments[0]) || payments[0];
+                const rawSt = (pay?.status || evt.paymentStatus || evt.status || 'pending').toLowerCase();
+                if (eventFilterTab === 'Confirmed') return rawSt === 'approved';
+                if (eventFilterTab === 'Unconfirmed') return rawSt !== 'approved';
+                return true;
+              })
+              .map((evt) => {
+                const matchingPay = (evt.payments && evt.payments[0]) || payments[0];
+                const rawStatus = (matchingPay?.status || evt.paymentStatus || evt.status || 'pending').toLowerCase();
+                const isConfirmed = rawStatus === 'approved';
+                const isRejected = rawStatus === 'rejected';
 
-                  <div className="event-specs-grid">
-                    {evt.location && (
-                      <span className="evt-spec-item"><MapPin size={12} /> {evt.location}</span>
+                return (
+                  <div key={evt.registrationId || evt.eventId} className={`user-event-card border-status-${rawStatus}`}>
+                    {evt.image && (
+                      <div className="event-cover-wrap">
+                        <img src={evt.image} alt={evt.title} className="event-cover-img" />
+                      </div>
                     )}
-                    {evt.timings && (
-                      <span className="evt-spec-item"><Clock size={12} /> {evt.timings}</span>
-                    )}
-                  </div>
-
-                  {evt.coordinators && evt.coordinators.length > 0 && (
-                    <div className="coordinators-list">
-                      <strong className="coord-label">Coordinators:</strong>
-                      {evt.coordinators.map((c, i) => (
-                        <span key={i} className="coord-pill">
-                          {c.name} {c.phone ? `(${c.phone})` : ''}
+                    <div className="event-card-content">
+                      {/* Status Banner */}
+                      <div className="event-status-banner-line">
+                        <span className={`reg-status-pill reg-status-${rawStatus}`}>
+                          {isConfirmed && <CheckCircle2 size={12} />}
+                          {isRejected && <XCircle size={12} />}
+                          {!isConfirmed && !isRejected && <Clock size={12} />}
+                          {isConfirmed ? 'CONFIRMED REGISTRATION' : isRejected ? 'REGISTRATION REJECTED' : 'PAYMENT PENDING VERIFICATION'}
                         </span>
-                      ))}
+                        <span className="event-fee-badge">Fee: ₹{evt.registrationFee || evt.actualPrice || 500}</span>
+                      </div>
+
+                      <div className="event-header-line">
+                        <h4 className="event-title">{evt.title}</h4>
+                      </div>
+                      <p className="event-desc">{evt.description}</p>
+
+                      <div className="event-specs-grid">
+                        {evt.location && (
+                          <span className="evt-spec-item"><MapPin size={12} /> {evt.location}</span>
+                        )}
+                        {evt.timings && (
+                          <span className="evt-spec-item"><Clock size={12} /> {evt.timings}</span>
+                        )}
+                      </div>
+
+                      {/* Payment UTR info attached to registration */}
+                      {matchingPay && (
+                        <div className="evt-pay-info-box">
+                          <span className="meta-lbl">UTR Reference:</span>
+                          <code className="utr-code">{matchingPay.utr}</code>
+                          <span className="pay-amt-tag">₹{matchingPay.amount}</span>
+                        </div>
+                      )}
+
+                      {evt.coordinators && evt.coordinators.length > 0 && (
+                        <div className="coordinators-list">
+                          <strong className="coord-label">Coordinators:</strong>
+                          {evt.coordinators.map((c, i) => (
+                            <span key={i} className="coord-pill">
+                              {c.name} {c.phone ? `(${c.phone})` : ''}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>

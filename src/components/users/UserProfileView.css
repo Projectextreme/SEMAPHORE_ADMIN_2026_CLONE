@@ -547,6 +547,124 @@
   margin-right: 0.25rem;
 }
 
+.flex-wrap-header {
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tab-group-sm {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg-input, #f1f5f9);
+  padding: 0.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.tab-btn-sm {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.tab-btn-sm:hover {
+  color: var(--text-heading);
+}
+
+.tab-btn-sm.active {
+  background: var(--primary, #6366f1);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.tab-cnt {
+  font-size: 0.66rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 8px;
+  background: rgba(148, 163, 184, 0.2);
+}
+
+.tab-btn-sm.active .tab-cnt {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.user-event-card.border-status-approved {
+  border-left: 4px solid var(--success);
+}
+
+.user-event-card.border-status-rejected {
+  border-left: 4px solid var(--danger);
+}
+
+.user-event-card.border-status-pending {
+  border-left: 4px solid var(--warning);
+}
+
+.event-status-banner-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.reg-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 12px;
+  letter-spacing: 0.03em;
+}
+
+.reg-status-approved {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.reg-status-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+.reg-status-rejected {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.evt-pay-info-box {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--badge-bg);
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  margin-top: 0.2rem;
+  border: 1px solid var(--border-color);
+}
+
+.pay-amt-tag {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
 @media (max-width: 900px) {
   .profile-sections-grid {
     grid-template-columns: 1fr;
