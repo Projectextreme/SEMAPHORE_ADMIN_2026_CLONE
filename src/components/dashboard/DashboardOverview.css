@@ -1277,6 +1277,10 @@
   gap: 0.2rem;
 }
 
+.payment-card.clickable-card {
+  cursor: pointer;
+}
+
 .user-name-line {
   display: flex;
   align-items: center;
@@ -1284,6 +1288,27 @@
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--text-heading);
+}
+
+.user-avatar-sm {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--cyan, #0284c7);
+  flex-shrink: 0;
+}
+
+.user-avatar-placeholder {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cyan-light, rgba(2, 132, 199, 0.12));
+  color: var(--cyan, #0284c7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .college-name-line {

@@ -505,9 +505,19 @@ export const DashboardOverview = () => {
               const rawStatus = (p.status || 'pending').toLowerCase();
               const amountDisplay = typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹0');
               const proofImg = p.imageUrl || p.imageurl || p.proofUrl;
+              const userAvatar = p.user?.avatar || p.avatar;
 
               return (
-                <div key={paymentId} className={`payment-card status-border-${rawStatus}`}>
+                <div 
+                  key={paymentId} 
+                  className={`payment-card status-border-${rawStatus} clickable-card`}
+                  onClick={(e) => {
+                    if (!e.target.closest('button') && !e.target.closest('.payment-img-thumbnail-wrap')) {
+                      handleViewPaymentDetails(paymentId);
+                    }
+                  }}
+                  title="Click card to view complete payment details"
+                >
                   {/* Card Top Banner: Amount & Status Badge */}
                   <div className="payment-card-header">
                     <div className="payment-amount-tag">
@@ -528,7 +538,10 @@ export const DashboardOverview = () => {
                     {proofImg ? (
                       <div 
                         className="payment-img-thumbnail-wrap" 
-                        onClick={() => setPreviewImage({ url: proofImg, utr: p.utr })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewImage({ url: proofImg, utr: p.utr });
+                        }}
                         title="Click to expand payment proof screenshot"
                       >
                         <img src={proofImg} alt="Payment Receipt" className="payment-img-thumbnail" />
@@ -554,7 +567,10 @@ export const DashboardOverview = () => {
                           <button
                             type="button"
                             className="btn-icon-subtle"
-                            onClick={() => handleCopyUtr(p.utr)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleCopyUtr(p.utr);
+                            }}
                             title="Copy UTR to Clipboard"
                           >
                             <Copy size={13} />
@@ -565,7 +581,13 @@ export const DashboardOverview = () => {
                       {/* User & Team Details */}
                       <div className="payment-user-info">
                         <div className="user-name-line">
-                          <User size={13} className="text-muted" />
+                          {userAvatar ? (
+                            <img src={userAvatar} alt={p.user?.name || 'User'} className="user-avatar-sm" />
+                          ) : (
+                            <div className="user-avatar-placeholder">
+                              <User size={12} />
+                            </div>
+                          )}
                           <span className="user-name">{p.user?.name || p.leaderName || 'Student Participant'}</span>
                         </div>
                         {p.user?.collegeName || p.collegeName ? (
