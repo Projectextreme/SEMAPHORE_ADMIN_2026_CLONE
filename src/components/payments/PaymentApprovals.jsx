@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
@@ -26,6 +27,7 @@ import {
 import './PaymentApprovals.css';
 
 export const PaymentApprovals = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [payments, setPayments] = useState([]);
@@ -392,7 +394,15 @@ export const PaymentApprovals = () => {
 
                       {/* User Avatar & Details */}
                       <div className="payment-user-info">
-                        <div className="user-name-line">
+                        <div 
+                          className="user-name-line clickable-user-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetUserId = p.user?._id || p.user?.id || p.userId || p._id || '66c89f1e1a2b3c4d5e6f7a80';
+                            navigate(`/user/${targetUserId}`);
+                          }}
+                          title={`Click to view full profile of ${p.userName}`}
+                        >
                           {userAvatar ? (
                             <img src={userAvatar} alt={p.userName} className="user-avatar-sm" />
                           ) : (

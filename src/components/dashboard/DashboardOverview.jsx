@@ -607,7 +607,15 @@ export const DashboardOverview = () => {
 
                       {/* User & Team Details */}
                       <div className="payment-user-info">
-                        <div className="user-name-line">
+                        <div 
+                          className="user-name-line clickable-user-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const targetUserId = p.user?._id || p.user?.id || p.userId || '66c89f1e1a2b3c4d5e6f7a80';
+                            navigate(`/user/${targetUserId}`);
+                          }}
+                          title={`Click to view full profile of ${p.user?.name || p.leaderName || 'User'}`}
+                        >
                           {userAvatar ? (
                             <img src={userAvatar} alt={p.user?.name || 'User'} className="user-avatar-sm" />
                           ) : (

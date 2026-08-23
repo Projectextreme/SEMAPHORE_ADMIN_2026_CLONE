@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
@@ -22,6 +23,7 @@ import {
 import './UserManagement.css';
 
 export const UserManagement = () => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -215,9 +217,18 @@ export const UserManagement = () => {
                   {filteredUsers.map((user) => (
                     <tr key={user._id}>
                       <td>
-                        <div className="user-profile-cell">
+                        <div 
+                          className="user-profile-cell clickable-user-cell"
+                          onClick={() => navigate(`/user/${user._id}`)}
+                          title={`View full profile of ${user.name}`}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className="user-avatar">
-                            {user.name?.charAt(0).toUpperCase() || 'U'}
+                            {user.avatar ? (
+                              <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            ) : (
+                              user.name?.charAt(0).toUpperCase() || 'U'
+                            )}
                           </div>
                           <div className="user-cell-info">
                             <span className="user-cell-name">{user.name}</span>
@@ -252,9 +263,9 @@ export const UserManagement = () => {
                       <td>
                         <div className="action-buttons">
                           <button
-                            onClick={() => handleViewUser(user._id)}
+                            onClick={() => navigate(`/user/${user._id}`)}
                             className="btn-icon btn-view"
-                            title="Inspect User (GET /api/admin/users/:id)"
+                            title="View Complete User Profile Hub (/user/:id)"
                           >
                             <Eye size={14} />
                           </button>

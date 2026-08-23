@@ -10,6 +10,7 @@ import { Sidebar } from './components/layout/Sidebar';
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { AdminManagement } from './components/admins/AdminManagement';
 import { UserManagement } from './components/users/UserManagement';
+import { UserProfileView } from './components/users/UserProfileView';
 import { PaymentApprovals } from './components/payments/PaymentApprovals';
 import { RegistrationList } from './components/registrations/RegistrationList';
 import { EventManagement } from './components/events/EventManagement';
@@ -133,6 +134,7 @@ export default function App() {
                 <Route path="/coordinators" element={<CoordinatorManagement />} />
                 <Route path="/slots" element={<SlotManagement />} />
                 <Route path="/users" element={<UserManagement />} />
+                <Route path="/user/:userId" element={<UserProfileView />} />
                 <Route
                   path="/admins"
                   element={
