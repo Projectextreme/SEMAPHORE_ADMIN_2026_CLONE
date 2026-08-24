@@ -23,9 +23,29 @@ import {
 import { apiService } from '../../services/apiService';
 import './EventManagement.css';
 
+const initialEventState = {
+  title: '',
+  description: '',
+  category: '',
+  registrationFee: '',
+  fee: '',
+  location: '',
+  venue: '',
+  date: '',
+  capacity: '',
+  minParticipants: '',
+  maxParticipants: '',
+  maxTeamsPerCollege: '',
+  maxTeamMembers: '',
+  image: '',
+  coordinators: '',
+  status: 'Active'
+};
+
 export const EventManagement = () => {
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   const [events, setEvents] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -45,24 +65,7 @@ export const EventManagement = () => {
   // Add Event Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    description: '',
-    category: 'Coding & Hackathon',
-    registrationFee: 200,
-    fee: '₹ 200',
-    location: 'Main Auditorium, Lab 2',
-    venue: 'Main Auditorium, Lab 2',
-    date: new Date().toISOString().split('T')[0],
-    capacity: 100,
-    minParticipants: 2,
-    maxParticipants: 4,
-    maxTeamsPerCollege: 2,
-    maxTeamMembers: 4,
-    image: '',
-    coordinators: '',
-    status: 'Active'
-  });
+  const [newEvent, setNewEvent] = useState(initialEventState);
 
   // Edit Event Modal State
   const [editingEvent, setEditingEvent] = useState(null);
@@ -73,8 +76,19 @@ export const EventManagement = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getAllEvents();
-      setEvents(data);
+      const [eventsData, usersData] = await Promise.allSettled([
+        apiService.getAllEvents(),
+        apiService.getAllUsers()
+      ]);
+
+      if (eventsData.status === 'fulfilled') {
+        const eventsList = Array.isArray(eventsData.value) ? eventsData.value : (eventsData.value?.events || []);
+        setEvents(eventsList);
+      }
+      if (usersData.status === 'fulfilled') {
+        const uList = Array.isArray(usersData.value) ? usersData.value : (usersData.value?.users || []);
+        setAvailableUsers(uList);
+      }
     } catch (err) {
       console.error('Error fetching events:', err);
       showAlert('error', 'Failed to load events list.');
@@ -96,42 +110,71 @@ export const EventManagement = () => {
         prev.map((e) => ((e._id || e.id) === eventId ? { ...e, status: updatedStatus } : e))
       );
       showAlert('success', `Event "${evt.title}" status changed to ${updatedStatus}.`);
-    } catch (err) {
+    } catch {
       showAlert('error', 'Failed to update event status.');
     }
+  };
+
+  // Resolve coordinators input into valid MongoDB ObjectIds
+  const resolveCoordinatorIds = (input) => {
+    if (!input) return [];
+    const tokens = typeof input === 'string'
+      ? input.split(',').map((s) => s.trim()).filter(Boolean)
+      : (Array.isArray(input) ? input : []);
+
+    const resolvedIds = [];
+    tokens.forEach((tok) => {
+      const tokStr = typeof tok === 'object' && tok !== null ? (tok._id || tok.id) : String(tok).trim();
+      if (/^[0-9a-fA-F]{24}$/.test(tokStr)) {
+        resolvedIds.push(tokStr);
+      } else {
+        const matched = availableUsers.find(
+          (u) =>
+            (u.name && u.name.toLowerCase() === tokStr.toLowerCase()) ||
+            (u.email && u.email.toLowerCase() === tokStr.toLowerCase()) ||
+            (u.name && u.name.toLowerCase().includes(tokStr.toLowerCase()))
+        );
+        if (matched && (matched._id || matched.id)) {
+          resolvedIds.push(matched._id || matched.id);
+        }
+      }
+    });
+
+    return [...new Set(resolvedIds)];
   };
 
   const handleCreateEvent = async (e) => {
     e.preventDefault();
 
-    if (!newEvent.title.trim() || !newEvent.description.trim() || !(newEvent.location || newEvent.venue).trim()) {
-      showAlert('error', 'Please fill in Title, Description, and Location.');
+    const locationVal = (newEvent.location || newEvent.venue || '').trim();
+    if (!newEvent.title.trim() || !newEvent.description.trim() || !locationVal) {
+      showAlert('error', 'Please fill in Title, Description, and Venue Location.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const created = await apiService.addEvent(newEvent);
+      const coordIds = resolveCoordinatorIds(newEvent.coordinators);
+
+      const payload = {
+        ...newEvent,
+        title: newEvent.title.trim(),
+        description: newEvent.description.trim(),
+        category: newEvent.category.trim() || 'General',
+        location: locationVal,
+        venue: locationVal,
+        registrationFee: newEvent.registrationFee !== '' ? Number(newEvent.registrationFee) : 0,
+        capacity: newEvent.capacity !== '' ? Number(newEvent.capacity) : undefined,
+        minParticipants: newEvent.minParticipants !== '' ? Number(newEvent.minParticipants) : undefined,
+        maxParticipants: newEvent.maxParticipants !== '' ? Number(newEvent.maxParticipants) : undefined,
+        maxTeamMembers: newEvent.maxParticipants !== '' ? Number(newEvent.maxParticipants) : undefined,
+        coordinators: coordIds
+      };
+
+      const created = await apiService.addEvent(payload);
       setEvents((prev) => [...prev, created]);
       setShowAddModal(false);
-      setNewEvent({
-        title: '',
-        description: '',
-        category: 'Coding & Hackathon',
-        registrationFee: 200,
-        fee: '₹ 200',
-        location: 'Main Auditorium, Lab 2',
-        venue: 'Main Auditorium, Lab 2',
-        date: new Date().toISOString().split('T')[0],
-        capacity: 100,
-        minParticipants: 2,
-        maxParticipants: 4,
-        maxTeamsPerCollege: 2,
-        maxTeamMembers: 4,
-        image: '',
-        coordinators: '',
-        status: 'Active'
-      });
+      setNewEvent(initialEventState);
       showAlert('success', `Event "${created.title || newEvent.title}" created successfully!`);
     } catch (err) {
       console.error('Error creating event:', err);
@@ -145,7 +188,8 @@ export const EventManagement = () => {
     e.preventDefault();
     if (!editingEvent) return;
 
-    if (!editingEvent.title.trim() || !(editingEvent.location || editingEvent.venue).trim()) {
+    const locationVal = (editingEvent.location || editingEvent.venue || '').trim();
+    if (!editingEvent.title.trim() || !locationVal) {
       showAlert('error', 'Please fill in all required fields.');
       return;
     }
@@ -153,7 +197,33 @@ export const EventManagement = () => {
     const eventId = editingEvent._id || editingEvent.id;
     setSubmitting(true);
     try {
-      const updated = await apiService.editEvent(eventId, editingEvent);
+      const coordIds = resolveCoordinatorIds(editingEvent.coordinators);
+
+      const payload = {
+        ...editingEvent,
+        title: editingEvent.title.trim(),
+        description: (editingEvent.description || '').trim(),
+        category: (editingEvent.category || '').trim() || 'General',
+        location: locationVal,
+        venue: locationVal,
+        registrationFee: editingEvent.registrationFee !== '' && editingEvent.registrationFee !== undefined
+          ? Number(editingEvent.registrationFee)
+          : 0,
+        capacity: editingEvent.capacity !== '' && editingEvent.capacity !== undefined
+          ? Number(editingEvent.capacity)
+          : undefined,
+        minParticipants: editingEvent.minParticipants !== '' && editingEvent.minParticipants !== undefined
+          ? Number(editingEvent.minParticipants)
+          : undefined,
+        maxParticipants: editingEvent.maxParticipants !== '' && editingEvent.maxParticipants !== undefined
+          ? Number(editingEvent.maxParticipants)
+          : undefined,
+        maxTeamMembers: editingEvent.maxParticipants !== '' && editingEvent.maxParticipants !== undefined
+          ? Number(editingEvent.maxParticipants)
+          : undefined,
+        coordinators: coordIds
+      };
+      const updated = await apiService.editEvent(eventId, payload);
       setEvents((prev) => prev.map((e) => ((e._id || e.id) === eventId ? { ...e, ...updated } : e)));
       setEditingEvent(null);
       showAlert('success', `Event "${editingEvent.title}" updated successfully!`);
@@ -180,12 +250,16 @@ export const EventManagement = () => {
     }
   };
 
+  const availableCategories = Array.from(
+    new Set(events.map((evt) => evt.category).filter(Boolean))
+  );
+
   const filteredEvents = events.filter((evt) => {
     const venue = evt.location || evt.venue || '';
     const matchesSearch =
-      evt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (evt.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       venue.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (evt.category && evt.category.toLowerCase().includes(searchTerm.toLowerCase()));
+      ((evt.category || '').toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesCategory = selectedCategory === 'All' || evt.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -199,7 +273,7 @@ export const EventManagement = () => {
             <Calendar className="title-icon" /> Festival Events & Competition Rules
           </h2>
           <p className="page-description">
-            Configure Semaphore 2026 events, maximum team capacities, venue schedules, and registration states.
+            Configure festival events, maximum team capacities, venue schedules, and registration states.
           </p>
         </div>
 
@@ -254,11 +328,11 @@ export const EventManagement = () => {
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
                 <option value="All">All Categories</option>
-                <option value="Coding & Hackathon">Coding & Hackathon</option>
-                <option value="Robotics">Robotics</option>
-                <option value="Web Development">Web Development</option>
-                <option value="Gaming">Gaming & Esports</option>
-                <option value="Flagship">Flagship Event</option>
+                {availableCategories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
               </select>
             </div>
             <span className="endpoint-badge">{filteredEvents.length} Events Listed</span>
@@ -293,14 +367,24 @@ export const EventManagement = () => {
       ) : (
         <div className="events-grid">
           {filteredEvents.map((evt) => {
-            const feeDisplay = evt.registrationFee !== undefined ? `₹ ${evt.registrationFee}` : (evt.fee || 'Free');
+            const feeDisplay = evt.registrationFee !== undefined && evt.registrationFee !== null && evt.registrationFee !== ''
+              ? `₹ ${evt.registrationFee}`
+              : (evt.fee || 'Free');
             const locationDisplay = evt.location || evt.venue || 'TBA';
-            const teamSizeDisplay = `${evt.minParticipants || 1} - ${evt.maxParticipants || evt.maxTeamMembers || 4} Members`;
+            const minP = evt.minParticipants;
+            const maxP = evt.maxParticipants || evt.maxTeamMembers;
+            const teamSizeDisplay = minP && maxP
+              ? `${minP} - ${maxP} Members`
+              : maxP
+              ? `Up to ${maxP} Members`
+              : minP
+              ? `Min ${minP} Members`
+              : 'Flexible';
 
             return (
               <div key={evt._id || evt.id} className="card event-card">
                 <div className="event-card-header">
-                  <span className="category-pill">{evt.category || 'Event'}</span>
+                  <span className="category-pill">{evt.category || 'General'}</span>
                   <button
                     onClick={() => toggleEventStatus(evt)}
                     className={`status-toggle ${(evt.status || 'Active').toLowerCase()}`}
@@ -349,8 +433,8 @@ export const EventManagement = () => {
                     <UserCheck size={13} className="coord-icon" />
                     <span className="coord-names">
                       {Array.isArray(evt.coordinators) && evt.coordinators.length > 0
-                        ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c._id) : c).join(', ')
-                        : 'Admin Assigned'}
+                        ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.userName || c.email || c._id) : c).join(', ')
+                        : (evt.coordinators ? evt.coordinators : 'Unassigned')}
                     </span>
                   </div>
 
@@ -358,18 +442,31 @@ export const EventManagement = () => {
                     <button
                       className="btn-icon btn-edit"
                       title="Edit Event"
-                      onClick={() => setEditingEvent({
-                        ...evt,
-                        description: evt.description || '',
-                        location: evt.location || evt.venue || '',
-                        registrationFee: evt.registrationFee !== undefined ? evt.registrationFee : (typeof evt.fee === 'string' ? evt.fee.replace(/[^\d]/g, '') : evt.fee) || 0,
-                        capacity: evt.capacity || 100,
-                        minParticipants: evt.minParticipants || 1,
-                        maxParticipants: evt.maxParticipants || evt.maxTeamMembers || 4,
-                        coordinators: Array.isArray(evt.coordinators)
-                          ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c._id) : c).join(', ')
-                          : evt.coordinators || ''
-                      })}
+                      onClick={() => {
+                        const coordStr = Array.isArray(evt.coordinators)
+                          ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.email || c._id) : c).join(', ')
+                          : (evt.coordinators || '');
+
+                        setEditingEvent({
+                          ...evt,
+                          title: evt.title || '',
+                          description: evt.description || '',
+                          category: evt.category || '',
+                          location: evt.location || evt.venue || '',
+                          venue: evt.location || evt.venue || '',
+                          date: evt.date ? evt.date.split('T')[0] : '',
+                          registrationFee: evt.registrationFee !== undefined && evt.registrationFee !== null && evt.registrationFee !== ''
+                            ? evt.registrationFee
+                            : (typeof evt.fee === 'string' ? evt.fee.replace(/[^\d]/g, '') : (evt.fee ?? '')),
+                          capacity: evt.capacity ?? '',
+                          minParticipants: evt.minParticipants ?? '',
+                          maxParticipants: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
+                          maxTeamMembers: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
+                          coordinators: coordStr,
+                          image: evt.image || '',
+                          status: evt.status || 'Active'
+                        });
+                      }}
                     >
                       <Edit2 size={13} />
                     </button>
@@ -393,7 +490,7 @@ export const EventManagement = () => {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '650px' }}>
             <div className="modal-header">
-              <h3><Plus size={19} /> Create New Semaphore Event</h3>
+              <h3><Plus size={19} /> Create New Event</h3>
               <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
             </div>
             <p className="modal-subtitle">Configure festival event schedule, capacity, and rules</p>
@@ -416,7 +513,7 @@ export const EventManagement = () => {
                 <textarea
                   className="form-input"
                   rows="3"
-                  placeholder="e.g. Annual competitive programming relay contest"
+                  placeholder="Enter event description and rules..."
                   value={newEvent.description}
                   onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
                   required
@@ -426,42 +523,42 @@ export const EventManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Category</label>
-                  <select
-                    className="form-select"
+                  <input
+                    type="text"
+                    list="create-category-list"
+                    className="form-input"
+                    placeholder="e.g. Coding, Robotics, Gaming..."
                     value={newEvent.category}
                     onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
-                  >
-                    <option value="Coding & Hackathon">Coding & Hackathon</option>
-                    <option value="Robotics">Robotics</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Gaming">Gaming & Esports</option>
-                    <option value="Flagship">Flagship Event</option>
-                  </select>
+                  />
+                  <datalist id="create-category-list">
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Registration Fee (₹) *</label>
+                  <label className="form-label">Registration Fee (₹)</label>
                   <input
                     type="number"
                     min="0"
                     className="form-input"
-                    placeholder="e.g. 200"
+                    placeholder="e.g. 200 (or 0 for Free)"
                     value={newEvent.registrationFee}
-                    onChange={(e) => setNewEvent({ ...newEvent, registrationFee: e.target.value, fee: `₹ ${e.target.value}` })}
-                    required
+                    onChange={(e) => setNewEvent({ ...newEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
                   />
                 </div>
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Event Date *</label>
+                  <label className="form-label">Event Date</label>
                   <input
                     type="date"
                     className="form-input"
                     value={newEvent.date}
                     onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    required
                   />
                 </div>
 
@@ -471,9 +568,9 @@ export const EventManagement = () => {
                     type="number"
                     min="1"
                     className="form-input"
+                    placeholder="e.g. 50"
                     value={newEvent.capacity}
                     onChange={(e) => setNewEvent({ ...newEvent, capacity: e.target.value })}
-                    required
                   />
                 </div>
               </div>
@@ -485,9 +582,9 @@ export const EventManagement = () => {
                     type="number"
                     min="1"
                     className="form-input"
+                    placeholder="e.g. 1"
                     value={newEvent.minParticipants}
                     onChange={(e) => setNewEvent({ ...newEvent, minParticipants: e.target.value })}
-                    required
                   />
                 </div>
 
@@ -497,9 +594,9 @@ export const EventManagement = () => {
                     type="number"
                     min="1"
                     className="form-input"
+                    placeholder="e.g. 4"
                     value={newEvent.maxParticipants}
                     onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
-                    required
                   />
                 </div>
               </div>
@@ -521,21 +618,32 @@ export const EventManagement = () => {
                 <input
                   type="url"
                   className="form-input"
-                  placeholder="https://example.com/images/code-sprint.jpg"
+                  placeholder="https://example.com/images/banner.jpg"
                   value={newEvent.image}
                   onChange={(e) => setNewEvent({ ...newEvent, image: e.target.value })}
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Coordinators (Comma separated)</label>
+                <label className="form-label">Coordinators (Optional)</label>
                 <input
                   type="text"
+                  list="create-coordinators-list"
                   className="form-input"
-                  placeholder="e.g. Swasthik, Havyas"
+                  placeholder="Search user name or email..."
                   value={newEvent.coordinators}
                   onChange={(e) => setNewEvent({ ...newEvent, coordinators: e.target.value })}
                 />
+                <datalist id="create-coordinators-list">
+                  {availableUsers.map((u) => (
+                    <option key={u._id || u.id} value={u.name || u.email}>
+                      {u.name} ({u.email || u.role || 'User'})
+                    </option>
+                  ))}
+                </datalist>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
+                  Assign registered platform users or admins as coordinators
+                </span>
               </div>
 
               <div className="form-group">
@@ -598,28 +706,29 @@ export const EventManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">Category</label>
-                  <select
-                    className="form-select"
-                    value={editingEvent.category || 'Coding & Hackathon'}
+                  <input
+                    type="text"
+                    list="edit-category-list"
+                    className="form-input"
+                    placeholder="e.g. Coding, Robotics, Gaming..."
+                    value={editingEvent.category || ''}
                     onChange={(e) => setEditingEvent({ ...editingEvent, category: e.target.value })}
-                  >
-                    <option value="Coding & Hackathon">Coding & Hackathon</option>
-                    <option value="Robotics">Robotics</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Gaming">Gaming & Esports</option>
-                    <option value="Flagship">Flagship Event</option>
-                  </select>
+                  />
+                  <datalist id="edit-category-list">
+                    {availableCategories.map((cat) => (
+                      <option key={cat} value={cat} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Registration Fee (₹) *</label>
+                  <label className="form-label">Registration Fee (₹)</label>
                   <input
                     type="number"
                     min="0"
                     className="form-input"
-                    value={editingEvent.registrationFee !== undefined ? editingEvent.registrationFee : (typeof editingEvent.fee === 'string' ? editingEvent.fee.replace(/[^\d]/g, '') : editingEvent.fee)}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, registrationFee: e.target.value, fee: `₹ ${e.target.value}` })}
-                    required
+                    value={editingEvent.registrationFee !== undefined && editingEvent.registrationFee !== null ? editingEvent.registrationFee : (typeof editingEvent.fee === 'string' ? editingEvent.fee.replace(/[^\d]/g, '') : (editingEvent.fee ?? ''))}
+                    onChange={(e) => setEditingEvent({ ...editingEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
                   />
                 </div>
               </div>
@@ -631,9 +740,9 @@ export const EventManagement = () => {
                     type="number"
                     min="1"
                     className="form-input"
-                    value={editingEvent.capacity || 100}
+                    placeholder="e.g. 50"
+                    value={editingEvent.capacity ?? ''}
                     onChange={(e) => setEditingEvent({ ...editingEvent, capacity: e.target.value })}
-                    required
                   />
                 </div>
 
@@ -643,9 +752,9 @@ export const EventManagement = () => {
                     type="number"
                     min="1"
                     className="form-input"
-                    value={editingEvent.maxParticipants || editingEvent.maxTeamMembers || 4}
+                    placeholder="e.g. 4"
+                    value={editingEvent.maxParticipants ?? editingEvent.maxTeamMembers ?? ''}
                     onChange={(e) => setEditingEvent({ ...editingEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
-                    required
                   />
                 </div>
               </div>
@@ -672,13 +781,25 @@ export const EventManagement = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Coordinators (Comma separated)</label>
+                <label className="form-label">Coordinators (Optional)</label>
                 <input
                   type="text"
+                  list="edit-coordinators-list"
                   className="form-input"
+                  placeholder="Search user name or email..."
                   value={editingEvent.coordinators || ''}
                   onChange={(e) => setEditingEvent({ ...editingEvent, coordinators: e.target.value })}
                 />
+                <datalist id="edit-coordinators-list">
+                  {availableUsers.map((u) => (
+                    <option key={u._id || u.id} value={u.name || u.email}>
+                      {u.name} ({u.email || u.role || 'User'})
+                    </option>
+                  ))}
+                </datalist>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
+                  Assign registered platform users or admins as coordinators
+                </span>
               </div>
 
               <div className="form-group">

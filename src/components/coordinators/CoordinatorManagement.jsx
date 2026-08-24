@@ -24,12 +24,7 @@ export const CoordinatorManagement = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [coordinators, setCoordinators] = useState([]);
-  const [availableEvents, setAvailableEvents] = useState([
-    'CodeFest 2026',
-    'RoboWars Arena',
-    'WebCrafters',
-    'Gaming & Esports'
-  ]);
+  const [availableEvents, setAvailableEvents] = useState([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('All');
@@ -40,8 +35,8 @@ export const CoordinatorManagement = () => {
     name: '',
     email: '',
     phone: '',
-    assignedEvent: 'CodeFest 2026',
-    department: 'MCA 2nd Year',
+    assignedEvent: '',
+    department: '',
     status: 'Active'
   });
 
@@ -68,10 +63,6 @@ export const CoordinatorManagement = () => {
       const eventTitles = eventsList.map(e => e.title || e.name).filter(Boolean);
       
       const allEventsSet = new Set([
-        'CodeFest 2026',
-        'RoboWars Arena',
-        'WebCrafters',
-        'Gaming & Esports',
         ...eventTitles,
         ...coordsList.map(c => c.assignedEvent).filter(Boolean)
       ]);
@@ -79,7 +70,7 @@ export const CoordinatorManagement = () => {
       setAvailableEvents(mergedEvents);
 
       if (mergedEvents.length > 0 && !mergedEvents.includes(newCoord.assignedEvent)) {
-        setNewCoord(prev => ({ ...prev, assignedEvent: mergedEvents[0] }));
+        setNewCoord(prev => ({ ...prev, assignedEvent: prev.assignedEvent || mergedEvents[0] }));
       }
 
       if (showToastNotice) {
@@ -100,24 +91,28 @@ export const CoordinatorManagement = () => {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    if (!newCoord.name.trim() || !newCoord.email.trim() || !newCoord.phone.trim()) {
+      showToast('Please fill in all required fields.', true);
+      return;
+    }
     setActionLoading(true);
     try {
       const created = await apiService.addCoordinator(newCoord);
-      setCoordinators(prev => [...prev, created]);
+      setCoordinators(prev => [created, ...prev.filter(c => (c._id || c.id) !== (created._id || created.id))]);
       setShowAddModal(false);
       setNewCoord({
         name: '',
         email: '',
         phone: '',
-        assignedEvent: availableEvents[0] || 'CodeFest 2026',
-        department: 'MCA 2nd Year',
+        assignedEvent: availableEvents[0] || '',
+        department: '',
         status: 'Active'
       });
       showToast(`Coordinator "${created.name}" created and assigned successfully!`);
       loadData();
     } catch (err) {
       console.error('Error creating coordinator:', err);
-      showToast('Failed to save coordinator.', true);
+      showToast(err.message || 'Failed to save coordinator.', true);
     } finally {
       setActionLoading(false);
     }

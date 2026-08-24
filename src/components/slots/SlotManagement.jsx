@@ -18,59 +18,27 @@ import {
 import { apiService } from '../../services/apiService';
 import './SlotManagement.css';
 
+const initialSlotFormState = {
+  eventName: '',
+  round: '',
+  date: '',
+  startTime: '',
+  endTime: '',
+  venue: '',
+  capacity: '',
+  status: 'Scheduled'
+};
+
 export const SlotManagement = () => {
   const { showSuccess, showError } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('All');
-  const [slots, setSlots] = useState([
-    {
-      id: 'SLOT-01',
-      eventName: 'CodeFest 2026',
-      round: 'Round 1 (Debugging & Speed Run)',
-      date: 'Aug 22, 2026',
-      startTime: '09:30 AM',
-      endTime: '11:30 AM',
-      venue: 'Lab 301, Main Block',
-      capacity: '30 Teams',
-      status: 'Scheduled'
-    },
-    {
-      id: 'SLOT-02',
-      eventName: 'RoboWars Arena',
-      round: 'Elimination Round A',
-      date: 'Aug 22, 2026',
-      startTime: '11:45 AM',
-      endTime: '01:30 PM',
-      venue: 'Auditorium Quadrangle',
-      capacity: '16 Teams',
-      status: 'Scheduled'
-    },
-    {
-      id: 'SLOT-03',
-      eventName: 'WebCrafters',
-      round: 'Final Hack & Showcase',
-      date: 'Aug 22, 2026',
-      startTime: '02:00 PM',
-      endTime: '04:30 PM',
-      venue: 'Lab 202, Tech Block',
-      capacity: '20 Teams',
-      status: 'Scheduled'
-    },
-    {
-      id: 'SLOT-04',
-      eventName: 'Valedictory & Awards',
-      round: 'Grand Ceremony',
-      date: 'Aug 22, 2026',
-      startTime: '05:00 PM',
-      endTime: '06:30 PM',
-      venue: 'Main Auditorium',
-      capacity: 'All Participants',
-      status: 'Upcoming'
-    }
-  ]);
+  const [slots, setSlots] = useState([]);
+  const [eventOptions, setEventOptions] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
+  const [newSlot, setNewSlot] = useState(initialSlotFormState);
 
   const showToast = (msg, isError = false) => {
     if (isError) {
@@ -83,23 +51,35 @@ export const SlotManagement = () => {
   const fetchSlots = async () => {
     setIsRefreshing(true);
     try {
-      const data = await apiService.getTimetable();
+      const [data, eventsData] = await Promise.all([
+        apiService.getTimetable(),
+        apiService.getAllEvents()
+      ]);
       if (Array.isArray(data) && data.length > 0) {
         const mapped = data.map((item, idx) => ({
           id: item._id || item.id || `SLOT-0${idx + 1}`,
           _id: item._id,
           eventName: item.event?.title || item.eventName || 'Scheduled Event',
           round: item.round || 'Round Session',
-          date: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Aug 22, 2026',
-          startTime: item.startTime || '09:30 AM',
-          endTime: item.endTime || '11:30 AM',
-          venue: item.location || item.venue || 'Main Block Lab',
-          capacity: item.capacity || '30 Teams',
+          date: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          startTime: item.startTime || '',
+          endTime: item.endTime || '',
+          venue: item.location || item.venue || '',
+          capacity: item.capacity || '',
           status: item.status || 'Scheduled'
         }));
         setSlots(mapped);
+      } else if (Array.isArray(data)) {
+        setSlots(data);
       }
-    } catch (err) {
+
+      const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.events || []);
+      const titles = eventsList.map((e) => e.title || e.name).filter(Boolean);
+      setEventOptions(titles);
+      if (titles.length > 0 && !newSlot.eventName) {
+        setNewSlot((prev) => ({ ...prev, eventName: titles[0] }));
+      }
+    } catch {
       console.warn('Timetable fetch fallback mode');
     } finally {
       setIsRefreshing(false);
@@ -110,42 +90,63 @@ export const SlotManagement = () => {
     fetchSlots();
   }, []);
 
-  const [newSlot, setNewSlot] = useState({
-    eventName: 'CodeFest 2026',
-    round: '',
-    date: 'Aug 22, 2026',
-    startTime: '10:00 AM',
-    endTime: '12:00 PM',
-    venue: '',
-    capacity: '25 Teams',
-    status: 'Scheduled'
-  });
-
-  const handleAddSubmit = (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
-    const created = {
-      id: `SLOT-0${slots.length + 1}`,
-      ...newSlot
-    };
-    setSlots([...slots, created]);
-    setShowModal(false);
-    showToast(`Slot "${created.round}" scheduled successfully!`);
+    if (!newSlot.round.trim() || !newSlot.venue.trim()) {
+      showToast('Please fill in required fields.', true);
+      return;
+    }
+    try {
+      const payload = {
+        eventName: newSlot.eventName || (eventOptions[0] || ''),
+        round: newSlot.round.trim(),
+        date: newSlot.date,
+        startTime: newSlot.startTime,
+        endTime: newSlot.endTime,
+        location: newSlot.venue.trim(),
+        venue: newSlot.venue.trim(),
+        capacity: newSlot.capacity ? Number(newSlot.capacity) : undefined,
+        status: newSlot.status || 'Scheduled'
+      };
+      await apiService.addTimetableSlot(payload);
+      setShowModal(false);
+      setNewSlot(initialSlotFormState);
+      showToast(`Slot "${payload.round}" scheduled successfully!`);
+      fetchSlots();
+    } catch (err) {
+      console.error('Error adding slot:', err);
+      showToast(err.message || 'Failed to add timetable slot.', true);
+    }
   };
 
-  const handleDelete = (id) => {
-    setSlots(slots.filter(s => s.id !== id));
-    showToast('Schedule slot removed.');
+  const handleDelete = async (id) => {
+    const slot = slots.find(s => s.id === id || s._id === id);
+    const targetId = slot?._id || id;
+    try {
+      await apiService.deleteTimetableSlot(targetId);
+      setSlots((prev) => prev.filter((s) => s.id !== id && s._id !== id));
+      showToast('Schedule slot removed.');
+    } catch (err) {
+      console.error('Error deleting slot:', err);
+      showToast(err.message || 'Failed to delete slot.', true);
+    }
   };
 
-  const eventsList = ['All', ...new Set(slots.map(s => s.eventName))];
+  const dynamicEventNames = Array.from(
+    new Set([
+      ...slots.map((s) => s.eventName).filter(Boolean),
+      ...eventOptions
+    ])
+  );
+  const eventsList = ['All', ...dynamicEventNames];
 
-  const filteredSlots = slots.filter(s => {
+  const filteredSlots = slots.filter((s) => {
     const matchesEvent = selectedEvent === 'All' || s.eventName === selectedEvent;
     const term = searchTerm.toLowerCase();
     const matchesSearch =
-      s.eventName.toLowerCase().includes(term) ||
-      s.round.toLowerCase().includes(term) ||
-      s.venue.toLowerCase().includes(term);
+      (s.eventName || '').toLowerCase().includes(term) ||
+      (s.round || '').toLowerCase().includes(term) ||
+      (s.venue || '').toLowerCase().includes(term);
     return matchesEvent && matchesSearch;
   });
 
@@ -165,11 +166,8 @@ export const SlotManagement = () => {
         <div className="title-actions-group">
           <button 
             onClick={() => {
-              setIsRefreshing(true);
-              setTimeout(() => {
-                setIsRefreshing(false);
-                showToast('Schedule timeline refreshed from central calendar.');
-              }, 500);
+              fetchSlots();
+              showToast('Schedule timeline refreshed.');
             }} 
             className="btn btn-secondary"
             disabled={isRefreshing}
@@ -261,10 +259,10 @@ export const SlotManagement = () => {
                 <div className="slot-card-header">
                   <div className="slot-time-badge">
                     <Clock size={13} />
-                    <span>{slot.startTime} – {slot.endTime}</span>
+                    <span>{slot.startTime && slot.endTime ? `${slot.startTime} – ${slot.endTime}` : (slot.startTime || slot.endTime || 'Time TBA')}</span>
                   </div>
-                  <span className="slot-date-tag">{slot.date}</span>
-                  <span className="status-badge status-approved">{slot.status}</span>
+                  {slot.date && <span className="slot-date-tag">{slot.date}</span>}
+                  <span className="status-badge status-approved">{slot.status || 'Scheduled'}</span>
                 </div>
 
                 <div className="slot-card-body">
@@ -272,14 +270,18 @@ export const SlotManagement = () => {
                   <p className="slot-round">{slot.round}</p>
 
                   <div className="slot-meta-row">
-                    <div className="meta-chip">
-                      <MapPin size={13} className="chip-icon" />
-                      <span>{slot.venue}</span>
-                    </div>
-                    <div className="meta-chip">
-                      <Users size={13} className="chip-icon" />
-                      <span>Capacity: {slot.capacity}</span>
-                    </div>
+                    {slot.venue && (
+                      <div className="meta-chip">
+                        <MapPin size={13} className="chip-icon" />
+                        <span>{slot.venue}</span>
+                      </div>
+                    )}
+                    {slot.capacity && (
+                      <div className="meta-chip">
+                        <Users size={13} className="chip-icon" />
+                        <span>Capacity: {slot.capacity}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -312,17 +314,20 @@ export const SlotManagement = () => {
             <form onSubmit={handleAddSubmit} className="modal-form">
               <div className="form-group">
                 <label className="form-label">Competition Event</label>
-                <select
-                  className="form-select"
+                <input
+                  type="text"
+                  list="slot-events-list"
+                  className="form-input"
+                  placeholder="e.g. Code Sprint, RoboWars..."
                   value={newSlot.eventName}
                   onChange={(e) => setNewSlot({ ...newSlot, eventName: e.target.value })}
-                >
-                  <option value="CodeFest 2026">CodeFest 2026</option>
-                  <option value="RoboWars Arena">RoboWars Arena</option>
-                  <option value="WebCrafters">WebCrafters</option>
-                  <option value="Gaming & Esports">Gaming & Esports</option>
-                  <option value="Valedictory & Awards">Valedictory & Awards</option>
-                </select>
+                  required
+                />
+                <datalist id="slot-events-list">
+                  {dynamicEventNames.map((evt) => (
+                    <option key={evt} value={evt} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="form-group">
@@ -335,6 +340,29 @@ export const SlotManagement = () => {
                   onChange={(e) => setNewSlot({ ...newSlot, round: e.target.value })}
                   required
                 />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={newSlot.date}
+                    onChange={(e) => setNewSlot({ ...newSlot, date: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Team Capacity</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 20 Teams"
+                    value={newSlot.capacity}
+                    onChange={(e) => setNewSlot({ ...newSlot, capacity: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div className="form-row">
@@ -363,29 +391,16 @@ export const SlotManagement = () => {
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Venue Location *</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Lab 301"
-                    value={newSlot.venue}
-                    onChange={(e) => setNewSlot({ ...newSlot, venue: e.target.value })}
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Team Capacity</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. 20 Teams"
-                    value={newSlot.capacity}
-                    onChange={(e) => setNewSlot({ ...newSlot, capacity: e.target.value })}
-                  />
-                </div>
+              <div className="form-group">
+                <label className="form-label">Venue Location *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Lab 301, Main Auditorium"
+                  value={newSlot.venue}
+                  onChange={(e) => setNewSlot({ ...newSlot, venue: e.target.value })}
+                  required
+                />
               </div>
 
               <div className="modal-actions">

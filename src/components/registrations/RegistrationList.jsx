@@ -31,7 +31,7 @@ import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
-import { DEFAULT_RECEIPT_PLACEHOLDER } from '../../mock/mockDatabase';
+import { DEFAULT_RECEIPT_PLACEHOLDER } from '../common/constants';
 import './RegistrationList.css';
 
 export const RegistrationList = () => {
@@ -149,7 +149,7 @@ export const RegistrationList = () => {
   const handleExportCSV = () => {
     const headers = 'Reg ID,Team Name,College Name,Leader Name,Email,Phone,Event,Members,Payment Status,UTR,Amount (INR),Date';
     const rows = filteredRegistrations.map((r) => {
-      const cleanAmount = (r.amount || '500').toString().replace(/[^\d.]/g, '') || '500';
+      const cleanAmount = (r.amount !== undefined && r.amount !== null ? r.amount : '0').toString().replace(/[^\d.]/g, '') || '0';
       
       // Clean compact date (YYYY-MM-DD) so Excel fits it within default column width without showing '########'
       let cleanDate = new Date().toISOString().split('T')[0];

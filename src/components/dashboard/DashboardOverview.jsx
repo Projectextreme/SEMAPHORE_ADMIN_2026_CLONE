@@ -5,7 +5,7 @@ import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
-import { DEFAULT_RECEIPT_PLACEHOLDER } from '../../mock/mockDatabase';
+import { DEFAULT_RECEIPT_PLACEHOLDER } from '../common/constants';
 import {
   Users,
   CreditCard,
@@ -50,12 +50,12 @@ export const DashboardOverview = () => {
   const [approvingRegId, setApprovingRegId] = useState(null);
 
   const [stats, setStats] = useState({
-    pendingPayments: 8,
-    pendingAmount: 2300,
-    approvedPayments: 10,
-    approvedAmount: 5000,
-    totalUsers: 20,
-    totalTeams: 21
+    pendingPayments: 0,
+    pendingAmount: 0,
+    approvedPayments: 0,
+    approvedAmount: 0,
+    totalUsers: 0,
+    totalTeams: 0
   });
 
   // Accordion state for expanded registration rows (track expanded IDs)
@@ -1206,27 +1206,27 @@ export const DashboardOverview = () => {
                       <div className="details-grid">
                         <div className="detail-item">
                           <span className="detail-lbl">Competition Arena:</span>
-                          <span className="detail-val font-bold text-primary">{evt.category || 'Coding & Hackathon'}</span>
+                          <span className="detail-val font-bold text-primary">{evt.category || 'General'}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">Registration Fee:</span>
-                          <span className="detail-val font-bold text-emerald">{evt.fee || '₹ 500'}</span>
+                          <span className="detail-val font-bold text-emerald">{evt.registrationFee !== undefined && evt.registrationFee !== null && evt.registrationFee !== '' ? `₹ ${evt.registrationFee}` : (evt.fee || 'Free')}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">Designated Venue / Lab:</span>
-                          <span className="detail-val font-bold text-main">{evt.venue || evt.location || 'Lab 301, Main Block'}</span>
+                          <span className="detail-val font-bold text-main">{evt.venue || evt.location || 'TBA'}</span>
                         </div>
                         <div className="detail-item">
                           <span className="detail-lbl">Team Size & Quota:</span>
-                          <span className="detail-val font-bold text-cyan">{evt.maxParticipants || evt.maxTeamMembers || 4} Members/Team • Max 2 Teams/College</span>
+                          <span className="detail-val font-bold text-cyan">{evt.maxParticipants || evt.maxTeamMembers ? `${evt.maxParticipants || evt.maxTeamMembers} Members/Team` : 'Flexible'}</span>
                         </div>
                         <div className="detail-item span-full">
                           <span className="detail-lbl">Event Summary & Guidelines:</span>
-                          <span className="detail-val">{evt.description || 'Annual national level technical tournament.'}</span>
+                          <span className="detail-val">{evt.description || 'No description provided.'}</span>
                         </div>
                         <div className="detail-item span-full">
                           <span className="detail-lbl">Assigned Faculty & Student Coordinators:</span>
-                          <span className="detail-val font-bold text-cyan">{coords}</span>
+                          <span className="detail-val font-bold text-cyan">{coords || 'Unassigned'}</span>
                         </div>
                       </div>
                       <div className="details-panel-actions">

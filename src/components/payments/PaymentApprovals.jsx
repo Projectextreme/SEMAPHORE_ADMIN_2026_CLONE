@@ -61,7 +61,7 @@ export const PaymentApprovals = () => {
         utr: p.utr || 'N/A',
         teamName: p.user?.team?.name || p.teamName || '',
         collegeName: p.user?.collegeName || p.collegeName || '',
-        userName: p.user?.name || p.leaderName || 'Student Participant',
+        userName: p.user?.name || p.leaderName || 'Participant',
         userEmail: p.user?.email || p.email || '',
         userAvatar: p.user?.avatar || p.avatar || null,
         amountNum: typeof p.amount === 'number' ? p.amount : Number(String(p.amount || 0).replace(/[^0-9]/g, '')),
@@ -73,7 +73,7 @@ export const PaymentApprovals = () => {
         rawStatus: (p.status || 'pending').toLowerCase(),
         message: p.message || '',
         approvedBy: p.approvedBy || null,
-        proofUrl: p.imageUrl || p.imageurl || p.proofUrl || 'https://images.unsplash.com/photo-1556742049-0a67ef86a48d?w=500&q=80',
+        proofUrl: p.imageUrl || p.imageurl || p.proofUrl || null,
         rawItem: p
       }));
       setPayments(formatted);
