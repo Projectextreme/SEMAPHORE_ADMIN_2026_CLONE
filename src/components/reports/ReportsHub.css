@@ -7,6 +7,7 @@
   flex-direction: column;
   gap: 1.5rem;
   width: 100%;
+  padding: 1.5rem;
   padding-bottom: 3rem;
   animation: fadeIn 0.3s ease-out;
   color: var(--text-main);
@@ -818,6 +819,20 @@
   color: var(--text-muted);
 }
 
+.participant-role-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.08rem 0.35rem;
+  border-radius: 4px;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+}
+
+.expanded-roster-row {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Tab 2: Events Report Cards */
 .events-report-wrapper {
   display: flex;
@@ -1554,6 +1569,11 @@
 }
 
 @media (max-width: 480px) {
+  .reports-hub-page {
+    padding: 0.85rem 0.65rem;
+    padding-bottom: 2rem;
+  }
+
   .reports-kpi-grid {
     grid-template-columns: 1fr;
   }
