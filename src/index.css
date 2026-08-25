@@ -86,6 +86,15 @@
   --nav-active-border: rgba(79, 70, 229, 0.3);
   --nav-active-text: #4338ca;
   --nav-hover-bg: rgba(0, 0, 0, 0.03);
+
+  /* Compatibility Aliases */
+  --card-bg: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --primary-color: #4f46e5;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
 }
 
 /* Dark Theme Override */
@@ -163,6 +172,15 @@
   --nav-active-border: rgba(99, 102, 241, 0.4);
   --nav-active-text: #ffffff;
   --nav-hover-bg: rgba(255, 255, 255, 0.04);
+
+  /* Compatibility Aliases */
+  --card-bg: #0f1523;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --primary-color: #6366f1;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
 }
 
 /* Color Presets: Emerald Theme */
@@ -407,6 +425,86 @@ code, pre, .code-font {
   opacity: 0.55;
   cursor: not-allowed;
   transform: none !important;
+}
+
+/* Global Outline & Action Button Classes */
+.btn-outline {
+  background: transparent;
+  color: var(--text-main);
+  border: 1px solid var(--border-strong);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline-primary {
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 1px solid var(--primary-border);
+}
+
+.btn-outline-primary:hover:not(:disabled) {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.btn-outline-cyan {
+  background: var(--cyan-light);
+  color: var(--cyan);
+  border: 1px solid var(--cyan-border);
+}
+
+.btn-outline-cyan:hover:not(:disabled) {
+  background: var(--cyan);
+  color: #ffffff;
+}
+
+.btn-outline-secondary {
+  background: var(--btn-secondary-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+  background: var(--btn-secondary-hover);
+  color: var(--text-main);
+  border-color: var(--border-strong);
+}
+
+.btn-outline-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.btn-outline-success:hover:not(:disabled) {
+  background: var(--success);
+  color: #ffffff;
+}
+
+.btn-outline-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.btn-outline-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn-outline-danger-subtle {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.btn-outline-danger-subtle:hover:not(:disabled) {
+  background: var(--danger-bg);
+  border-color: var(--danger);
 }
 
 /* Alert Notification Banners */
@@ -679,17 +777,20 @@ code, pre, .code-font {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   justify-content: center !important;
   z-index: 99999 !important;
-  padding: 1.5rem 1rem !important;
+  padding: 2.5rem 1rem !important;
   animation: fadeIn 0.2s ease-out;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
 }
 
 .modal-content {
   background: var(--modal-bg);
+  color: var(--text-main);
   border: 1px solid var(--border-strong);
   border-radius: 16px;
   width: 100%;
@@ -697,13 +798,17 @@ code, pre, .code-font {
   padding: 1.65rem;
   box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
   animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  max-height: 88vh;
-  max-height: 88dvh;
+  max-height: calc(100dvh - 5rem);
+  max-height: calc(100vh - 5rem);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   margin: auto !important;
   position: relative;
   z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .modal-header {
@@ -711,6 +816,7 @@ code, pre, .code-font {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.35rem;
+  flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -738,6 +844,7 @@ code, pre, .code-font {
   align-items: center;
   justify-content: center;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .modal-close:hover {
@@ -756,6 +863,7 @@ code, pre, .code-font {
   display: flex;
   flex-direction: column;
   gap: 1.05rem;
+  flex: 1;
 }
 
 .modal-actions {
@@ -765,6 +873,8 @@ code, pre, .code-font {
   margin-top: 1.25rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .form-row {

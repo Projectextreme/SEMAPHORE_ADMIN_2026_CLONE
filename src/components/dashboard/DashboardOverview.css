@@ -1181,7 +1181,7 @@
   cursor: pointer;
   border: 1px solid var(--border-color, #e2e8f0);
   flex-shrink: 0;
-  background: #000;
+  background: var(--bg-surface);
   align-self: center;
 }
 
@@ -2063,7 +2063,7 @@
   overflow: hidden;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  background: #000000;
+  background: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;

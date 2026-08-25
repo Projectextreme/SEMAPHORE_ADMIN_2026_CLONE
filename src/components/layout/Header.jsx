@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { apiService } from '../../services/apiService';
+import { API_BASE_URL } from '../../services/apiConfig';
 import { ShieldCheck, LogOut, User, Crown, Key, Sun, Moon, Palette, Menu, X } from 'lucide-react';
 import './Header.css';
 
@@ -71,7 +72,7 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
       <div className="header-center-info">
         <div 
           className={`api-status-badge status-${serverStatus}`}
-          title={serverStatus === 'online' ? 'Live REST Backend Connected (https://13.201.89.79)' : (serverStatus === 'offline' ? 'Live Backend Unreachable (Local Fallback Active)' : 'Verifying Backend Server...')}
+          title={serverStatus === 'online' ? `Live REST Backend Connected (${API_BASE_URL})` : (serverStatus === 'offline' ? 'Live Backend Unreachable (Local Fallback Active)' : 'Verifying Backend Server...')}
           onClick={pingServer}
           style={{ cursor: 'pointer' }}
         >

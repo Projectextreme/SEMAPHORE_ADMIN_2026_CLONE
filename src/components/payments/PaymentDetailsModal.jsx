@@ -23,7 +23,9 @@ import {
   ArrowUpRight,
   Sparkles,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ExternalLink,
+  CreditCard
 } from 'lucide-react';
 import './PaymentDetailsModal.css';
 
@@ -76,9 +78,27 @@ export const PaymentDetailsModal = ({
   }, [isOpen, paymentId, showError]);
 
   const handleCopyUtr = (utr) => {
-    if (!utr) return;
+    if (!utr || utr === 'N/A') return;
     navigator.clipboard.writeText(utr);
     showSuccess(`UTR '${utr}' copied to clipboard`);
+  };
+
+  const handleConfirmDeletePayment = async () => {
+    if (!paymentId) return;
+    setIsDeleting(true);
+    try {
+      const res = await apiService.deletePayment(paymentId);
+      showSuccess(res?.message || 'Payment record deleted successfully.');
+      setDeletingPayment(false);
+      onClose();
+      if (onPaymentDeleted) {
+        onPaymentDeleted(paymentId);
+      }
+    } catch (err) {
+      showError(err.message || 'Failed to delete payment');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleToggleEventExpand = async (eventId, userId, evtObj) => {
@@ -117,25 +137,32 @@ export const PaymentDetailsModal = ({
   const eventsList = data?.events || data?.associatedEvents || [];
   const rawStatus = (payment?.status || 'pending').toLowerCase();
   const proofImg = payment?.imageUrl || payment?.imageurl;
-  const timestampStr = payment?.timestamp || payment?.createdAt ? new Date(payment?.timestamp || payment?.createdAt).toLocaleString() : 'Recent';
+  const timestampStr = payment?.timestamp || payment?.createdAt 
+    ? new Date(payment?.timestamp || payment?.createdAt).toLocaleString() 
+    : 'Recent';
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="740px">
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="760px">
         {/* Modal Header */}
         <div className="modal-header payment-details-modal-header">
           <div className="modal-title-wrap">
-            <Receipt size={20} className="text-cyan" />
-            <h3>Payment & Registration Details</h3>
+            <div className="header-icon-circle">
+              <Receipt size={18} />
+            </div>
+            <div>
+              <h3>Payment & Registration Details</h3>
+              <span className="modal-subtitle-sm">Verification record #{paymentId?.slice(-6) || ''}</span>
+            </div>
           </div>
-          <button className="modal-close" onClick={onClose}>
+          <button className="modal-close" onClick={onClose} aria-label="Close modal">
             &times;
           </button>
         </div>
 
         {loading ? (
           <div className="modal-loading-state">
-            <RefreshCw className="spin-icon text-cyan" size={28} />
+            <RefreshCw className="spin-icon text-cyan" size={30} />
             <p>Fetching payment verification details...</p>
           </div>
         ) : data ? (
@@ -150,43 +177,53 @@ export const PaymentDetailsModal = ({
                   {rawStatus.toUpperCase()}
                 </span>
                 <span className="details-timestamp">
-                  <Calendar size={13} style={{ display: 'inline', marginRight: '4px' }} />
+                  <Calendar size={13} />
                   {timestampStr}
                 </span>
               </div>
 
               <div className="details-amount-block">
-                <span className="amount-label">Transaction Amount</span>
-                <h2 className="amount-value text-emerald">
-                  {typeof payment?.amount === 'number' ? `₹${payment.amount}` : (payment?.amount || '₹0')}
-                </h2>
-                <div className="utr-badge-row">
-                  <span className="utr-lbl">UTR Reference:</span>
-                  <code className="utr-code">{payment?.utr || 'N/A'}</code>
-                  {payment?.utr && payment?.utr !== 'N/A' && (
-                    <button
-                      type="button"
-                      className="btn-copy-icon"
-                      onClick={() => handleCopyUtr(payment.utr)}
-                      title="Copy UTR to Clipboard"
-                    >
-                      <Copy size={13} />
-                    </button>
-                  )}
+                <div className="amount-info-sub">
+                  <span className="amount-label">Transaction Amount</span>
+                  <h2 className="amount-value text-emerald">
+                    {typeof payment?.amount === 'number' ? `₹${payment.amount}` : (payment?.amount || '₹0')}
+                  </h2>
                 </div>
-                {payment?.message && (
-                  <p className="admin-status-note">
-                    <ShieldCheck size={13} className="text-cyan" /> Note: <em>{payment.message}</em>
-                  </p>
-                )}
+
+                <div className="utr-badge-box">
+                  <span className="utr-lbl">UTR Reference:</span>
+                  <div className="utr-pill">
+                    <code className="utr-code">{payment?.utr || 'N/A'}</code>
+                    {payment?.utr && payment?.utr !== 'N/A' && (
+                      <button
+                        type="button"
+                        className="btn-copy-icon"
+                        onClick={() => handleCopyUtr(payment.utr)}
+                        title="Copy UTR to Clipboard"
+                      >
+                        <Copy size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              {payment?.message && (
+                <div className={`details-audit-alert audit-${rawStatus}`}>
+                  <ShieldCheck size={15} />
+                  <div>
+                    <strong>Admin Note:</strong> {payment.message}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* User & Contingent Profile Grid */}
             <div className="details-grid-row">
-              <div className="details-user-box">
+              {/* Participant Card */}
+              <div className="details-card-box details-user-box">
                 <div className="box-title-bar">
-                  <User size={15} className="text-cyan" />
+                  <User size={15} className="box-icon" />
                   <h4>Participant Details</h4>
                 </div>
                 <div className="user-info-body">
@@ -199,15 +236,24 @@ export const PaymentDetailsModal = ({
                   </div>
                   <div className="user-text-meta">
                     <h5 className="user-name-title">{user?.name || 'Participant'}</h5>
-                    <p className="user-email-text">{user?.email || 'No email specified'}</p>
-                    {user?.phone && <p className="user-phone-text"><Phone size={12} /> {user.phone}</p>}
+                    <p className="user-email-text" title={user?.email}>
+                      <Mail size={12} />
+                      <span>{user?.email || 'No email specified'}</span>
+                    </p>
+                    {user?.phone && (
+                      <p className="user-phone-text">
+                        <Phone size={12} />
+                        <span>{user.phone}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
-              <div className="details-college-box">
+              {/* College & Team Card */}
+              <div className="details-card-box details-college-box">
                 <div className="box-title-bar">
-                  <Building2 size={15} className="text-cyan" />
+                  <Building2 size={15} className="box-icon" />
                   <h4>College & Contingent Team</h4>
                 </div>
                 <div className="college-info-body">
@@ -231,24 +277,29 @@ export const PaymentDetailsModal = ({
 
             {/* Proof Screenshot Section */}
             {proofImg && (
-              <div className="details-proof-section">
+              <div className="details-card-box details-proof-section">
                 <div className="box-title-bar">
-                  <Receipt size={15} className="text-cyan" />
+                  <Receipt size={15} className="box-icon" />
                   <h4>Payment Proof Screenshot</h4>
                 </div>
                 <div className="proof-container">
-                  <div className="proof-thumbnail-wrap">
+                  <div 
+                    className="proof-thumbnail-wrap" 
+                    onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}
+                  >
                     <img
                       src={proofImg}
                       alt="Receipt Screenshot Proof"
                       className="proof-thumb-img"
-                      onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}
-                      title="Click to expand full preview"
                     />
+                    <div className="proof-overlay-hint">
+                      <Eye size={16} />
+                      <span>Click to Zoom</span>
+                    </div>
                   </div>
                   <div className="proof-meta-actions">
                     <p className="proof-note">
-                      Uploaded transaction proof via Cloudinary. Click inspect to view full image or open in a new tab.
+                      Uploaded transaction proof via payment gateway or Cloudinary. Click to inspect or open in new tab.
                     </p>
                     <div className="proof-btn-row">
                       <button
@@ -259,7 +310,7 @@ export const PaymentDetailsModal = ({
                         <Eye size={13} /> Inspect Screenshot
                       </button>
                       <a href={proofImg} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline">
-                        Open Cloudinary <ArrowUpRight size={13} />
+                        Open Image <ArrowUpRight size={13} />
                       </a>
                     </div>
                   </div>
@@ -268,9 +319,9 @@ export const PaymentDetailsModal = ({
             )}
 
             {/* Associated Event Registrations */}
-            <div className="details-events-section">
+            <div className="details-card-box details-events-section">
               <div className="box-title-bar">
-                <Calendar size={15} className="text-cyan" />
+                <Calendar size={15} className="box-icon" />
                 <h4>Associated Event Registrations ({eventsList.length})</h4>
               </div>
 
@@ -304,7 +355,7 @@ export const PaymentDetailsModal = ({
                               </span>
                             )}
                           </div>
-                          <button type="button" className="btn-accordion-toggle">
+                          <button type="button" className="btn-accordion-toggle" aria-label="Toggle event details">
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                           </button>
                         </div>
@@ -351,7 +402,9 @@ export const PaymentDetailsModal = ({
                   })}
                 </div>
               ) : (
-                <p className="text-muted text-sm p-3">No specific event items mapped to this payment ID.</p>
+                <p className="text-muted text-sm" style={{ margin: '0.5rem 0' }}>
+                  No specific event items mapped to this payment ID.
+                </p>
               )}
             </div>
 
@@ -368,7 +421,7 @@ export const PaymentDetailsModal = ({
                         onOpenActionModal(payment, 'approved');
                       }}
                     >
-                      <CheckCircle2 size={14} /> Approve Payment
+                      <CheckCircle2 size={14} /> Approve
                     </button>
                     <button
                       type="button"
@@ -378,17 +431,17 @@ export const PaymentDetailsModal = ({
                         onOpenActionModal(payment, 'rejected');
                       }}
                     >
-                      <XCircle size={14} /> Reject Payment
+                      <XCircle size={14} /> Reject
                     </button>
                   </>
                 )}
                 <button
                   type="button"
-                  className="btn btn-sm btn-danger"
+                  className="btn btn-sm btn-outline-danger-subtle"
                   onClick={() => setDeletingPayment(true)}
                   title="Delete this payment record"
                 >
-                  <Trash2 size={14} /> Delete Payment
+                  <Trash2 size={14} /> Delete
                 </button>
               </div>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
@@ -437,7 +490,7 @@ export const PaymentDetailsModal = ({
 
       {/* Image Preview Lightbox */}
       {previewImage && (
-        <Modal isOpen={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth="800px">
+        <Modal isOpen={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth="840px">
           <div className="modal-header">
             <h3>
               <Receipt size={18} /> Payment Screenshot {previewImage.utr ? `(UTR: ${previewImage.utr})` : ''}
@@ -454,7 +507,7 @@ export const PaymentDetailsModal = ({
               Open Original Image <ArrowUpRight size={13} />
             </a>
             <button type="button" className="btn btn-sm btn-primary" onClick={() => setPreviewImage(null)}>
-              Close
+              Close Preview
             </button>
           </div>
         </Modal>

@@ -156,10 +156,10 @@ export const DashboardOverview = () => {
 
     setActionLoading(true);
     try {
-      const res = await apiService.updatePaymentStatus(paymentId, status, message);
+      const res = await apiService.updatePaymentStatus(paymentId, status, message, payment);
       showToast(res?.message || `Payment status updated to '${status}' successfully`);
       setPaymentActionModal(null);
-      loadData();
+      await loadData();
     } catch (err) {
       showToast(err.message || 'Failed to update payment status.', true);
     } finally {

@@ -467,7 +467,7 @@
   object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--border-strong);
-  background: #000000;
+  background: var(--bg-surface);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -512,7 +512,7 @@
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border-color);
-  background: #000000;
+  background: var(--bg-surface);
   display: flex;
   align-items: center;
   justify-content: center;

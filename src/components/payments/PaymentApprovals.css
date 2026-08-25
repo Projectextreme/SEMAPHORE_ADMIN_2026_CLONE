@@ -395,7 +395,7 @@
   border: 1px solid var(--border-color, #e2e8f0);
   flex-shrink: 0;
   cursor: pointer;
-  background: #000;
+  background: var(--bg-surface);
   align-self: center;
 }
 

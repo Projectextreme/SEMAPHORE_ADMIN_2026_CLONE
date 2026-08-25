@@ -91,10 +91,10 @@ export const UserProfileView = () => {
 
     setActionLoading(true);
     try {
-      const res = await apiService.updatePaymentStatus(paymentId, status, message);
+      const res = await apiService.updatePaymentStatus(paymentId, status, message, payment);
       showSuccess(res?.message || `Payment status updated to '${status}' successfully!`);
       setActionModal(null);
-      loadUserDetails();
+      await loadUserDetails();
     } catch (err) {
       showError(err.message || 'Failed to update payment status');
     } finally {

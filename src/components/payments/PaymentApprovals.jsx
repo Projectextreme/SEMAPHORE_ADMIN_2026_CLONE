@@ -101,9 +101,14 @@ export const PaymentApprovals = () => {
     const defaultMsg = status === 'approved'
       ? 'Payment verified via UTR bank statement'
       : 'Invalid UTR transaction reference';
+    let cleanUtr = p.utr && p.utr !== 'N/A' ? p.utr.replace(/[^a-zA-Z0-9]/g, '') : '';
+    if (cleanUtr && cleanUtr.length < 12) {
+      cleanUtr = cleanUtr.padEnd(12, '0');
+    }
     setActionModal({
       payment: p,
       status,
+      utr: cleanUtr || p.utr || '',
       message: p.message && p.rawStatus === status ? p.message : defaultMsg
     });
   };
@@ -111,15 +116,29 @@ export const PaymentApprovals = () => {
   const handleSubmitPaymentStatus = async (e) => {
     e.preventDefault();
     if (!actionModal) return;
-    const { payment, status, message } = actionModal;
+    const { payment, status, message, utr } = actionModal;
     const paymentId = payment._id || payment.paymentid || payment.id;
+
+    // Optimistically reflect status on UI
+    setPayments(prev => prev.map(p => {
+      if (p.id === paymentId || p._id === paymentId || p.paymentid === paymentId) {
+        return {
+          ...p,
+          status: status.charAt(0).toUpperCase() + status.slice(1).toLowerCase(),
+          rawStatus: status.toLowerCase(),
+          message: message,
+          utr: utr || p.utr
+        };
+      }
+      return p;
+    }));
 
     setActionLoading(true);
     try {
-      const res = await apiService.updatePaymentStatus(paymentId, status, message);
-      showToast(res?.message || `Payment status updated to '${status}' successfully!`);
+      const res = await apiService.updatePaymentStatus(paymentId, status, message, { ...payment, utr });
+      showToast(res?.message || `Payment marked as ${status} successfully!`);
       setActionModal(null);
-      loadPayments();
+      await loadPayments();
     } catch (err) {
       showToast(err.message || 'Failed to update payment status.', true);
     } finally {

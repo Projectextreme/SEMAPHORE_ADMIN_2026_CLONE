@@ -1,6 +1,4 @@
-// API Configuration for Semaphore 2026 Admin Panel
-
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://13.201.89.79';
 
 
 export const getAuthToken = () => {

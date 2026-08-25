@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
+import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
 import { 
   UserCheck, 
@@ -12,9 +13,10 @@ import {
   Mail, 
   Tag, 
   Calendar, 
-  X,
-  RefreshCw,
-  Loader2
+  X, 
+  RefreshCw, 
+  Loader2,
+  AlertTriangle
 } from 'lucide-react';
 import './CoordinatorManagement.css';
 
@@ -30,6 +32,7 @@ export const CoordinatorManagement = () => {
   const [selectedEvent, setSelectedEvent] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCoord, setEditingCoord] = useState(null);
+  const [deletingCoord, setDeletingCoord] = useState(null);
 
   const [newCoord, setNewCoord] = useState({
     name: '',
@@ -136,17 +139,19 @@ export const CoordinatorManagement = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    const target = coordinators.find(c => c.id === id || c._id === id);
+  const handleDelete = async (coord) => {
+    if (!coord) return;
+    const id = coord.id || coord._id;
     setActionLoading(true);
     try {
-      await apiService.deleteCoordinator(id);
-      setCoordinators(prev => prev.filter(c => c.id !== id && c._id !== id));
-      showToast(`Coordinator "${target?.name || 'Entry'}" removed from roster.`);
-      loadData();
+      await apiService.deleteCoordinator(id, coord);
+      setCoordinators(prev => prev.filter(c => (c.id !== id && c._id !== id)));
+      setDeletingCoord(null);
+      showToast(`Coordinator "${coord?.name || 'Entry'}" removed successfully.`);
+      await loadData();
     } catch (err) {
       console.error('Error deleting coordinator:', err);
-      showToast('Failed to delete coordinator.', true);
+      showToast(err.message || 'Failed to delete coordinator.', true);
     } finally {
       setActionLoading(false);
     }
@@ -306,7 +311,7 @@ export const CoordinatorManagement = () => {
                     <Edit2 size={13} />
                   </button>
                   <button
-                    onClick={() => handleDelete(coord.id || coord._id)}
+                    onClick={() => setDeletingCoord(coord)}
                     className="btn-icon btn-delete"
                     title="Remove Coordinator"
                   >
@@ -321,174 +326,199 @@ export const CoordinatorManagement = () => {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Plus size={19} /> Add New Coordinator</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">Assign event lead duties and contact references</p>
-
-            <form onSubmit={handleAddSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Full Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Dheemanth"
-                  value={newCoord.name}
-                  onChange={(e) => setNewCoord({ ...newCoord, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address *</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="e.g. dheemanth@semaphore.com"
-                  value={newCoord.email}
-                  onChange={(e) => setNewCoord({ ...newCoord, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone Number *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="+91 98765 43210"
-                  value={newCoord.phone}
-                  onChange={(e) => setNewCoord({ ...newCoord, phone: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Assigned Event</label>
-                  <select
-                    className="form-select"
-                    value={newCoord.assignedEvent}
-                    onChange={(e) => setNewCoord({ ...newCoord, assignedEvent: e.target.value })}
-                  >
-                    {availableEvents.map((evt) => (
-                      <option key={evt} value={evt}>
-                        {evt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Department / Year</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="MCA 2nd Year"
-                    value={newCoord.department}
-                    onChange={(e) => setNewCoord({ ...newCoord, department: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)} disabled={actionLoading}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Assigning...' : 'Assign Coordinator'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="520px">
+          <div className="modal-header">
+            <h3><Plus size={19} /> Add New Coordinator</h3>
+            <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">Assign event lead duties and contact references</p>
+
+          <form onSubmit={handleAddSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Dheemanth"
+                value={newCoord.name}
+                onChange={(e) => setNewCoord({ ...newCoord, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address *</label>
+              <input
+                type="email"
+                className="form-input"
+                placeholder="e.g. dheemanth@semaphore.com"
+                value={newCoord.email}
+                onChange={(e) => setNewCoord({ ...newCoord, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone Number *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="+91 98765 43210"
+                value={newCoord.phone}
+                onChange={(e) => setNewCoord({ ...newCoord, phone: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Assigned Event</label>
+                <select
+                  className="form-select"
+                  value={newCoord.assignedEvent}
+                  onChange={(e) => setNewCoord({ ...newCoord, assignedEvent: e.target.value })}
+                >
+                  {availableEvents.map((evt) => (
+                    <option key={evt} value={evt}>
+                      {evt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Department / Year</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="MCA 2nd Year"
+                  value={newCoord.department}
+                  onChange={(e) => setNewCoord({ ...newCoord, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)} disabled={actionLoading}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Assigning...' : 'Assign Coordinator'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Edit Modal */}
       {editingCoord && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit Coordinator</h3>
-              <button className="modal-close" onClick={() => setEditingCoord(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">Update contact and event assignment for {editingCoord.name}</p>
-
-            <form onSubmit={handleEditSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Full Name *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingCoord.name}
-                  onChange={(e) => setEditingCoord({ ...editingCoord, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address *</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={editingCoord.email}
-                  onChange={(e) => setEditingCoord({ ...editingCoord, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Phone Number *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingCoord.phone}
-                  onChange={(e) => setEditingCoord({ ...editingCoord, phone: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Assigned Event</label>
-                  <select
-                    className="form-select"
-                    value={editingCoord.assignedEvent}
-                    onChange={(e) => setEditingCoord({ ...editingCoord, assignedEvent: e.target.value })}
-                  >
-                    {availableEvents.map((evt) => (
-                      <option key={evt} value={evt}>
-                        {evt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Department / Year</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editingCoord.department || ''}
-                    onChange={(e) => setEditingCoord({ ...editingCoord, department: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingCoord(null)} disabled={actionLoading}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editingCoord} onClose={() => setEditingCoord(null)} maxWidth="520px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit Coordinator</h3>
+            <button className="modal-close" onClick={() => setEditingCoord(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">Update contact and event assignment for {editingCoord.name}</p>
+
+          <form onSubmit={handleEditSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Full Name *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingCoord.name}
+                onChange={(e) => setEditingCoord({ ...editingCoord, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address *</label>
+              <input
+                type="email"
+                className="form-input"
+                value={editingCoord.email}
+                onChange={(e) => setEditingCoord({ ...editingCoord, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Phone Number *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingCoord.phone}
+                onChange={(e) => setEditingCoord({ ...editingCoord, phone: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Assigned Event</label>
+                <select
+                  className="form-select"
+                  value={editingCoord.assignedEvent}
+                  onChange={(e) => setEditingCoord({ ...editingCoord, assignedEvent: e.target.value })}
+                >
+                  {availableEvents.map((evt) => (
+                    <option key={evt} value={evt}>
+                      {evt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Department / Year</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editingCoord.department || ''}
+                  onChange={(e) => setEditingCoord({ ...editingCoord, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingCoord(null)} disabled={actionLoading}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deletingCoord && (
+        <Modal isOpen={!!deletingCoord} onClose={() => setDeletingCoord(null)} maxWidth="480px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Remove Coordinator</h3>
+            <button className="modal-close" onClick={() => setDeletingCoord(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Are you sure you want to remove <strong>{deletingCoord.name}</strong> from <strong>{deletingCoord.assignedEvent || 'assigned event'}</strong>?
+          </p>
+          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.08)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+            This will dissociate the coordinator from the event roster on the server.
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingCoord(null)} disabled={actionLoading}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => handleDelete(deletingCoord)}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Removing...' : 'Confirm Remove'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );
