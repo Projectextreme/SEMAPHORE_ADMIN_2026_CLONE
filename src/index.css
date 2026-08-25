@@ -1049,23 +1049,31 @@ table tbody tr:last-child td {
   border-color: var(--danger-border);
 }
 
-/* Animations & Transitions */
+/* ==========================================================================
+   Professional Global Animations & Micro-Interactions Suite
+   ========================================================================== */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
 @keyframes viewEnter {
-  from {
+  0% {
     opacity: 0;
+    transform: translateY(12px) scale(0.995);
   }
-  to {
+  60% {
+    opacity: 0.95;
+    transform: translateY(-1px) scale(1.001);
+  }
+  100% {
     opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
 .view-transition-container {
-  animation: viewEnter 0.2s ease-out;
+  animation: viewEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   width: 100%;
   min-height: 100%;
   display: flex;
@@ -1073,14 +1081,176 @@ table tbody tr:last-child td {
 }
 
 @keyframes modalSlideUp {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(16px) scale(0.96);
+    transform: translateY(22px) scale(0.94);
   }
-  to {
+  70% {
+    transform: translateY(-2px) scale(1.005);
+  }
+  100% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+@keyframes cardStaggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered Entry for Cards Across All Pages */
+.card,
+.payment-card,
+.event-card,
+.coord-card,
+.kpi-mini-card,
+.kpi-card,
+.stat-card,
+.college-card,
+.college-matrix-card,
+.summary-card,
+.report-mobile-card {
+  animation: cardStaggerIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.2s ease;
+}
+
+.card:hover,
+.payment-card:hover,
+.event-card:hover,
+.coord-card:hover,
+.kpi-card:hover,
+.summary-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* Stagger Cascading Delay Selectors */
+.reports-kpi-grid > *:nth-child(1),
+.payment-summary-strip > *:nth-child(1),
+.registration-kpi-strip > *:nth-child(1),
+.stats-grid > *:nth-child(1) { animation-delay: 0.03s; }
+
+.reports-kpi-grid > *:nth-child(2),
+.payment-summary-strip > *:nth-child(2),
+.registration-kpi-strip > *:nth-child(2),
+.stats-grid > *:nth-child(2) { animation-delay: 0.07s; }
+
+.reports-kpi-grid > *:nth-child(3),
+.payment-summary-strip > *:nth-child(3),
+.registration-kpi-strip > *:nth-child(3),
+.stats-grid > *:nth-child(3) { animation-delay: 0.11s; }
+
+.reports-kpi-grid > *:nth-child(4),
+.payment-summary-strip > *:nth-child(4),
+.registration-kpi-strip > *:nth-child(4),
+.stats-grid > *:nth-child(4) { animation-delay: 0.15s; }
+
+.events-grid > *:nth-child(1),
+.coords-grid > *:nth-child(1),
+.colleges-grid > *:nth-child(1),
+.payment-cards-grid > *:nth-child(1) { animation-delay: 0.04s; }
+
+.events-grid > *:nth-child(2),
+.coords-grid > *:nth-child(2),
+.colleges-grid > *:nth-child(2),
+.payment-cards-grid > *:nth-child(2) { animation-delay: 0.08s; }
+
+.events-grid > *:nth-child(3),
+.coords-grid > *:nth-child(3),
+.colleges-grid > *:nth-child(3),
+.payment-cards-grid > *:nth-child(3) { animation-delay: 0.12s; }
+
+.events-grid > *:nth-child(4),
+.coords-grid > *:nth-child(4),
+.colleges-grid > *:nth-child(4),
+.payment-cards-grid > *:nth-child(4) { animation-delay: 0.16s; }
+
+.events-grid > *:nth-child(5),
+.coords-grid > *:nth-child(5),
+.colleges-grid > *:nth-child(5),
+.payment-cards-grid > *:nth-child(5) { animation-delay: 0.20s; }
+
+.events-grid > *:nth-child(6),
+.coords-grid > *:nth-child(6),
+.colleges-grid > *:nth-child(6),
+.payment-cards-grid > *:nth-child(6) { animation-delay: 0.24s; }
+
+/* Button Light Sheen Animation */
+.btn-primary,
+.btn-master-export-top,
+.btn-download-master,
+.btn-tab-export {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after,
+.btn-master-export-top::after,
+.btn-download-master::after,
+.btn-tab-export::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -80%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.25),
+    transparent
+  );
+  transform: rotate(25deg);
+  pointer-events: none;
+  transition: none;
+}
+
+.btn-primary:hover::after,
+.btn-master-export-top:hover::after,
+.btn-download-master:hover::after,
+.btn-tab-export:hover::after {
+  left: 140%;
+  transition: left 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Radar Pulse on Live Status Dots */
+@keyframes liveRadarPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.pulse-dot.dot-online,
+.pulse-live-dot {
+  animation: liveRadarPulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+/* Copy Tag & Chip Pop Micro-Interaction */
+@keyframes copyPopFeedback {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.team-id-badge:active,
+.utr-copy-tag:active,
+.slot-team-id:active {
+  animation: copyPopFeedback 0.22s ease-out;
 }
 
 @keyframes spin {
@@ -1136,7 +1306,17 @@ table tbody tr:last-child td {
   border-radius: 50%;
 }
 
-/* Ambient glow orb effects */
+/* Floating Ambient Glow Orbs */
+@keyframes floatOrb1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-20px, 15px) scale(1.05); }
+}
+
+@keyframes floatOrb2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(15px, -20px) scale(1.08); }
+}
+
 .ambient-glow-orb {
   position: absolute;
   border-radius: 50%;
@@ -1152,6 +1332,7 @@ table tbody tr:last-child td {
   background: var(--glow-primary);
   top: -80px;
   right: -60px;
+  animation: floatOrb1 12s ease-in-out infinite;
 }
 
 .orb-cyan {
@@ -1160,6 +1341,7 @@ table tbody tr:last-child td {
   background: var(--glow-cyan);
   bottom: -40px;
   left: 10%;
+  animation: floatOrb2 14s ease-in-out infinite;
 }
 
 /* Responsive Visibility Utility Classes */

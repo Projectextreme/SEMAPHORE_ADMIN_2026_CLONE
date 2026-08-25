@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
-import { 
-  Clock, 
-  Plus, 
-  MapPin, 
-  Calendar, 
-  CheckCircle2, 
-  AlertCircle, 
-  Edit2, 
+import {
+  Clock,
+  Plus,
+  MapPin,
+  Calendar,
+  CheckCircle2,
+  AlertCircle,
+  Edit2,
   Trash2,
   Users,
   RefreshCw,
@@ -164,11 +164,11 @@ export const SlotManagement = () => {
         </div>
 
         <div className="title-actions-group">
-          <button 
+          <button
             onClick={() => {
               fetchSlots();
               showToast('Schedule timeline refreshed.');
-            }} 
+            }}
             className="btn btn-secondary"
             disabled={isRefreshing}
             title="Refresh Schedules"
