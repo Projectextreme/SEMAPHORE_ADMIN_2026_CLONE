@@ -529,154 +529,269 @@ export const ReportsHub = () => {
               <p>No team records matched your search query or filters.</p>
             </div>
           ) : (
-            <div className="teams-table-container">
-              <table className="reports-data-table">
-                <thead>
-                  <tr>
-                    <th>TEAM INFO</th>
-                    <th>COLLEGE</th>
-                    <th>LEADER CONTACT</th>
-                    <th>MEMBERS</th>
-                    <th>EVENTS & FEES</th>
-                    <th>PAYMENT & UTR</th>
-                    <th>TOTAL PAID</th>
-                    <th>DETAILS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTeams.map((team, idx) => {
-                    const isExpanded = !!expandedItems[team.teamId || idx];
-                    const isApproved = (team.paymentStatus || '').toLowerCase().includes('app');
+            <>
+              {/* Desktop Table View */}
+              <div className="teams-table-container desktop-only">
+                <table className="reports-data-table">
+                  <thead>
+                    <tr>
+                      <th>TEAM INFO</th>
+                      <th>COLLEGE</th>
+                      <th>LEADER CONTACT</th>
+                      <th>MEMBERS</th>
+                      <th>EVENTS & FEES</th>
+                      <th>PAYMENT & UTR</th>
+                      <th>TOTAL PAID</th>
+                      <th>DETAILS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTeams.map((team, idx) => {
+                      const isExpanded = !!expandedItems[team.teamId || idx];
+                      const isApproved = (team.paymentStatus || '').toLowerCase().includes('app');
 
-                    return (
-                      <tr key={team.teamId || idx} className={isExpanded ? 'row-expanded' : ''}>
-                        <td>
-                          <div className="team-cell-info">
-                            <span className="team-name-primary">{team.teamName || 'Unnamed Team'}</span>
-                            <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
-                              <span>{team.teamId || 'N/A'}</span>
-                              {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                      return (
+                        <tr key={team.teamId || idx} className={isExpanded ? 'row-expanded' : ''}>
+                          <td>
+                            <div className="team-cell-info">
+                              <span className="team-name-primary">{team.teamName || 'Unnamed Team'}</span>
+                              <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
+                                <span>{team.teamId || 'N/A'}</span>
+                                {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="college-cell">
+                              <Building2 size={13} className="cell-sub-icon" />
+                              <span>{team.collegeName || 'Unknown College'}</span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="leader-cell">
+                              <span className="leader-name">{team.leader?.name || 'Leader N/A'}</span>
+                              {team.leader?.email && (
+                                <span className="leader-contact">
+                                  <Mail size={11} /> {team.leader.email}
+                                </span>
+                              )}
+                              {team.leader?.phone && (
+                                <span className="leader-contact">
+                                  <Phone size={11} /> {team.leader.phone}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <span className="members-count-badge">
+                              <Users size={12} /> {team.membersCount || (team.members?.length || 1)} Members
+                            </span>
+                          </td>
+
+                          <td>
+                            <div className="events-cell-list">
+                              {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
+                                team.registeredEvents.map((ev, evIdx) => (
+                                  <span key={evIdx} className="event-pill">
+                                    {typeof ev === 'object' ? ev.title : ev}
+                                    {typeof ev === 'object' && ev.registrationFee !== undefined && (
+                                      <strong className="fee-tag">₹{ev.registrationFee}</strong>
+                                    )}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted">No events listed</span>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="payment-cell-info">
+                              <span className={`status-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
+                                {isApproved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                                {team.paymentStatus || 'Pending'}
+                              </span>
+                              {team.paymentUtr && (
+                                <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
+                                  <span>UTR: {team.paymentUtr}</span>
+                                  {copiedText === team.paymentUtr ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          <td>
+                            <div className="amount-cell">
+                              <span className="amount-val">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</span>
+                            </div>
+                          </td>
+
+                          <td>
+                            <button
+                              className="btn-toggle-expand"
+                              onClick={() => toggleExpand(team.teamId || idx)}
+                              title="Toggle Full Member Roster"
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                {/* Expandable Member Details Drawer if Expanded */}
+                {filteredTeams.map((team, idx) => {
+                  if (!expandedItems[team.teamId || idx]) return null;
+                  const members = team.members || [];
+
+                  return (
+                    <div key={`expanded_${team.teamId || idx}`} className="team-expanded-roster-box">
+                      <div className="roster-header">
+                        <Users size={15} className="text-indigo" />
+                        <strong>Member Roster for {team.teamName} ({team.collegeName})</strong>
+                        <span className="roster-id-tag">Team ID: {team.teamId}</span>
+                      </div>
+
+                      <div className="roster-members-grid">
+                        {members.length > 0 ? (
+                          members.map((m, mIdx) => (
+                            <div key={mIdx} className="member-card">
+                              <div className="member-avatar">
+                                {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
+                              </div>
+                              <div className="member-details">
+                                <span className="member-name">{m.name || `Participant ${mIdx + 1}`}</span>
+                                {m.email && <span className="member-info"><Mail size={10} /> {m.email}</span>}
+                                {m.phone && <span className="member-info"><Phone size={10} /> {m.phone}</span>}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="no-members-msg">No individual member items returned in payload.</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Cards View */}
+              <div className="mobile-cards-list mobile-only">
+                {filteredTeams.map((team, idx) => {
+                  const isExpanded = !!expandedItems[team.teamId || idx];
+                  const isApproved = (team.paymentStatus || '').toLowerCase().includes('app');
+                  const members = team.members || [];
+
+                  return (
+                    <div key={`mob_${team.teamId || idx}`} className="report-mobile-card">
+                      <div className="report-mobile-card-top">
+                        <div className="report-mobile-card-title-box">
+                          <h4 className="report-mobile-team-name">{team.teamName || 'Unnamed Team'}</h4>
+                          <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
+                            <span>{team.teamId || 'N/A'}</span>
+                            {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                          </div>
+                        </div>
+                        <span className={`status-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
+                          {isApproved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+                          {team.paymentStatus || 'Pending'}
+                        </span>
+                      </div>
+
+                      <div className="report-mobile-card-rows">
+                        <div className="report-mobile-row">
+                          <span className="report-mobile-lbl">College</span>
+                          <span className="report-mobile-val font-semibold">{team.collegeName || 'Unknown College'}</span>
+                        </div>
+
+                        <div className="report-mobile-row">
+                          <span className="report-mobile-lbl">Leader</span>
+                          <div className="report-mobile-leader">
+                            <span className="font-semibold">{team.leader?.name || 'N/A'}</span>
+                            {team.leader?.phone && <span className="text-muted text-xs"><Phone size={10} /> {team.leader.phone}</span>}
+                          </div>
+                        </div>
+
+                        <div className="report-mobile-row">
+                          <span className="report-mobile-lbl">Members</span>
+                          <span className="members-count-badge">
+                            <Users size={11} /> {team.membersCount || (team.members?.length || 1)}
+                          </span>
+                        </div>
+
+                        <div className="report-mobile-row">
+                          <span className="report-mobile-lbl">Amount Paid</span>
+                          <strong className="text-emerald font-bold">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</strong>
+                        </div>
+
+                        {team.paymentUtr && (
+                          <div className="report-mobile-row">
+                            <span className="report-mobile-lbl">UTR</span>
+                            <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
+                              <span>{team.paymentUtr}</span>
+                              <Copy size={10} />
                             </div>
                           </div>
-                        </td>
+                        )}
 
-                        <td>
-                          <div className="college-cell">
-                            <Building2 size={13} className="cell-sub-icon" />
-                            <span>{team.collegeName || 'Unknown College'}</span>
-                          </div>
-                        </td>
-
-                        <td>
-                          <div className="leader-cell">
-                            <span className="leader-name">{team.leader?.name || 'Leader N/A'}</span>
-                            {team.leader?.email && (
-                              <span className="leader-contact">
-                                <Mail size={11} /> {team.leader.email}
-                              </span>
-                            )}
-                            {team.leader?.phone && (
-                              <span className="leader-contact">
-                                <Phone size={11} /> {team.leader.phone}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-
-                        <td>
-                          <span className="members-count-badge">
-                            <Users size={12} /> {team.membersCount || (team.members?.length || 1)} Members
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="events-cell-list">
+                        <div className="report-mobile-row-full">
+                          <span className="report-mobile-lbl">Events</span>
+                          <div className="events-cell-list" style={{ marginTop: '0.25rem' }}>
                             {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
                               team.registeredEvents.map((ev, evIdx) => (
                                 <span key={evIdx} className="event-pill">
                                   {typeof ev === 'object' ? ev.title : ev}
-                                  {typeof ev === 'object' && ev.registrationFee !== undefined && (
-                                    <strong className="fee-tag">₹{ev.registrationFee}</strong>
-                                  )}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-muted">No events listed</span>
+                              <span className="text-muted text-xs">No events</span>
                             )}
                           </div>
-                        </td>
+                        </div>
+                      </div>
 
-                        <td>
-                          <div className="payment-cell-info">
-                            <span className={`status-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
-                              {isApproved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                              {team.paymentStatus || 'Pending'}
-                            </span>
-                            {team.paymentUtr && (
-                              <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
-                                <span>UTR: {team.paymentUtr}</span>
-                                {copiedText === team.paymentUtr ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
-                              </div>
+                      <div className="report-mobile-card-footer">
+                        <button 
+                          className="btn-mobile-toggle-roster"
+                          onClick={() => toggleExpand(team.teamId || idx)}
+                        >
+                          <Users size={13} />
+                          <span>{isExpanded ? 'Hide Member Roster' : `View Members (${members.length})`}</span>
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="team-expanded-roster-box" style={{ borderRadius: '8px', marginTop: '0.5rem' }}>
+                          <div className="roster-members-grid">
+                            {members.length > 0 ? (
+                              members.map((m, mIdx) => (
+                                <div key={mIdx} className="member-card">
+                                  <div className="member-avatar">
+                                    {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
+                                  </div>
+                                  <div className="member-details">
+                                    <span className="member-name">{m.name || `Participant ${mIdx + 1}`}</span>
+                                    {m.phone && <span className="member-info"><Phone size={10} /> {m.phone}</span>}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="no-members-msg">No individual member records available.</div>
                             )}
                           </div>
-                        </td>
-
-                        <td>
-                          <div className="amount-cell">
-                            <span className="amount-val">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</span>
-                          </div>
-                        </td>
-
-                        <td>
-                          <button
-                            className="btn-toggle-expand"
-                            onClick={() => toggleExpand(team.teamId || idx)}
-                            title="Toggle Full Member Roster"
-                          >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {/* Expandable Member Details Drawer if Expanded */}
-              {filteredTeams.map((team, idx) => {
-                if (!expandedItems[team.teamId || idx]) return null;
-                const members = team.members || [];
-
-                return (
-                  <div key={`expanded_${team.teamId || idx}`} className="team-expanded-roster-box">
-                    <div className="roster-header">
-                      <Users size={15} className="text-indigo" />
-                      <strong>Member Roster for {team.teamName} ({team.collegeName})</strong>
-                      <span className="roster-id-tag">Team ID: {team.teamId}</span>
-                    </div>
-
-                    <div className="roster-members-grid">
-                      {members.length > 0 ? (
-                        members.map((m, mIdx) => (
-                          <div key={mIdx} className="member-card">
-                            <div className="member-avatar">
-                              {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
-                            </div>
-                            <div className="member-details">
-                              <span className="member-name">{m.name || `Participant ${mIdx + 1}`}</span>
-                              {m.email && <span className="member-info"><Mail size={10} /> {m.email}</span>}
-                              {m.phone && <span className="member-info"><Phone size={10} /> {m.phone}</span>}
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="no-members-msg">No individual member items returned in payload.</div>
+                        </div>
                       )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -698,17 +813,19 @@ export const ReportsHub = () => {
           ) : (
             <div className="events-report-wrapper">
               {(eventsData.events || []).map((evt, evtIdx) => {
-                const participants = evt.participants || [];
-                const q = searchQuery.toLowerCase().trim();
-                const filteredP = participants.filter(p => 
-                  !q ||
-                  (p.participantName || '').toLowerCase().includes(q) ||
-                  (p.participantPhone || '').toLowerCase().includes(q) ||
-                  (p.collegeName || '').toLowerCase().includes(q) ||
-                  (p.teamName || '').toLowerCase().includes(q) ||
-                  (p.teamId || '').toLowerCase().includes(q) ||
-                  (p.paymentUtr || '').toLowerCase().includes(q)
-                );
+                const pList = evt.participants || [];
+                const filteredP = pList.filter(p => {
+                  const q = searchQuery.toLowerCase().trim();
+                  if (!q) return true;
+                  return (
+                    (p.participantName || '').toLowerCase().includes(q) ||
+                    (p.collegeName || '').toLowerCase().includes(q) ||
+                    (p.teamName || '').toLowerCase().includes(q) ||
+                    (p.teamId || '').toLowerCase().includes(q) ||
+                    (p.participantPhone || '').toLowerCase().includes(q) ||
+                    (p.paymentUtr || '').toLowerCase().includes(q)
+                  );
+                });
 
                 return (
                   <div key={evt.eventId || evtIdx} className="event-report-card">
@@ -718,13 +835,16 @@ export const ReportsHub = () => {
                           <Calendar size={20} />
                         </div>
                         <div>
-                          <h3 className="evt-title">{evt.title || evt.eventTitle || `Event ${evtIdx + 1}`}</h3>
+                          <h3 className="evt-title">{evt.eventTitle || evt.title || `Event ${evtIdx + 1}`}</h3>
                           <div className="evt-meta-tags">
                             <span className="evt-meta-pill">
-                              Registration Fee: <strong>₹ {evt.registrationFee ?? 0}</strong>
+                              Category: <strong>{evt.category || 'Contest'}</strong>
                             </span>
                             <span className="evt-meta-pill">
-                              Participants: <strong>{evt.totalParticipantsCount ?? participants.length}</strong>
+                              Fee: <strong>₹{evt.fee ?? evt.registrationFee ?? 0}</strong>
+                            </span>
+                            <span className="evt-meta-pill">
+                              Participants: <strong>{pList.length}</strong>
                             </span>
                           </div>
                         </div>
@@ -732,75 +852,118 @@ export const ReportsHub = () => {
 
                       <button
                         className="btn-evt-download"
-                        onClick={() => handleDownload('events', evt.eventId || evt._id || evt.id)}
-                        title="Download single event participant sheet"
+                        onClick={() => handleDownload('events', evt.eventId)}
+                        disabled={downloadingType === 'events'}
+                        title="Download Event Roster Excel"
                       >
-                        <Download size={14} />
+                        <Download size={13} />
                         <span>Export Event (.xlsx)</span>
                       </button>
                     </div>
 
                     {filteredP.length === 0 ? (
                       <div className="evt-no-participants">
-                        <span>No participants found matching current filters.</span>
+                        {pList.length === 0 ? 'No participants registered for this event yet.' : 'No participants matched the search filter.'}
                       </div>
                     ) : (
-                      <div className="evt-table-box">
-                        <table className="reports-data-table mini-table">
-                          <thead>
-                            <tr>
-                              <th>PARTICIPANT</th>
-                              <th>PHONE</th>
-                              <th>COLLEGE</th>
-                              <th>TEAM</th>
-                              <th>REGISTERED BY</th>
-                              <th>PAYMENT STATUS</th>
-                              <th>UTR</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredP.map((p, pIdx) => {
-                              const isApp = (p.paymentStatus || '').toLowerCase().includes('app');
-                              return (
-                                <tr key={pIdx}>
-                                  <td>
+                      <>
+                        {/* Desktop Table View */}
+                        <div className="evt-table-box desktop-only">
+                          <table className="reports-data-table mini-table">
+                            <thead>
+                              <tr>
+                                <th>PARTICIPANT</th>
+                                <th>PHONE</th>
+                                <th>COLLEGE</th>
+                                <th>TEAM</th>
+                                <th>REGISTERED BY</th>
+                                <th>PAYMENT STATUS</th>
+                                <th>UTR</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredP.map((p, pIdx) => {
+                                const isApp = (p.paymentStatus || '').toLowerCase().includes('app');
+                                return (
+                                  <tr key={pIdx}>
+                                    <td>
+                                      <strong className="participant-name-text">{p.participantName || 'N/A'}</strong>
+                                    </td>
+                                    <td>
+                                      <span className="phone-tag">{p.participantPhone || '—'}</span>
+                                    </td>
+                                    <td>
+                                      <span className="college-text">{p.collegeName || '—'}</span>
+                                    </td>
+                                    <td>
+                                      <div className="team-sub-cell">
+                                        <span>{p.teamName || '—'}</span>
+                                        {p.teamId && <small className="text-muted">({p.teamId})</small>}
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span className="registered-by-text">{p.registeredByUser || '—'}</span>
+                                    </td>
+                                    <td>
+                                      <span className={`status-pill mini-pill ${isApp ? 'status-approved' : 'status-pending'}`}>
+                                        {p.paymentStatus || 'Pending'}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      {p.paymentUtr ? (
+                                        <span className="utr-inline-text" onClick={() => handleCopy(p.paymentUtr, 'UTR')}>
+                                          {p.paymentUtr}
+                                        </span>
+                                      ) : (
+                                        <span className="text-muted">—</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Participant Cards View */}
+                        <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem' }}>
+                          {filteredP.map((p, pIdx) => {
+                            const isApp = (p.paymentStatus || '').toLowerCase().includes('app');
+                            return (
+                              <div key={`p_mob_${pIdx}`} className="report-mobile-card" style={{ marginBottom: '0.65rem' }}>
+                                <div className="report-mobile-card-top">
+                                  <div>
                                     <strong className="participant-name-text">{p.participantName || 'N/A'}</strong>
-                                  </td>
-                                  <td>
+                                    <div className="college-text" style={{ fontSize: '0.78rem', marginTop: '0.15rem' }}>{p.collegeName || '—'}</div>
+                                  </div>
+                                  <span className={`status-pill mini-pill ${isApp ? 'status-approved' : 'status-pending'}`}>
+                                    {p.paymentStatus || 'Pending'}
+                                  </span>
+                                </div>
+
+                                <div className="report-mobile-card-rows">
+                                  <div className="report-mobile-row">
+                                    <span className="report-mobile-lbl">Phone</span>
                                     <span className="phone-tag">{p.participantPhone || '—'}</span>
-                                  </td>
-                                  <td>
-                                    <span className="college-text">{p.collegeName || '—'}</span>
-                                  </td>
-                                  <td>
-                                    <div className="team-sub-cell">
-                                      <span>{p.teamName || '—'}</span>
-                                      {p.teamId && <small className="text-muted">({p.teamId})</small>}
-                                    </div>
-                                  </td>
-                                  <td>
-                                    <span className="registered-by-text">{p.registeredByUser || '—'}</span>
-                                  </td>
-                                  <td>
-                                    <span className={`status-pill mini-pill ${isApp ? 'status-approved' : 'status-pending'}`}>
-                                      {p.paymentStatus || 'Pending'}
-                                    </span>
-                                  </td>
-                                  <td>
-                                    {p.paymentUtr ? (
-                                      <span className="utr-inline-text" onClick={() => handleCopy(p.paymentUtr, 'UTR')}>
+                                  </div>
+                                  <div className="report-mobile-row">
+                                    <span className="report-mobile-lbl">Team</span>
+                                    <span className="font-semibold text-xs">{p.teamName || '—'}</span>
+                                  </div>
+                                  {p.paymentUtr && (
+                                    <div className="report-mobile-row">
+                                      <span className="report-mobile-lbl">UTR</span>
+                                      <span className="utr-copy-tag" onClick={() => handleCopy(p.paymentUtr, 'UTR')}>
                                         {p.paymentUtr}
                                       </span>
-                                    ) : (
-                                      <span className="text-muted">—</span>
-                                    )}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
                     )}
                   </div>
                 );
