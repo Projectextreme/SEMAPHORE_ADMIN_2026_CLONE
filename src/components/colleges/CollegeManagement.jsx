@@ -15,8 +15,11 @@ import {
   X,
   Filter,
   Check,
-  Copy
+  Copy,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
+
 import { apiService } from '../../services/apiService';
 import './CollegeManagement.css';
 
@@ -146,6 +149,16 @@ export const CollegeManagement = () => {
   const availableSlotsCount = colleges.filter((c) => (Number(c.totalTeams) || 0) < 2).length;
   const totalTeamsEnrolled = colleges.reduce((sum, c) => sum + (Number(c.totalTeams) || 0), 0);
 
+  const handleExportCollegesXLSX = async () => {
+    try {
+      await apiService.exportColleges('Semaphore_2026_Colleges_Report.xlsx');
+      showToast('Colleges 2-Teams Report downloaded successfully (.xlsx)!');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to export Colleges Excel report.', true);
+    }
+  };
+
   return (
     <div className="colleges-container">
       {/* Title Bar */}
@@ -171,11 +184,21 @@ export const CollegeManagement = () => {
             <span>{loading ? 'Refreshing...' : 'Refresh Colleges'}</span>
           </button>
 
+          <button 
+            onClick={handleExportCollegesXLSX} 
+            className="btn btn-secondary"
+            title="Download Colleges 2-Teams Report (.xlsx)"
+          >
+            <Download size={15} />
+            <span>Export Colleges (.xlsx)</span>
+          </button>
+
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
             <Plus size={15} /> Add New College
           </button>
         </div>
       </div>
+
 
       {/* Metric Strip */}
       <div className="college-metric-strip">

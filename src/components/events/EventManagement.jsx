@@ -18,8 +18,11 @@ import {
   Tag,
   UserCheck,
   RefreshCw,
-  X
+  X,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
+
 import { apiService } from '../../services/apiService';
 import './EventManagement.css';
 
@@ -264,6 +267,28 @@ export const EventManagement = () => {
     return matchesSearch && matchesCategory;
   });
 
+  const handleExportAllEventsXLSX = async () => {
+    try {
+      await apiService.exportEvents(null, 'Semaphore_2026_Events_Report.xlsx');
+      showAlert('success', 'Events & Participants Report downloaded successfully (.xlsx)!');
+    } catch (err) {
+      console.error(err);
+      showAlert('error', 'Failed to export Events Excel report.');
+    }
+  };
+
+  const handleExportSingleEventXLSX = async (evt) => {
+    const id = evt._id || evt.id;
+    const title = evt.title || 'Event';
+    try {
+      await apiService.exportSingleEvent(id, `Semaphore_2026_${title.replace(/[^a-zA-Z0-9]/g, '_')}_Participants.xlsx`);
+      showAlert('success', `Exported participant sheet for "${title}" (.xlsx)!`);
+    } catch (err) {
+      console.error(err);
+      showAlert('error', `Failed to export participant sheet for "${title}".`);
+    }
+  };
+
   return (
     <div className="events-container">
       {/* Title */}
@@ -289,11 +314,21 @@ export const EventManagement = () => {
             <span>{loading ? 'Refreshing...' : 'Refresh Events'}</span>
           </button>
 
+          <button 
+            onClick={handleExportAllEventsXLSX} 
+            className="btn btn-secondary"
+            title="Download Events Master Excel Report (.xlsx)"
+          >
+            <Download size={15} />
+            <span>Export Events (.xlsx)</span>
+          </button>
+
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
             <Plus size={15} /> Create New Event
           </button>
         </div>
       </div>
+
 
       {/* Toolbar Filter & Search */}
       <div className="card events-toolbar-card">
@@ -439,6 +474,13 @@ export const EventManagement = () => {
                   </div>
 
                   <div className="card-action-btns">
+                    <button
+                      className="btn-icon btn-export"
+                      title="Export Event Participants Sheet (.xlsx)"
+                      onClick={() => handleExportSingleEventXLSX(evt)}
+                    >
+                      <Download size={13} />
+                    </button>
                     <button
                       className="btn-icon btn-edit"
                       title="Edit Event"

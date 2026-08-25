@@ -17,7 +17,9 @@ import { EventManagement } from './components/events/EventManagement';
 import { CoordinatorManagement } from './components/coordinators/CoordinatorManagement';
 import { SlotManagement } from './components/slots/SlotManagement';
 import { CollegeManagement } from './components/colleges/CollegeManagement';
+import { ReportsHub } from './components/reports/ReportsHub';
 import './App.css';
+
 
 function AdminLayout() {
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -133,7 +135,9 @@ export default function App() {
                 <Route path="/payments" element={<PaymentApprovals />} />
                 <Route path="/coordinators" element={<CoordinatorManagement />} />
                 <Route path="/slots" element={<SlotManagement />} />
+                <Route path="/reports" element={<ReportsHub />} />
                 <Route path="/users" element={<UserManagement />} />
+
                 <Route path="/user/:userId" element={<UserProfileView />} />
                 <Route
                   path="/admins"

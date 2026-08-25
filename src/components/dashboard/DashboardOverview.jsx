@@ -31,8 +31,10 @@ import {
   Eye,
   Tag,
   Phone,
-  Mail
+  Mail,
+  Download
 } from 'lucide-react';
+
 import { PaymentDetailsModal } from '../payments/PaymentDetailsModal';
 import './DashboardOverview.css';
 
@@ -341,7 +343,33 @@ export const DashboardOverview = () => {
               <RefreshCw size={12} className={isRefreshing ? 'spin-icon' : ''} />
               <span>{isRefreshing ? 'Refreshing...' : 'Refresh Data'}</span>
             </button>
+
+            <button
+              className="btn btn-xs btn-secondary refresh-btn"
+              onClick={() => navigate('/reports')}
+              title="Open Reports & Export Hub"
+            >
+              <FileSpreadsheet size={12} />
+              <span>Reports Hub</span>
+            </button>
+
+            <button
+              className="btn btn-xs btn-primary refresh-btn"
+              onClick={async () => {
+                try {
+                  await apiService.exportAllMaster('Semaphore_2026_Master_Export.xlsx');
+                  showToast('Master Consolidated Workbook downloaded (.xlsx)!');
+                } catch {
+                  showToast('Failed to export Master Workbook.', true);
+                }
+              }}
+              title="1-Click Master Excel Export (.xlsx)"
+            >
+              <Download size={12} />
+              <span>Master Export (.xlsx)</span>
+            </button>
           </div>
+
 
           <h2>
             Welcome back, {admin?.name || 'Sumanth'} ({admin?.role || 'admin'}) 👋

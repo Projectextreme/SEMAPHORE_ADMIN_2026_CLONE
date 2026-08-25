@@ -23,9 +23,11 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
     {
       title: 'OVERVIEW',
       items: [
-        { id: 'dashboard', path: '/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard }
+        { id: 'dashboard', path: '/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
+        { id: 'reports', path: '/reports', label: 'Reports & Export Hub', icon: FileSpreadsheet, badge: 'XLSX' }
       ]
     },
+
     {
       title: 'EVENT OPERATIONS',
       items: [

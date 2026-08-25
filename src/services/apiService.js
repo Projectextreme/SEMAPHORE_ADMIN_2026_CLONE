@@ -1,6 +1,5 @@
-// API Service module connecting directly to Semaphore 2026 Admin Endpoints
+import { API_BASE_URL, getAuthHeader, getAuthToken } from './apiConfig';
 
-import { API_BASE_URL, getAuthHeader } from './apiConfig';
 
 /**
  * Universal HTTP request wrapper that connects directly to the backend API.
@@ -700,5 +699,105 @@ export const apiService = {
     } catch {
       return await apiRequest(`/api/admin/payments/${paymentId}`, { method: 'GET' });
     }
+  },
+
+  // 10. Excel Export Endpoints (.xlsx)
+  getExportUrl: (endpoint) => {
+    const token = getAuthToken();
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const separator = cleanEndpoint.includes('?') ? '&' : '?';
+    return `${API_BASE_URL}/api/admin/export/${cleanEndpoint}${separator}token=${encodeURIComponent(token)}`;
+  },
+
+  downloadExcel: async (endpoint, filename = 'Export.xlsx') => {
+    const token = getAuthToken();
+    const cleanEndpoint = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+    const separator = cleanEndpoint.includes('?') ? '&' : '?';
+    const url = `${API_BASE_URL}/api/admin/export/${cleanEndpoint}${separator}token=${encodeURIComponent(token)}`;
+
+    try {
+      // 1-Click browser download via temporary anchor
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return { success: true, url };
+    } catch (err) {
+      console.warn('Anchor download fallback to fetch blob:', err);
+      // Fallback: Fetch with Authorization Bearer header
+      const res = await fetch(`${API_BASE_URL}/api/admin/export/${cleanEndpoint}`, {
+        method: 'GET',
+        headers: {
+          ...getAuthHeader()
+        }
+      });
+      if (!res.ok) {
+        throw new Error(`Export failed with HTTP status ${res.status}`);
+      }
+      const blob = await res.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+      return { success: true };
+    }
+  },
+
+  // Export Teams (.xlsx)
+  exportTeams: async (filename = 'Teams_Report.xlsx') => {
+    return apiService.downloadExcel('teams', filename);
+  },
+
+  // Export Events (.xlsx)
+  exportEvents: async (eventId = null, filename = null) => {
+    if (eventId) {
+      return apiService.downloadExcel(`events/${eventId}`, filename || `Event_${eventId}_Participants.xlsx`);
+    }
+    return apiService.downloadExcel('events', filename || 'Events_Report.xlsx');
+  },
+
+  // Export Single Event by ID (.xlsx)
+  exportSingleEvent: async (eventId, filename = null) => {
+    return apiService.downloadExcel(`events/${eventId}`, filename || `Event_${eventId}_Participants.xlsx`);
+  },
+
+  // Export Colleges (.xlsx)
+  exportColleges: async (filename = 'Colleges_Report.xlsx') => {
+    return apiService.downloadExcel('colleges', filename);
+  },
+
+  // Export Master Consolidated Workbook (.xlsx)
+  exportAllMaster: async (filename = 'Master_Export.xlsx') => {
+    return apiService.downloadExcel('all', filename);
+  },
+
+  // 11. JSON Reports Endpoints
+  // GET /api/admin/reports/teams
+  getTeamsReport: async () => {
+    return await apiRequest('/api/admin/reports/teams', { method: 'GET' });
+  },
+
+  // GET /api/admin/reports/events (?eventId=...)
+  getEventsReport: async (eventId = null) => {
+    const query = eventId ? `?eventId=${encodeURIComponent(eventId)}` : '';
+    return await apiRequest(`/api/admin/reports/events${query}`, { method: 'GET' });
+  },
+
+  // GET /api/admin/reports/colleges
+  getCollegesReport: async () => {
+    return await apiRequest('/api/admin/reports/colleges', { method: 'GET' });
+  },
+
+  // GET /api/admin/reports/summary
+  getDashboardSummaryReport: async () => {
+    return await apiRequest('/api/admin/reports/summary', { method: 'GET' });
   }
 };
+

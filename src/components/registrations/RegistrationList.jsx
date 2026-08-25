@@ -185,6 +185,27 @@ export const RegistrationList = () => {
     showToast('Registrations CSV report downloaded with Excel formatting!');
   };
 
+  const handleExportTeamsXLSX = async () => {
+
+    try {
+      await apiService.exportTeams('Semaphore_2026_Teams_Report.xlsx');
+      showToast('Teams Excel Report downloaded successfully (.xlsx)!');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to export Teams Excel report.', true);
+    }
+  };
+
+  const handleExportMasterXLSX = async () => {
+    try {
+      await apiService.exportAllMaster('Semaphore_2026_Master_Export.xlsx');
+      showToast('Master Consolidated Workbook downloaded (.xlsx)!');
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to export Master Workbook.', true);
+    }
+  };
+
   // Filtering Logic
   const collegesList = ['All', ...new Set(registrations.map((r) => r.collegeName).filter(Boolean))];
   const eventsList = ['All', ...new Set(registrations.map((r) => r.event).filter(Boolean))];
@@ -235,11 +256,16 @@ export const RegistrationList = () => {
             <span>{loading ? 'Refreshing...' : 'Refresh Data'}</span>
           </button>
 
-          <button onClick={handleExportCSV} className="btn btn-primary">
-            <Download size={15} /> Export CSV Report
+          <button onClick={handleExportTeamsXLSX} className="btn btn-primary" title="Download Excel (.xlsx) with Teams Summary & Participants">
+            <Download size={15} /> Export Teams (.xlsx)
+          </button>
+
+          <button onClick={handleExportMasterXLSX} className="btn btn-secondary" title="Download Master 3-in-1 Workbook (.xlsx)">
+            <FileSpreadsheet size={15} /> Master Export (.xlsx)
           </button>
         </div>
       </div>
+
 
       {/* Summary KPI Strip */}
       <div className="registration-kpi-strip">
