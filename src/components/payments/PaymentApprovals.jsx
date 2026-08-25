@@ -20,7 +20,9 @@ import {
   ShieldCheck,
   ArrowUpRight,
   Clock,
-  Tag
+  Tag,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { PaymentDetailsModal } from './PaymentDetailsModal';
 import './PaymentApprovals.css';
@@ -39,6 +41,7 @@ export const PaymentApprovals = () => {
   const [actionModal, setActionModal] = useState(null); // { payment, status, message }
   const [selectedPaymentId, setSelectedPaymentId] = useState(null);
   const [previewImage, setPreviewImage] = useState(null); // { url, utr }
+  const [deletingPayment, setDeletingPayment] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const showToast = (msg, isError = false) => {
@@ -117,8 +120,24 @@ export const PaymentApprovals = () => {
       showToast(res?.message || `Payment status updated to '${status}' successfully!`);
       setActionModal(null);
       loadPayments();
-    } catch {
-      showToast('Failed to update payment status.', true);
+    } catch (err) {
+      showToast(err.message || 'Failed to update payment status.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteConfirmPayment = async () => {
+    if (!deletingPayment) return;
+    const paymentId = deletingPayment._id || deletingPayment.paymentid || deletingPayment.id;
+    setActionLoading(true);
+    try {
+      const res = await apiService.deletePayment(paymentId);
+      showToast(res?.message || 'Payment record deleted successfully.');
+      setDeletingPayment(null);
+      loadPayments();
+    } catch (err) {
+      showToast(err.message || 'Failed to delete payment.', true);
     } finally {
       setActionLoading(false);
     }
@@ -463,6 +482,18 @@ export const PaymentApprovals = () => {
                           <XCircle size={12} /> Reject
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-outline-danger"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingPayment(p);
+                        }}
+                        title="Delete Payment Record"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </div>
 
@@ -547,9 +578,39 @@ export const PaymentApprovals = () => {
         onClose={() => setSelectedPaymentId(null)}
         paymentId={selectedPaymentId}
         onOpenActionModal={handleOpenActionModal}
+        onPaymentDeleted={() => loadPayments()}
       />
 
-      {/* 3. Image Lightbox Modal */}
+      {/* 3. Confirm Delete Payment Modal */}
+      {deletingPayment && (
+        <Modal isOpen={!!deletingPayment} onClose={() => setDeletingPayment(null)} maxWidth="480px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Payment</h3>
+            <button className="modal-close" onClick={() => setDeletingPayment(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Are you sure you want to permanently delete payment record <code>{deletingPayment.id || deletingPayment._id}</code> (UTR: <strong>{deletingPayment.utr}</strong>, Amount: <strong>{deletingPayment.amount}</strong>)?
+          </p>
+          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+            Associated event registrations will be disassociated and reverted to unpaid status.
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingPayment(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleDeleteConfirmPayment}
+              disabled={actionLoading}
+            >
+              {actionLoading ? 'Deleting Payment...' : 'Confirm Delete Payment'}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 4. Image Lightbox Modal */}
       {previewImage && (
         <Modal isOpen={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth="800px">
           <div className="modal-header">

@@ -18,6 +18,7 @@ import { CoordinatorManagement } from './components/coordinators/CoordinatorMana
 import { SlotManagement } from './components/slots/SlotManagement';
 import { CollegeManagement } from './components/colleges/CollegeManagement';
 import { ReportsHub } from './components/reports/ReportsHub';
+import { TeamRulesManagement } from './components/rules/TeamRulesManagement';
 import './App.css';
 
 
@@ -131,6 +132,8 @@ export default function App() {
                 <Route path="/dashboard" element={<DashboardOverview />} />
                 <Route path="/colleges" element={<CollegeManagement />} />
                 <Route path="/events" element={<EventManagement />} />
+                <Route path="/rules" element={<TeamRulesManagement />} />
+                <Route path="/team-rules" element={<TeamRulesManagement />} />
                 <Route path="/registrations" element={<RegistrationList />} />
                 <Route path="/payments" element={<PaymentApprovals />} />
                 <Route path="/coordinators" element={<CoordinatorManagement />} />

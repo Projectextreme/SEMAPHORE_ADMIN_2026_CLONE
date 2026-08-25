@@ -21,7 +21,9 @@ import {
   ChevronUp,
   MapPin,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import './PaymentDetailsModal.css';
 
@@ -29,7 +31,8 @@ export const PaymentDetailsModal = ({
   isOpen,
   onClose,
   paymentId,
-  onOpenActionModal
+  onOpenActionModal,
+  onPaymentDeleted
 }) => {
   const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(true);
@@ -38,6 +41,8 @@ export const PaymentDetailsModal = ({
   const [eventParticipantsData, setEventParticipantsData] = useState({});
   const [loadingParticipants, setLoadingParticipants] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
+  const [deletingPayment, setDeletingPayment] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -150,218 +155,186 @@ export const PaymentDetailsModal = ({
                 </span>
               </div>
 
-              <div className="details-amount-row">
-                <div>
-                  <span className="details-label">Amount Paid</span>
-                  <h2 className="details-amount-val">
-                    ₹{typeof payment?.amount === 'number' ? payment.amount.toLocaleString() : payment?.amount || 0}
-                  </h2>
+              <div className="details-amount-block">
+                <span className="amount-label">Transaction Amount</span>
+                <h2 className="amount-value text-emerald">
+                  {typeof payment?.amount === 'number' ? `₹${payment.amount}` : (payment?.amount || '₹0')}
+                </h2>
+                <div className="utr-badge-row">
+                  <span className="utr-lbl">UTR Reference:</span>
+                  <code className="utr-code">{payment?.utr || 'N/A'}</code>
+                  {payment?.utr && payment?.utr !== 'N/A' && (
+                    <button
+                      type="button"
+                      className="btn-copy-icon"
+                      onClick={() => handleCopyUtr(payment.utr)}
+                      title="Copy UTR to Clipboard"
+                    >
+                      <Copy size={13} />
+                    </button>
+                  )}
                 </div>
-                <div>
-                  <span className="details-label">UTR Reference Code</span>
-                  <div className="utr-copy-row">
-                    <code className="utr-code-lg">{payment?.utr || 'N/A'}</code>
-                    {payment?.utr && (
-                      <button
-                        type="button"
-                        className="btn-icon-subtle"
-                        onClick={() => handleCopyUtr(payment.utr)}
-                        title="Copy UTR to clipboard"
-                      >
-                        <Copy size={14} />
-                      </button>
+                {payment?.message && (
+                  <p className="admin-status-note">
+                    <ShieldCheck size={13} className="text-cyan" /> Note: <em>{payment.message}</em>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* User & Contingent Profile Grid */}
+            <div className="details-grid-row">
+              <div className="details-user-box">
+                <div className="box-title-bar">
+                  <User size={15} className="text-cyan" />
+                  <h4>Participant Details</h4>
+                </div>
+                <div className="user-info-body">
+                  <div className="user-avatar-circle">
+                    {user?.avatar ? (
+                      <img src={user.avatar} alt={user.name || 'User'} />
+                    ) : (
+                      <span>{(user?.name || 'P').charAt(0).toUpperCase()}</span>
                     )}
+                  </div>
+                  <div className="user-text-meta">
+                    <h5 className="user-name-title">{user?.name || 'Participant'}</h5>
+                    <p className="user-email-text">{user?.email || 'No email specified'}</p>
+                    {user?.phone && <p className="user-phone-text"><Phone size={12} /> {user.phone}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Admin Audit Info */}
-              {(payment?.approvedBy || payment?.approved_by) && (
-                <div className={`details-audit-alert audit-${rawStatus}`}>
-                  <ShieldCheck size={16} />
-                  <div>
-                    <strong>
-                      {rawStatus === 'approved' ? 'Approved by:' : 'Rejected by:'}{' '}
-                      {(payment.approvedBy || payment.approved_by)?.name || (payment.approvedBy || payment.approved_by)?.email}
-                    </strong>
-                    {payment.message && <p className="audit-msg-text">"{payment.message}"</p>}
-                  </div>
+              <div className="details-college-box">
+                <div className="box-title-bar">
+                  <Building2 size={15} className="text-cyan" />
+                  <h4>College & Contingent Team</h4>
                 </div>
-              )}
-            </div>
-
-            {/* 2-Column Grid: User Info & College / Team Info */}
-            <div className="details-grid-2col">
-              <div className="details-card-box">
-                <h4 className="details-card-title">
-                  <User size={15} className="text-cyan" /> Student User Details
-                </h4>
-                <div className="user-profile-summary">
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="user-avatar-lg" />
-                  ) : (
-                    <div className="user-avatar-placeholder-lg">
-                      <User size={20} />
+                <div className="college-info-body">
+                  <div className="college-meta-item">
+                    <span className="meta-lbl">Institution:</span>
+                    <strong className="meta-val">{college?.collegeName || user?.collegeName || 'Not Specified'}</strong>
+                  </div>
+                  <div className="college-meta-item">
+                    <span className="meta-lbl">Team Name:</span>
+                    <strong className="meta-val font-cyan">{team?.name || user?.team?.name || 'General Team'}</strong>
+                  </div>
+                  {team?.teamid && (
+                    <div className="college-meta-item">
+                      <span className="meta-lbl">Team ID:</span>
+                      <code className="meta-val-code">{team.teamid}</code>
                     </div>
                   )}
-                  <div className="user-info-text">
-                    <h5 className="user-name-text">{user?.name || 'N/A'}</h5>
-                    <p className="user-email-text">{user?.email || 'N/A'}</p>
-                    {user?.collegeName && (
-                      <p className="user-college-text">
-                        <Building2 size={12} /> {user.collegeName}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="details-card-box">
-                <h4 className="details-card-title">
-                  <Building2 size={15} className="text-cyan" /> College & Team Details
-                </h4>
-                <div className="team-college-details">
-                  <p className="detail-field">
-                    <strong>College:</strong> {college?.collegeName || user?.collegeName || 'N/A'}
-                  </p>
-                  <p className="detail-field">
-                    <strong>Team Name:</strong> {team?.name || 'N/A'}
-                  </p>
-                  <p className="detail-field">
-                    <strong>Team ID:</strong> <code className="team-id-badge">{team?.teamid || 'N/A'}</code>
-                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Payment Proof Screenshot Section */}
+            {/* Proof Screenshot Section */}
             {proofImg && (
-              <div className="details-card-box">
-                <h4 className="details-card-title">
-                  <Eye size={15} className="text-cyan" /> Payment Proof Screenshot
-                </h4>
-                <div className="details-proof-img-container">
-                  <div className="proof-img-overlay-wrapper" onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}>
-                    <img src={proofImg} alt="Payment Receipt Screenshot" className="details-proof-img" />
-                    <div className="proof-hover-hint">
-                      <Eye size={18} />
-                      <span>Click to expand image</span>
+              <div className="details-proof-section">
+                <div className="box-title-bar">
+                  <Receipt size={15} className="text-cyan" />
+                  <h4>Payment Proof Screenshot</h4>
+                </div>
+                <div className="proof-container">
+                  <div className="proof-thumbnail-wrap">
+                    <img
+                      src={proofImg}
+                      alt="Receipt Screenshot Proof"
+                      className="proof-thumb-img"
+                      onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}
+                      title="Click to expand full preview"
+                    />
+                  </div>
+                  <div className="proof-meta-actions">
+                    <p className="proof-note">
+                      Uploaded transaction proof via Cloudinary. Click inspect to view full image or open in a new tab.
+                    </p>
+                    <div className="proof-btn-row">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-cyan"
+                        onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}
+                      >
+                        <Eye size={13} /> Inspect Screenshot
+                      </button>
+                      <a href={proofImg} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline">
+                        Open Cloudinary <ArrowUpRight size={13} />
+                      </a>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Events Registered Associated ONLY with this Payment */}
-            <div className="details-card-box events-associated-box">
-              <div className="events-box-header">
-                <h4 className="details-card-title">
-                  <Sparkles size={15} className="text-cyan" /> Associated Event Registrations ({eventsList.length})
-                </h4>
-                <span className="events-sub-tag">Events mapped to Payment ID</span>
+            {/* Associated Event Registrations */}
+            <div className="details-events-section">
+              <div className="box-title-bar">
+                <Calendar size={15} className="text-cyan" />
+                <h4>Associated Event Registrations ({eventsList.length})</h4>
               </div>
 
               {eventsList.length > 0 ? (
-                <div className="events-list-mini">
+                <div className="events-accordion-list">
                   {eventsList.map((evt, idx) => {
-                    const eventId = evt.eventId || evt._id || evt.id || `evt_${idx}`;
-                    const isExpanded = expandedEventId === eventId;
-                    const isLoadingPart = loadingParticipants[eventId];
-                    const externalPartData = eventParticipantsData[eventId];
-                    const participants = evt.participants || externalPartData?.participants || [];
-                    const partCount = evt.participantsCount || externalPartData?.participantsCount || participants.length;
+                    const evtId = evt.eventId || evt._id || evt.registrationId || `evt-${idx}`;
+                    const isExpanded = expandedEventId === evtId;
+                    const participants = evt.participants || eventParticipantsData[evtId]?.participants || [];
+                    const isLoadingP = loadingParticipants[evtId];
 
                     return (
-                      <div key={eventId} className={`event-item-wrapper ${isExpanded ? 'expanded' : ''}`}>
-                        {/* Event Header Row */}
+                      <div key={evtId} className={`event-accordion-card ${isExpanded ? 'is-open' : ''}`}>
                         <div
-                          className="event-item-row clickable-event-row"
-                          onClick={() => handleToggleEventExpand(eventId, user?._id, evt)}
-                          title="Click to view/collapse event participants"
+                          className="event-accordion-header"
+                          onClick={() => handleToggleEventExpand(evtId, user?._id || user?.id, evt)}
                         >
-                          <div className="evt-title-group">
-                            <h5 className="evt-title">{evt.title || evt.name}</h5>
-                            {evt.description && <p className="evt-desc">{evt.description}</p>}
+                          <div className="event-title-group">
+                            <h5 className="event-title-text">{evt.title || evt.name || 'Festival Event'}</h5>
+                            {evt.registrationFee !== undefined && (
+                              <span className="event-fee-pill">₹{evt.registrationFee}</span>
+                            )}
+                            {evt.date && (
+                              <span className="event-date-pill">
+                                <Calendar size={11} /> {new Date(evt.date).toLocaleDateString()}
+                              </span>
+                            )}
+                            {evt.location && (
+                              <span className="event-venue-pill">
+                                <MapPin size={11} /> {evt.location}
+                              </span>
+                            )}
                           </div>
-                          <div className="evt-right-group">
-                            <div className="evt-fee-pill">
-                              <span>Fee: ₹{evt.registrationFee || evt.actualPrice || evt.fee || 500}</span>
-                            </div>
-                            <button type="button" className="btn-icon-subtle expand-btn" aria-label="Toggle details">
-                              {isLoadingPart ? (
-                                <RefreshCw size={14} className="spin-icon" />
-                              ) : isExpanded ? (
-                                <ChevronUp size={16} />
-                              ) : (
-                                <ChevronDown size={16} />
-                              )}
-                            </button>
-                          </div>
+                          <button type="button" className="btn-accordion-toggle">
+                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
                         </div>
 
-                        {/* Expanded Event Details & Participants */}
                         {isExpanded && (
-                          <div className="event-expanded-details-container">
-                            {/* Specs Bar */}
-                            <div className="event-specs-strip">
-                              {evt.location && (
-                                <span className="spec-badge">
-                                  <MapPin size={12} /> <strong>Location:</strong> {evt.location}
-                                </span>
-                              )}
-                              {evt.date && (
-                                <span className="spec-badge">
-                                  <Calendar size={12} /> <strong>Date:</strong> {new Date(evt.date).toLocaleDateString()}
-                                </span>
-                              )}
-                              <span className="spec-badge">
-                                <Users size={12} /> <strong>Team Limits:</strong> {evt.minParticipants || 1} - {evt.maxParticipants || 4} Members
-                              </span>
+                          <div className="event-accordion-body">
+                            {evt.description && <p className="event-desc-text">{evt.description}</p>}
+
+                            <div className="participants-roster-header">
+                              <Users size={14} className="text-cyan" />
+                              <h6>Enrolled Participants Roster ({participants.length})</h6>
                             </div>
 
-                            {/* Participants Section Header */}
-                            <div className="participants-section-header">
-                              <h5 className="participants-title">
-                                <Users size={14} className="text-cyan" /> Event Registered Participants ({partCount})
-                              </h5>
-                              {team?.name && <span className="team-badge">Team: {team.name}</span>}
-                            </div>
-
-                            {/* Participants Grid */}
-                            {isLoadingPart ? (
-                              <div className="event-details-loading">
-                                <RefreshCw size={14} className="spin-icon text-cyan" />
-                                <span>Loading participants info...</span>
+                            {isLoadingP ? (
+                              <div className="participants-loading">
+                                <RefreshCw className="spin-icon text-cyan" size={16} />
+                                <span>Loading participants list...</span>
                               </div>
-                            ) : participants && participants.length > 0 ? (
+                            ) : participants.length > 0 ? (
                               <div className="participants-grid">
                                 {participants.map((part, pIdx) => (
-                                  <div key={part._id || pIdx} className="participant-card-item">
-                                    <div className="participant-avatar-wrap">
-                                      {part.avatar ? (
-                                        <img src={part.avatar} alt={part.name} className="participant-avatar" />
-                                      ) : (
-                                        <div className="participant-avatar-placeholder">
-                                          <User size={15} />
-                                        </div>
-                                      )}
+                                  <div key={pIdx} className="participant-badge-card">
+                                    <div className="participant-avatar-tiny">
+                                      <User size={12} />
                                     </div>
                                     <div className="participant-info">
                                       <h6 className="participant-name">
                                         {part.name}
                                         {part.role && <span className="participant-role-pill">{part.role}</span>}
                                       </h6>
-                                      {part.phone && (
-                                        <div className="participant-phone-line">
-                                          <Phone size={12} className="text-cyan" />
-                                          <span className="phone-num">{part.phone}</span>
-                                        </div>
-                                      )}
-                                      {part.email && (
-                                        <p className="participant-email">
-                                          <Mail size={11} /> {part.email}
-                                        </p>
-                                      )}
                                     </div>
                                   </div>
                                 ))}
@@ -384,30 +357,40 @@ export const PaymentDetailsModal = ({
 
             {/* Modal Bottom Actions */}
             <div className="modal-actions-bar">
-              {onOpenActionModal && (
-                <div className="modal-left-actions">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-success"
-                    onClick={() => {
-                      onClose();
-                      onOpenActionModal(payment, 'approved');
-                    }}
-                  >
-                    <CheckCircle2 size={14} /> Approve Payment
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => {
-                      onClose();
-                      onOpenActionModal(payment, 'rejected');
-                    }}
-                  >
-                    <XCircle size={14} /> Reject Payment
-                  </button>
-                </div>
-              )}
+              <div className="modal-left-actions">
+                {onOpenActionModal && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-success"
+                      onClick={() => {
+                        onClose();
+                        onOpenActionModal(payment, 'approved');
+                      }}
+                    >
+                      <CheckCircle2 size={14} /> Approve Payment
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => {
+                        onClose();
+                        onOpenActionModal(payment, 'rejected');
+                      }}
+                    >
+                      <XCircle size={14} /> Reject Payment
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-danger"
+                  onClick={() => setDeletingPayment(true)}
+                  title="Delete this payment record"
+                >
+                  <Trash2 size={14} /> Delete Payment
+                </button>
+              </div>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
                 Close
               </button>
@@ -422,6 +405,35 @@ export const PaymentDetailsModal = ({
           </div>
         )}
       </Modal>
+
+      {/* Confirm Delete Payment Modal */}
+      {deletingPayment && (
+        <Modal isOpen={!!deletingPayment} onClose={() => setDeletingPayment(false)} maxWidth="480px" isDanger={true}>
+          <div className="modal-header">
+            <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Payment</h3>
+            <button className="modal-close" onClick={() => setDeletingPayment(false)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Are you sure you want to permanently delete payment record <code>{paymentId}</code> (UTR: <strong>{data?.payment?.utr || 'N/A'}</strong>, Amount: <strong>₹{data?.payment?.amount || 0}</strong>)?
+          </p>
+          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+            Associated event registrations will be disassociated and reverted to unpaid status.
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingPayment(false)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleConfirmDeletePayment}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting Payment...' : 'Confirm Delete Payment'}
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {/* Image Preview Lightbox */}
       {previewImage && (

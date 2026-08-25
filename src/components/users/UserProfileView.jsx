@@ -95,8 +95,8 @@ export const UserProfileView = () => {
       showSuccess(res?.message || `Payment status updated to '${status}' successfully!`);
       setActionModal(null);
       loadUserDetails();
-    } catch {
-      showError('Failed to update payment status');
+    } catch (err) {
+      showError(err.message || 'Failed to update payment status');
     } finally {
       setActionLoading(false);
     }
@@ -572,6 +572,7 @@ export const UserProfileView = () => {
         onClose={() => setSelectedPaymentId(null)}
         paymentId={selectedPaymentId}
         onOpenActionModal={handleOpenActionModal}
+        onPaymentDeleted={() => loadUserDetails()}
       />
     </div>
   );

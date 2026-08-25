@@ -91,7 +91,7 @@ export const RegistrationList = () => {
       showToast(`Payment for team "${reg.teamName}" marked as ${newStatus}!`);
       await fetchRegistrations();
     } catch (err) {
-      showToast('Failed to update payment status.', true);
+      showToast(err.message || 'Failed to update payment status.', true);
     } finally {
       setActionLoading(false);
     }

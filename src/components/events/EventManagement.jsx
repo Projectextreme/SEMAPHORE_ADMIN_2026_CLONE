@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import {
@@ -20,7 +21,8 @@ import {
   RefreshCw,
   X,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  BookOpen
 } from 'lucide-react';
 
 import { apiService } from '../../services/apiService';
@@ -247,7 +249,7 @@ export const EventManagement = () => {
       showAlert('success', 'Event removed successfully.');
     } catch (err) {
       console.error('Error deleting event:', err);
-      showAlert('error', 'Failed to delete event.');
+      showAlert('error', err.message || 'Failed to delete event.');
     } finally {
       setSubmitting(false);
     }
@@ -322,6 +324,11 @@ export const EventManagement = () => {
             <Download size={15} />
             <span>Export Events (.xlsx)</span>
           </button>
+
+          <Link to="/rules" className="btn btn-secondary" style={{ textDecoration: 'none' }}>
+            <BookOpen size={15} />
+            <span>Team Rules & Guidelines</span>
+          </Link>
 
           <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
             <Plus size={15} /> Create New Event

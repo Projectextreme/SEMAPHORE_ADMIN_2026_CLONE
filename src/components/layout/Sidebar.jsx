@@ -11,7 +11,8 @@ import {
   CheckCircle,
   Database,
   X,
-  Building2
+  Building2,
+  BookOpen
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -32,7 +33,8 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
       title: 'EVENT OPERATIONS',
       items: [
         { id: 'colleges', path: '/colleges', label: 'College Directory', icon: Building2 },
-        { id: 'events', path: '/events', label: 'Events & Rules', icon: Calendar, badge: 'Active' },
+        { id: 'events', path: '/events', label: 'Events Management', icon: Calendar, badge: 'Active' },
+        { id: 'rules', path: '/rules', label: 'Team Rules & Guidelines', icon: BookOpen },
         { id: 'registrations', path: '/registrations', label: 'Team Registrations', icon: FileSpreadsheet },
         { id: 'payments', path: '/payments', label: 'Payment Approvals', icon: CreditCard, count: 2 },
         { id: 'coordinators', path: '/coordinators', label: 'Event Coordinators', icon: UserCheck },

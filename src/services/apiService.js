@@ -141,9 +141,25 @@ export const apiService = {
   },
 
   deleteUser: async (id) => {
-    return await apiRequest(`/api/admin/users/${id}`, {
-      method: 'DELETE'
-    });
+    try {
+      return await apiRequest(`/api/admin/users/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err1) {
+      try {
+        return await apiRequest(`/api/users/${id}`, {
+          method: 'DELETE'
+        });
+      } catch (err2) {
+        try {
+          return await apiRequest(`/api/registrations/users/${id}`, {
+            method: 'DELETE'
+          });
+        } catch (err3) {
+          throw err1;
+        }
+      }
+    }
   },
 
   getUserFullDetails: async (userId) => {
@@ -154,6 +170,18 @@ export const apiService = {
         return await apiRequest(`/api/admin/users/${userId}/full-details`, { method: 'GET' });
       } catch {
         return await apiRequest(`/api/admin/user-details/${userId}`, { method: 'GET' });
+      }
+    }
+  },
+
+  getUserEvents: async (userId) => {
+    try {
+      return await apiRequest(`/api/admin/user-events/${userId}`, { method: 'GET' });
+    } catch {
+      try {
+        return await apiRequest(`/api/admin/users/${userId}/events`, { method: 'GET' });
+      } catch {
+        return await apiRequest(`/api/admin/events/user/${userId}`, { method: 'GET' });
       }
     }
   },
@@ -290,9 +318,26 @@ export const apiService = {
   },
 
   deleteEvent: async (id) => {
-    return await apiRequest(`/api/events/${id}`, {
-      method: 'DELETE'
-    });
+    try {
+      return await apiRequest(`/api/events/${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err1) {
+      try {
+        return await apiRequest(`/api/admin/events/${id}`, {
+          method: 'DELETE'
+        });
+      } catch (err2) {
+        try {
+          return await apiRequest('/api/events', {
+            method: 'DELETE',
+            body: JSON.stringify({ id, eventId: id })
+          });
+        } catch (err3) {
+          throw err1;
+        }
+      }
+    }
   },
 
   // 5. Coordinators API (Mapped directly to backend events and user roles)
@@ -529,6 +574,13 @@ export const apiService = {
     return data?.college || data;
   },
 
+  registerTeamForCollege: async (collegeId) => {
+    return await apiRequest(`/api/colleges/${collegeId}/register-team`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    });
+  },
+
   deleteCollege: async (id) => {
     return await apiRequest(`/api/colleges/${id}`, {
       method: 'DELETE'
@@ -625,19 +677,102 @@ export const apiService = {
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {
     const normStatus = status.toLowerCase();
-    const payId = regObj?.paymentIdStr || (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id) : null);
-    const targetId = payId || id;
+    const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const payId = regObj?.paymentIdStr || (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null));
+    
+    // 1. If payment ID exists, try POST /api/admin/payment-status (Doc Line 1318)
+    if (payId) {
+      try {
+        return await apiRequest('/api/admin/payment-status', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            paymentId: payId, 
+            status: normStatus, 
+            message: `Payment marked as ${normStatus}` 
+          })
+        });
+      } catch (ePay) {
+        console.warn('Payment-status endpoint failed, attempting registration status fallback:', ePay);
+      }
+    }
 
+    // 2. Try PUT /api/registrations/:id/payment-status (Official Doc Line 498)
     try {
-      return await apiRequest(`/api/registrations/${targetId}/payment-status`, {
+      return await apiRequest(`/api/registrations/${id}/payment-status`, {
         method: 'PUT',
-        body: JSON.stringify({ paymentStatus: normStatus, status: normStatus })
+        body: JSON.stringify({ paymentStatus: normStatus })
       });
+    } catch (err1) {
+      // 3. Try POST /api/admin/payment-status with registration ID
+      try {
+        return await apiRequest('/api/admin/payment-status', {
+          method: 'POST',
+          body: JSON.stringify({ 
+            paymentId: payId || id, 
+            status: normStatus, 
+            message: `Payment marked as ${normStatus}` 
+          })
+        });
+      } catch (err2) {
+        // 4. Try PUT /api/registrations/:id (Standard update)
+        try {
+          return await apiRequest(`/api/registrations/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ 
+              paymentStatus: capStatus, 
+              status: capStatus,
+              isApproved: normStatus.includes('app') || normStatus === 'success' || normStatus === 'verified'
+            })
+          });
+        } catch (err3) {
+          // 5. Try PATCH /api/registrations/:id/payment
+          try {
+            return await apiRequest(`/api/registrations/${id}/payment`, {
+              method: 'PATCH',
+              body: JSON.stringify({ paymentStatus: capStatus, status: normStatus })
+            });
+          } catch (err4) {
+            throw err1;
+          }
+        }
+      }
+    }
+  },
+
+  // 7b. Registration & Payment Totals (Doc Lines 1076-1130)
+  getPendingPaymentsTotal: async () => {
+    try {
+      const res = await apiRequest('/api/registrations/payments/pending', { method: 'GET' });
+      return res?.totalPendingAmount ?? 0;
     } catch {
-      return await apiRequest(`/api/registrations/${id}/payment`, {
-        method: 'PATCH',
-        body: JSON.stringify({ paymentStatus: normStatus, status: normStatus })
-      });
+      return 0;
+    }
+  },
+
+  getApprovedPaymentsTotal: async () => {
+    try {
+      const res = await apiRequest('/api/registrations/payments/approved', { method: 'GET' });
+      return res?.totalApprovedAmount ?? 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  getTotalRegisteredUsers: async () => {
+    try {
+      const res = await apiRequest('/api/registrations/total-users', { method: 'GET' });
+      return res?.totalUsers ?? 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  getTotalRegisteredTeams: async () => {
+    try {
+      const res = await apiRequest('/api/registrations/total-teams', { method: 'GET' });
+      return res?.totalTeams ?? 0;
+    } catch {
+      return 0;
     }
   },
 
@@ -687,10 +822,49 @@ export const apiService = {
 
   updatePaymentStatus: async (paymentId, status, message = '') => {
     const normStatus = (status || '').toLowerCase();
-    return await apiRequest('/api/admin/payment-status', {
-      method: 'POST',
-      body: JSON.stringify({ paymentId, status: normStatus, message })
-    });
+    const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    
+    // 1. Try POST /api/admin/payment-status
+    try {
+      return await apiRequest('/api/admin/payment-status', {
+        method: 'POST',
+        body: JSON.stringify({ paymentId, status: normStatus, paymentStatus: capStatus, message })
+      });
+    } catch (err1) {
+      // 2. Try PUT /api/admin/payment-status
+      try {
+        return await apiRequest('/api/admin/payment-status', {
+          method: 'PUT',
+          body: JSON.stringify({ paymentId, status: normStatus, paymentStatus: capStatus, message })
+        });
+      } catch (err2) {
+        // 3. Try PUT /api/registrations/:id (if paymentId is registration ID)
+        try {
+          return await apiRequest(`/api/registrations/${paymentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ paymentStatus: capStatus, status: capStatus, message })
+          });
+        } catch (err3) {
+          // 4. Try PUT /api/admin/payments/:id
+          try {
+            return await apiRequest(`/api/admin/payments/${paymentId}`, {
+              method: 'PUT',
+              body: JSON.stringify({ status: normStatus, paymentStatus: capStatus, message })
+            });
+          } catch (err4) {
+            // 5. Try PUT /api/payments/:id/status
+            try {
+              return await apiRequest(`/api/payments/${paymentId}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ status: normStatus, message })
+              });
+            } catch (err5) {
+              throw err1;
+            }
+          }
+        }
+      }
+    }
   },
 
   getPaymentDetails: async (paymentId) => {
@@ -698,6 +872,28 @@ export const apiService = {
       return await apiRequest(`/api/admin/payment-details/${paymentId}`, { method: 'GET' });
     } catch {
       return await apiRequest(`/api/admin/payments/${paymentId}`, { method: 'GET' });
+    }
+  },
+
+  deletePayment: async (paymentId) => {
+    try {
+      return await apiRequest(`/api/admin/payments/${paymentId}`, {
+        method: 'DELETE'
+      });
+    } catch (err1) {
+      try {
+        return await apiRequest(`/api/admin/payment/${paymentId}`, {
+          method: 'DELETE'
+        });
+      } catch (err2) {
+        try {
+          return await apiRequest(`/api/registrations/payments/${paymentId}`, {
+            method: 'DELETE'
+          });
+        } catch (err3) {
+          throw err1;
+        }
+      }
     }
   },
 
@@ -798,6 +994,82 @@ export const apiService = {
   // GET /api/admin/reports/summary
   getDashboardSummaryReport: async () => {
     return await apiRequest('/api/admin/reports/summary', { method: 'GET' });
+  },
+
+  // 12. Team Rules & Guidelines Management API
+  getTeamRules: async (category = null) => {
+    const query = category ? `?category=${encodeURIComponent(category)}` : '';
+    try {
+      const res = await apiRequest(`/api/team-rules${query}`, { method: 'GET' });
+      return res?.data || res?.rules || res;
+    } catch {
+      const res = await apiRequest(`/api/teamrules${query}`, { method: 'GET' });
+      return res?.data || res?.rules || res;
+    }
+  },
+
+  getAllTeamRules: async () => {
+    try {
+      const res = await apiRequest('/api/team-rules/all', { method: 'GET' });
+      if (Array.isArray(res)) return res;
+      if (Array.isArray(res?.data)) return res.data;
+      if (Array.isArray(res?.rules)) return res.rules;
+      return res?.data ? [res.data] : [];
+    } catch {
+      try {
+        const res = await apiRequest('/api/teamrules/all', { method: 'GET' });
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res?.data)) return res.data;
+        if (Array.isArray(res?.rules)) return res.rules;
+        return res?.data ? [res.data] : [];
+      } catch {
+        const single = await apiService.getTeamRules();
+        return single ? [single] : [];
+      }
+    }
+  },
+
+  createTeamRules: async (ruleData) => {
+    try {
+      const res = await apiRequest('/api/team-rules', {
+        method: 'POST',
+        body: JSON.stringify(ruleData)
+      });
+      return res?.data || res;
+    } catch {
+      const res = await apiRequest('/api/teamrules', {
+        method: 'POST',
+        body: JSON.stringify(ruleData)
+      });
+      return res?.data || res;
+    }
+  },
+
+  updateTeamRules: async (id, ruleData) => {
+    const targetUrl = id ? `/api/team-rules/${id}` : '/api/team-rules';
+    try {
+      const res = await apiRequest(targetUrl, {
+        method: 'PUT',
+        body: JSON.stringify(ruleData)
+      });
+      return res?.data || res;
+    } catch {
+      const fallbackUrl = id ? `/api/teamrules/${id}` : '/api/teamrules';
+      const res = await apiRequest(fallbackUrl, {
+        method: 'PUT',
+        body: JSON.stringify(ruleData)
+      });
+      return res?.data || res;
+    }
+  },
+
+  deleteTeamRules: async (id) => {
+    try {
+      return await apiRequest(`/api/team-rules/${id}`, { method: 'DELETE' });
+    } catch {
+      return await apiRequest(`/api/teamrules/${id}`, { method: 'DELETE' });
+    }
   }
 };
+
 
