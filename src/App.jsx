@@ -12,6 +12,7 @@ import { AdminManagement } from './components/admins/AdminManagement';
 import { UserManagement } from './components/users/UserManagement';
 import { UserProfileView } from './components/users/UserProfileView';
 import { PaymentApprovals } from './components/payments/PaymentApprovals';
+import { BackupPaymentsVault } from './components/payments/BackupPaymentsVault';
 import { RegistrationList } from './components/registrations/RegistrationList';
 import { EventManagement } from './components/events/EventManagement';
 import { CoordinatorManagement } from './components/coordinators/CoordinatorManagement';
@@ -136,6 +137,8 @@ export default function App() {
                 <Route path="/team-rules" element={<TeamRulesManagement />} />
                 <Route path="/registrations" element={<RegistrationList />} />
                 <Route path="/payments" element={<PaymentApprovals />} />
+                <Route path="/backup-payments" element={<BackupPaymentsVault />} />
+                <Route path="/payments/backups" element={<BackupPaymentsVault />} />
                 <Route path="/coordinators" element={<CoordinatorManagement />} />
                 <Route path="/slots" element={<SlotManagement />} />
                 <Route path="/reports" element={<ReportsHub />} />

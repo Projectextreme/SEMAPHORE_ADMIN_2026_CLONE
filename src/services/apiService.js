@@ -1,4 +1,5 @@
-import { API_BASE_URL, getAuthHeader, getAuthToken } from './apiConfig';
+import { API_BASE_URL, getAuthHeader, getAuthToken, resolveImageUrl } from './apiConfig';
+
 
 
 /**
@@ -1128,6 +1129,117 @@ export const apiService = {
         }
       }
     }
+  },
+
+  // 9b. Backup & Deleted Payments Vault (API Endpoints 19 & 20)
+  getBackupPayments: async () => {
+    let data = null;
+    try {
+      data = await apiRequest('/api/admin/backup-payments', { method: 'GET' });
+    } catch (err1) {
+      try {
+        data = await apiRequest('/api/admin/payments/backups', { method: 'GET' });
+      } catch (err2) {
+        try {
+          data = await apiRequest('/api/registrations/payments/backups', { method: 'GET' });
+        } catch (err3) {
+          data = { count: 0, payments: [] };
+        }
+      }
+    }
+
+    const rawList = data?.payments || (Array.isArray(data) ? data : []);
+    const formatted = rawList.map((p, idx) => {
+      const backupId = p.backupId || p.backupRecordId || p.paymentBackupId || p._id || p.paymentid || `backup_${idx}`;
+      const originalPaymentId = p.originalPaymentId || p.paymentid || p._id || 'N/A';
+      const rawAmount = p.amount !== undefined ? p.amount : 0;
+      const amountNum = typeof rawAmount === 'number' ? rawAmount : (Number(String(rawAmount).replace(/[^0-9.]/g, '')) || 0);
+      const rawImg = p.imageUrl || p.imageurl || p.proofUrl || p.proofurl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.receipt || p.image || p.url || p.payment?.imageUrl || p.payment?.imageurl || null;
+      const proofUrl = resolveImageUrl(rawImg);
+      const rawStatus = (p.status || 'pending').toLowerCase();
+      const statusCap = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+      
+      const userObj = p.user || {};
+      const collegeName = userObj.collegeName || (typeof userObj.college === 'object' ? userObj.college?.name : '') || p.collegeName || '';
+      const teamName = (typeof userObj.team === 'object' ? userObj.team?.name : '') || p.teamName || '';
+
+      return {
+        ...p,
+        backupId,
+        backupRecordId: p.backupRecordId || backupId,
+        originalPaymentId,
+        paymentBackupId: p.paymentBackupId || backupId,
+        paymentid: p.paymentid || originalPaymentId,
+        _id: p._id || backupId,
+        amountNum,
+        amountFormatted: `₹${amountNum.toLocaleString()}`,
+        amount: typeof rawAmount === 'number' ? `₹${rawAmount}` : (rawAmount || '₹0'),
+        utr: p.utr || 'N/A',
+        imageUrl: proofUrl,
+        imageurl: proofUrl,
+        proofUrl,
+        status: statusCap,
+        rawStatus,
+        message: p.message || '',
+        approvedBy: p.approvedBy || null,
+        deletedAt: p.deletedAt || null,
+        deletedDateFormatted: p.deletedAt ? new Date(p.deletedAt).toLocaleString() : 'Recent Deletion',
+        deletedBy: p.deletedBy || null,
+        backedUpEventsCount: p.backedUpEventsCount !== undefined ? p.backedUpEventsCount : (Array.isArray(p.events) ? p.events.length : 1),
+        user: {
+          _id: userObj._id || userObj.id || null,
+          name: userObj.name || p.userName || 'Participant',
+          email: userObj.email || p.userEmail || '',
+          avatar: resolveImageUrl(userObj.avatar || p.userAvatar || null),
+          collegeName: collegeName,
+          college: userObj.college || null,
+          team: userObj.team || null
+        },
+        collegeName,
+        teamName,
+        userName: userObj.name || p.userName || 'Participant',
+        userEmail: userObj.email || p.userEmail || ''
+      };
+    });
+
+    return {
+      count: formatted.length,
+      payments: formatted
+    };
+  },
+
+  getBackupPaymentDetails: async (backupId) => {
+    if (!backupId) throw new Error('Backup ID is required');
+    const cleanId = encodeURIComponent(backupId);
+    let data = null;
+
+    try {
+      data = await apiRequest(`/api/admin/backup-payments/${cleanId}`, { method: 'GET' });
+    } catch (err1) {
+      try {
+        data = await apiRequest(`/api/admin/payments/backups/${cleanId}`, { method: 'GET' });
+      } catch (err2) {
+        try {
+          data = await apiRequest(`/api/admin/backup-details/${cleanId}`, { method: 'GET' });
+        } catch (err3) {
+          try {
+            data = await apiRequest(`/api/registrations/payments/backups/${cleanId}`, { method: 'GET' });
+          } catch (err4) {
+            throw err1;
+          }
+        }
+      }
+    }
+
+    if (data && data.payment) {
+      const rawImg = data.payment.imageUrl || data.payment.imageurl || data.payment.proofUrl || data.payment.screenshot || data.payment.receipt || null;
+      const resolved = resolveImageUrl(rawImg);
+      data.payment.imageUrl = resolved;
+      data.payment.imageurl = resolved;
+      data.payment.proofUrl = resolved;
+    }
+
+    return data;
   },
 
   // 10. Excel Export Endpoints (.xlsx)

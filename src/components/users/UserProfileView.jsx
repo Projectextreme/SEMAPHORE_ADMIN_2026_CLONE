@@ -23,6 +23,8 @@ import {
   ArrowUpRight
 } from 'lucide-react';
 import { PaymentDetailsModal } from '../payments/PaymentDetailsModal';
+import { ReceiptThumbnail } from '../common/ReceiptThumbnail';
+import { resolveImageUrl } from '../../services/apiConfig';
 import './UserProfileView.css';
 
 export const UserProfileView = () => {
@@ -282,7 +284,7 @@ export const UserProfileView = () => {
               {payments.map((p) => {
                 const paymentId = p._id || p.paymentid || p.id;
                 const rawStatus = (p.status || 'pending').toLowerCase();
-                const proofImg = p.imageUrl || p.imageurl || p.proofUrl;
+                const proofImg = resolveImageUrl(p.imageUrl || p.imageurl || p.proofUrl || p.screenshot || p.receipt || null);
 
                 return (
                   <div key={paymentId} className={`payment-profile-card status-border-${rawStatus}`}>
@@ -297,15 +299,15 @@ export const UserProfileView = () => {
                     </div>
 
                     <div className="pay-card-body">
-                      {proofImg ? (
-                        <div 
-                          className="pay-img-wrap"
-                          onClick={() => setPreviewImage({ url: proofImg, utr: p.utr })}
-                          title="Click to view full screenshot proof"
-                        >
-                          <img src={proofImg} alt="Receipt" className="pay-img" />
-                        </div>
-                      ) : null}
+                      <ReceiptThumbnail
+                        src={proofImg}
+                        utr={p.utr}
+                        compact={true}
+                        onClick={(url) => {
+                          if (url) setPreviewImage({ url, utr: p.utr });
+                          else setSelectedPaymentId(paymentId);
+                        }}
+                      />
 
                       <div className="pay-meta-details">
                         <div className="utr-line">

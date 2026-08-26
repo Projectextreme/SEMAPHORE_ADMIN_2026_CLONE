@@ -12,7 +12,8 @@ import {
   Database,
   X,
   Building2,
-  BookOpen
+  BookOpen,
+  Archive
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -36,7 +37,8 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
         { id: 'events', path: '/events', label: 'Events Management', icon: Calendar, badge: 'Active' },
         { id: 'rules', path: '/rules', label: 'Team Rules & Guidelines', icon: BookOpen },
         { id: 'registrations', path: '/registrations', label: 'Team Registrations', icon: FileSpreadsheet },
-        { id: 'payments', path: '/payments', label: 'Payment Approvals', icon: CreditCard, count: 2 },
+        { id: 'payments', path: '/payments', label: 'Payment Approvals', icon: CreditCard },
+        { id: 'backup-payments', path: '/backup-payments', label: 'Backup Payments Vault', icon: Archive, badge: 'Vault' },
         { id: 'coordinators', path: '/coordinators', label: 'Event Coordinators', icon: UserCheck },
         { id: 'slots', path: '/slots', label: 'Slots & Schedules', icon: Clock }
       ]

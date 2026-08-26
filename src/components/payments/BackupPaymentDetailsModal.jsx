@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Modal } from '../common/Modal';
 import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
@@ -21,36 +22,31 @@ import {
   ChevronUp,
   MapPin,
   ArrowUpRight,
-  Sparkles,
+  Archive,
   Trash2,
-  AlertTriangle,
-  ExternalLink,
-  CreditCard
+  Tag,
+  Hash,
+  ShieldAlert
 } from 'lucide-react';
 import { resolveImageUrl } from '../../services/apiConfig';
-import './PaymentDetailsModal.css';
+import './BackupPaymentDetailsModal.css';
 
-export const PaymentDetailsModal = ({
+export const BackupPaymentDetailsModal = ({
   isOpen,
   onClose,
-  paymentId,
-  onOpenActionModal,
-  onPaymentDeleted
+  backupId
 }) => {
+  const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [expandedEventId, setExpandedEventId] = useState(null);
-  const [eventParticipantsData, setEventParticipantsData] = useState({});
-  const [loadingParticipants, setLoadingParticipants] = useState({});
   const [previewImage, setPreviewImage] = useState(null);
-  const [deletingPayment, setDeletingPayment] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [proofImgFailed, setProofImgFailed] = useState(false);
 
   useEffect(() => {
     let isSubscribed = true;
-    if (isOpen && paymentId) {
+    if (isOpen && backupId) {
       queueMicrotask(() => {
         if (!isSubscribed) return;
         setLoading(true);
@@ -58,18 +54,22 @@ export const PaymentDetailsModal = ({
         setExpandedEventId(null);
         setProofImgFailed(false);
       });
-      apiService.getPaymentDetails(paymentId)
+
+      apiService.getBackupPaymentDetails(backupId)
         .then((res) => {
           if (!isSubscribed) return;
           setData(res);
-          const eventsList = res?.events || res?.associatedEvents || [];
+          const eventsList = res?.events || [];
           if (eventsList.length > 0) {
-            const firstEvtId = eventsList[0].eventId || eventsList[0]._id || eventsList[0].registrationId;
+            const firstEvtId = eventsList[0]._id || eventsList[0].backupRegistrationId || eventsList[0].eventId || 'evt-0';
             setExpandedEventId(firstEvtId);
           }
         })
-        .catch(() => {
-          if (isSubscribed) showError('Failed to load payment details');
+        .catch((err) => {
+          if (isSubscribed) {
+            console.warn('Failed to load backup payment details:', err);
+            showError('Failed to load backup payment details');
+          }
         })
         .finally(() => {
           if (isSubscribed) setLoading(false);
@@ -78,85 +78,55 @@ export const PaymentDetailsModal = ({
     return () => {
       isSubscribed = false;
     };
-  }, [isOpen, paymentId, showError]);
+  }, [isOpen, backupId, showError]);
 
-  const handleCopyUtr = (utr) => {
-    if (!utr || utr === 'N/A') return;
-    navigator.clipboard.writeText(utr);
-    showSuccess(`UTR '${utr}' copied to clipboard`);
+  const handleCopyText = (text, label) => {
+    if (!text || text === 'N/A') return;
+    navigator.clipboard.writeText(text);
+    showSuccess(`${label} copied to clipboard`);
   };
 
-  const handleConfirmDeletePayment = async () => {
-    if (!paymentId) return;
-    setIsDeleting(true);
-    try {
-      const res = await apiService.deletePayment(paymentId);
-      showSuccess(res?.message || 'Payment record deleted successfully.');
-      setDeletingPayment(false);
-      onClose();
-      if (onPaymentDeleted) {
-        onPaymentDeleted(paymentId);
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to delete payment');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleToggleEventExpand = async (eventId, userId, evtObj) => {
-    if (expandedEventId === eventId) {
-      setExpandedEventId(null);
-      return;
-    }
-
-    setExpandedEventId(eventId);
-
-    // If event already has participants in payload, no extra API needed
-    if (evtObj?.participants && evtObj.participants.length > 0) {
-      return;
-    }
-
-    // Fallback: fetch from getEventParticipants if participants array is missing
-    if (!eventParticipantsData[eventId]) {
-      setLoadingParticipants((prev) => ({ ...prev, [eventId]: true }));
-      try {
-        const pData = await apiService.getEventParticipants(eventId, userId);
-        setEventParticipantsData((prev) => ({ ...prev, [eventId]: pData }));
-      } catch {
-        // Suppress or handle error gracefully
-      } finally {
-        setLoadingParticipants((prev) => ({ ...prev, [eventId]: false }));
-      }
-    }
+  const handleToggleEventExpand = (evtId) => {
+    setExpandedEventId(prev => prev === evtId ? null : evtId);
   };
 
   if (!isOpen) return null;
 
-  const payment = data?.payment;
-  const user = data?.user;
-  const college = data?.college;
-  const team = data?.team;
-  const eventsList = data?.events || data?.associatedEvents || [];
-  const rawStatus = (payment?.status || 'pending').toLowerCase();
+  const payment = data?.payment || {};
+  const user = data?.user || payment?.user || {};
+  const college = data?.college || user?.college || null;
+  const team = data?.team || user?.team || null;
+  const eventsList = data?.events || [];
+  
+  const rawStatus = (payment?.status || 'approved').toLowerCase();
   const rawImg = payment?.imageUrl || payment?.imageurl || payment?.proofUrl || payment?.screenshot || payment?.paymentScreenshot || payment?.receipt || null;
   const proofImg = resolveImageUrl(rawImg);
-  const timestampStr = payment?.timestamp || payment?.createdAt 
-    ? new Date(payment?.timestamp || payment?.createdAt).toLocaleString() 
-    : 'Recent';
+  const deletedAtStr = payment?.deletedAt 
+    ? new Date(payment.deletedAt).toLocaleString() 
+    : 'Archived Record';
+
+  const backupRecordId = data?.backupRecordId || payment?.backupid || payment?.backupRecordId || backupId;
+  const originalPaymentId = data?.originalPaymentId || payment?.originalPaymentId || payment?.paymentid || 'N/A';
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="760px">
+      <Modal isOpen={isOpen} onClose={onClose} maxWidth="780px">
         {/* Modal Header */}
-        <div className="modal-header payment-details-modal-header">
+        <div className="modal-header backup-details-modal-header">
           <div className="modal-title-wrap">
-            <div className="header-icon-circle">
-              <Receipt size={18} />
+            <div className="header-icon-circle archive-icon-circle">
+              <Archive size={19} />
             </div>
             <div>
-              <h3>Payment & Registration Details</h3>
-              <span className="modal-subtitle-sm">Verification record #{paymentId?.slice(-6) || ''}</span>
+              <div className="header-badge-row">
+                <h3 className="modal-main-title">Deleted Payment Backup Audit</h3>
+                <span className="vault-pill-badge">
+                  <ShieldAlert size={12} /> Deleted Record Vault
+                </span>
+              </div>
+              <span className="modal-subtitle-sm">
+                Immutable Backup Snapshot • ID: <code>{String(backupRecordId).slice(-8)}</code>
+              </span>
             </div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close modal">
@@ -166,43 +136,96 @@ export const PaymentDetailsModal = ({
 
         {loading ? (
           <div className="modal-loading-state">
-            <RefreshCw className="spin-icon text-cyan" size={30} />
-            <p>Fetching payment verification details...</p>
+            <RefreshCw className="spin-icon text-cyan" size={32} />
+            <p>Retrieving backed-up payment snapshot and participant history...</p>
           </div>
         ) : data ? (
-          <div className="payment-details-view">
+          <div className="backup-details-content">
+            {/* Audit & Deletion Banner */}
+            <div className="backup-audit-alert-bar">
+              <div className="audit-alert-left">
+                <Trash2 size={16} className="audit-delete-icon" />
+                <div className="audit-alert-text">
+                  <div className="audit-primary-line">
+                    This payment was <strong>deleted from live records</strong> on{' '}
+                    <span className="audit-timestamp-text">{deletedAtStr}</span>
+                  </div>
+                  {payment?.deletedBy && (
+                    <div className="audit-sub-line">
+                      Action initiated by Admin: <code>{payment.deletedBy}</code>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <span className="audit-immutable-pill">Immutable Backup</span>
+            </div>
+
+            {/* IDs Traceability Bar */}
+            <div className="id-traceability-bar">
+              <div className="trace-item">
+                <span className="trace-lbl">
+                  <Hash size={11} /> Backup Record ID:
+                </span>
+                <code className="trace-code">{backupRecordId}</code>
+                <button
+                  type="button"
+                  className="btn-copy-mini"
+                  onClick={() => handleCopyText(backupRecordId, 'Backup Record ID')}
+                  title="Copy Backup Record ID"
+                >
+                  <Copy size={11} />
+                </button>
+              </div>
+
+              <div className="trace-divider" />
+
+              <div className="trace-item">
+                <span className="trace-lbl">
+                  <Receipt size={11} /> Original Payment ID:
+                </span>
+                <code className="trace-code">{originalPaymentId}</code>
+                <button
+                  type="button"
+                  className="btn-copy-mini"
+                  onClick={() => handleCopyText(originalPaymentId, 'Original Payment ID')}
+                  title="Copy Original Payment ID"
+                >
+                  <Copy size={11} />
+                </button>
+              </div>
+            </div>
+
             {/* Top Status & Amount Banner */}
-            <div className="details-header-card">
+            <div className="details-header-card backup-amount-card">
               <div className="details-status-row">
                 <span className={`payment-status-badge status-${rawStatus}`}>
                   {rawStatus === 'approved' && <CheckCircle2 size={13} />}
                   {rawStatus === 'rejected' && <XCircle size={13} />}
                   {rawStatus === 'pending' && <Clock size={13} />}
-                  {rawStatus.toUpperCase()}
+                  {rawStatus.toUpperCase()} (At Deletion)
                 </span>
                 <span className="details-timestamp">
-                  <Calendar size={13} />
-                  {timestampStr}
+                  <Calendar size={13} /> {deletedAtStr}
                 </span>
               </div>
 
               <div className="details-amount-block">
                 <div className="amount-info-sub">
-                  <span className="amount-label">Transaction Amount</span>
+                  <span className="amount-label">Archived Amount</span>
                   <h2 className="amount-value text-emerald">
                     {typeof payment?.amount === 'number' ? `₹${payment.amount}` : (payment?.amount || '₹0')}
                   </h2>
                 </div>
 
                 <div className="utr-badge-box">
-                  <span className="utr-lbl">UTR Reference:</span>
+                  <span className="utr-lbl">Archived UTR Code:</span>
                   <div className="utr-pill">
                     <code className="utr-code">{payment?.utr || 'N/A'}</code>
                     {payment?.utr && payment?.utr !== 'N/A' && (
                       <button
                         type="button"
                         className="btn-copy-icon"
-                        onClick={() => handleCopyUtr(payment.utr)}
+                        onClick={() => handleCopyText(payment.utr, 'UTR')}
                         title="Copy UTR to Clipboard"
                       >
                         <Copy size={13} />
@@ -216,13 +239,13 @@ export const PaymentDetailsModal = ({
                 <div className={`details-audit-alert audit-${rawStatus}`}>
                   <ShieldCheck size={15} />
                   <div>
-                    <strong>Admin Note:</strong> {payment.message}
+                    <strong>Verification Note:</strong> {payment.message}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* User & Contingent Profile Grid */}
+            {/* User & Institution Profile Grid */}
             <div className="details-grid-row">
               {/* Participant Card */}
               <div className="details-card-box details-user-box">
@@ -231,7 +254,16 @@ export const PaymentDetailsModal = ({
                   <h4>Participant Details</h4>
                 </div>
                 <div className="user-info-body">
-                  <div className="user-avatar-circle">
+                  <div 
+                    className="user-avatar-circle clickable-avatar"
+                    onClick={() => {
+                      if (user?._id) {
+                        onClose();
+                        navigate(`/user/${user._id}`);
+                      }
+                    }}
+                    title={user?._id ? "View Full Profile" : undefined}
+                  >
                     {user?.avatar ? (
                       <img src={user.avatar} alt={user.name || 'User'} />
                     ) : (
@@ -239,10 +271,20 @@ export const PaymentDetailsModal = ({
                     )}
                   </div>
                   <div className="user-text-meta">
-                    <h5 className="user-name-title">{user?.name || 'Participant'}</h5>
+                    <h5 
+                      className={`user-name-title ${user?._id ? 'clickable-link' : ''}`}
+                      onClick={() => {
+                        if (user?._id) {
+                          onClose();
+                          navigate(`/user/${user._id}`);
+                        }
+                      }}
+                    >
+                      {user?.name || 'Participant'}
+                    </h5>
                     <p className="user-email-text" title={user?.email}>
                       <Mail size={12} />
-                      <span>{user?.email || 'No email specified'}</span>
+                      <span>{user?.email || 'No email registered'}</span>
                     </p>
                     {user?.phone && (
                       <p className="user-phone-text">
@@ -258,7 +300,7 @@ export const PaymentDetailsModal = ({
               <div className="details-card-box details-college-box">
                 <div className="box-title-bar">
                   <Building2 size={15} className="box-icon" />
-                  <h4>College & Contingent Team</h4>
+                  <h4>College & Team Snapshot</h4>
                 </div>
                 <div className="college-info-body">
                   <div className="college-meta-item">
@@ -267,12 +309,12 @@ export const PaymentDetailsModal = ({
                   </div>
                   <div className="college-meta-item">
                     <span className="meta-lbl">Team Name:</span>
-                    <strong className="meta-val font-cyan">{team?.name || user?.team?.name || 'General Team'}</strong>
+                    <strong className="meta-val font-cyan">{team?.name || user?.team?.name || 'General Registration'}</strong>
                   </div>
-                  {team?.teamid && (
+                  {user?._id && (
                     <div className="college-meta-item">
-                      <span className="meta-lbl">Team ID:</span>
-                      <code className="meta-val-code">{team.teamid}</code>
+                      <span className="meta-lbl">User ID:</span>
+                      <code className="meta-val-code">{user._id}</code>
                     </div>
                   )}
                 </div>
@@ -284,7 +326,7 @@ export const PaymentDetailsModal = ({
               <div className="details-card-box details-proof-section">
                 <div className="box-title-bar">
                   <Receipt size={15} className="box-icon" />
-                  <h4>Payment Proof Screenshot</h4>
+                  <h4>Backed-up Payment Receipt Proof</h4>
                 </div>
                 <div className="proof-container">
                   {!proofImgFailed ? (
@@ -315,9 +357,10 @@ export const PaymentDetailsModal = ({
                       <span className="proof-fallback-sub"><Eye size={11} /> Inspect</span>
                     </div>
                   )}
+
                   <div className="proof-meta-actions">
                     <p className="proof-note">
-                      Uploaded transaction proof via payment gateway or Cloudinary. Click to inspect or open in new tab.
+                      Preserved transaction screenshot proof from the original payment record.
                     </p>
                     <div className="proof-btn-row">
                       <button
@@ -325,10 +368,10 @@ export const PaymentDetailsModal = ({
                         className="btn btn-sm btn-outline-cyan"
                         onClick={() => setPreviewImage({ url: proofImg, utr: payment?.utr })}
                       >
-                        <Eye size={13} /> Inspect Screenshot
+                        <Eye size={13} /> Inspect Receipt
                       </button>
                       <a href={proofImg} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline">
-                        Open Image <ArrowUpRight size={13} />
+                        Open Original <ArrowUpRight size={13} />
                       </a>
                     </div>
                   </div>
@@ -336,42 +379,33 @@ export const PaymentDetailsModal = ({
               </div>
             )}
 
-            {/* Associated Event Registrations */}
+            {/* Backed-up Event Registrations */}
             <div className="details-card-box details-events-section">
               <div className="box-title-bar">
                 <Calendar size={15} className="box-icon" />
-                <h4>Associated Event Registrations ({eventsList.length})</h4>
+                <h4>Backed-up Event Registrations ({eventsList.length || data?.eventsCount || 0})</h4>
               </div>
 
               {eventsList.length > 0 ? (
                 <div className="events-accordion-list">
                   {eventsList.map((evt, idx) => {
-                    const evtId = evt.eventId || evt._id || evt.registrationId || `evt-${idx}`;
+                    const evtId = evt._id || evt.backupRegistrationId || evt.registrationId || evt.eventId || `evt-${idx}`;
                     const isExpanded = expandedEventId === evtId;
-                    const participants = evt.participants || eventParticipantsData[evtId]?.participants || [];
-                    const isLoadingP = loadingParticipants[evtId];
+                    const participants = evt.participants || [];
+                    const fee = evt.actualPrice !== undefined ? evt.actualPrice : (evt.registrationFee !== undefined ? evt.registrationFee : 0);
 
                     return (
                       <div key={evtId} className={`event-accordion-card ${isExpanded ? 'is-open' : ''}`}>
                         <div
                           className="event-accordion-header"
-                          onClick={() => handleToggleEventExpand(evtId, user?._id || user?.id, evt)}
+                          onClick={() => handleToggleEventExpand(evtId)}
                         >
                           <div className="event-title-group">
                             <h5 className="event-title-text">{evt.title || evt.name || 'Festival Event'}</h5>
-                            {evt.registrationFee !== undefined && (
-                              <span className="event-fee-pill">₹{evt.registrationFee}</span>
-                            )}
-                            {evt.date && (
-                              <span className="event-date-pill">
-                                <Calendar size={11} /> {new Date(evt.date).toLocaleDateString()}
-                              </span>
-                            )}
-                            {evt.location && (
-                              <span className="event-venue-pill">
-                                <MapPin size={11} /> {evt.location}
-                              </span>
-                            )}
+                            <span className="event-fee-pill">₹{fee}</span>
+                            <span className="participants-count-pill">
+                              <Users size={11} /> {evt.participantsCount || participants.length} Participants
+                            </span>
                           </div>
                           <button type="button" className="btn-accordion-toggle" aria-label="Toggle event details">
                             {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -380,19 +414,25 @@ export const PaymentDetailsModal = ({
 
                         {isExpanded && (
                           <div className="event-accordion-body">
-                            {evt.description && <p className="event-desc-text">{evt.description}</p>}
+                            <div className="event-meta-subrow">
+                              {evt.originalRegistrationId && (
+                                <span className="event-sub-meta">
+                                  Original Reg ID: <code>{evt.originalRegistrationId}</code>
+                                </span>
+                              )}
+                              {evt.backupRegistrationId && (
+                                <span className="event-sub-meta">
+                                  Backup Reg ID: <code>{evt.backupRegistrationId}</code>
+                                </span>
+                              )}
+                            </div>
 
                             <div className="participants-roster-header">
                               <Users size={14} className="text-cyan" />
                               <h6>Enrolled Participants Roster ({participants.length})</h6>
                             </div>
 
-                            {isLoadingP ? (
-                              <div className="participants-loading">
-                                <RefreshCw className="spin-icon text-cyan" size={16} />
-                                <span>Loading participants list...</span>
-                              </div>
-                            ) : participants.length > 0 ? (
+                            {participants.length > 0 ? (
                               <div className="participants-grid">
                                 {participants.map((part, pIdx) => (
                                   <div key={pIdx} className="participant-badge-card">
@@ -400,17 +440,24 @@ export const PaymentDetailsModal = ({
                                       <User size={12} />
                                     </div>
                                     <div className="participant-info">
-                                      <h6 className="participant-name">
-                                        {part.name}
-                                        {part.role && <span className="participant-role-pill">{part.role}</span>}
-                                      </h6>
+                                      <h6 className="participant-name">{part.name || 'Participant'}</h6>
+                                      {part.phone && (
+                                        <span className="participant-phone-sub">
+                                          <Phone size={10} /> {part.phone}
+                                        </span>
+                                      )}
+                                      {part.email && (
+                                        <span className="participant-email-sub">
+                                          <Mail size={10} /> {part.email}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
                               <div className="no-participants-box">
-                                <p className="text-muted text-sm">No participant records attached to this event registration.</p>
+                                <p className="text-muted text-sm">No participant roster attached to this backed-up registration.</p>
                               </div>
                             )}
                           </div>
@@ -420,8 +467,8 @@ export const PaymentDetailsModal = ({
                   })}
                 </div>
               ) : (
-                <p className="text-muted text-sm" style={{ margin: '0.5rem 0' }}>
-                  No specific event items mapped to this payment ID.
+                <p className="text-muted text-sm" style={{ margin: '0.75rem 0' }}>
+                  No specific event registrations mapped to this backup payment record.
                 </p>
               )}
             </div>
@@ -429,47 +476,18 @@ export const PaymentDetailsModal = ({
             {/* Modal Bottom Actions */}
             <div className="modal-actions-bar">
               <div className="modal-left-actions">
-                {onOpenActionModal && (
-                  <>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-success"
-                      onClick={() => {
-                        onClose();
-                        onOpenActionModal(payment, 'approved');
-                      }}
-                    >
-                      <CheckCircle2 size={14} /> Approve
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => {
-                        onClose();
-                        onOpenActionModal(payment, 'rejected');
-                      }}
-                    >
-                      <XCircle size={14} /> Reject
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-danger-subtle"
-                  onClick={() => setDeletingPayment(true)}
-                  title="Delete this payment record"
-                >
-                  <Trash2 size={14} /> Delete
-                </button>
+                <span className="backup-readonly-hint">
+                  <ShieldCheck size={13} /> Archived Record — Read Only Snapshot
+                </span>
               </div>
               <button type="button" className="btn btn-secondary" onClick={onClose}>
-                Close
+                Close Audit View
               </button>
             </div>
           </div>
         ) : (
           <div className="modal-error-state">
-            <p className="text-danger">Failed to load details for payment ID {paymentId}.</p>
+            <p className="text-danger">Failed to load details for backup payment ID {backupId}.</p>
             <button type="button" className="btn btn-secondary mt-3" onClick={onClose}>
               Close
             </button>
@@ -477,48 +495,19 @@ export const PaymentDetailsModal = ({
         )}
       </Modal>
 
-      {/* Confirm Delete Payment Modal */}
-      {deletingPayment && (
-        <Modal isOpen={!!deletingPayment} onClose={() => setDeletingPayment(false)} maxWidth="480px" isDanger={true}>
-          <div className="modal-header">
-            <h3><AlertTriangle size={19} className="text-danger" /> Confirm Delete Payment</h3>
-            <button className="modal-close" onClick={() => setDeletingPayment(false)}>&times;</button>
-          </div>
-          <p className="modal-subtitle">
-            Are you sure you want to permanently delete payment record <code>{paymentId}</code> (UTR: <strong>{data?.payment?.utr || 'N/A'}</strong>, Amount: <strong>₹{data?.payment?.amount || 0}</strong>)?
-          </p>
-          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Associated event registrations will be disassociated and reverted to unpaid status.
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-secondary" onClick={() => setDeletingPayment(false)}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={handleConfirmDeletePayment}
-              disabled={isDeleting}
-            >
-              {isDeleting ? 'Deleting Payment...' : 'Confirm Delete Payment'}
-            </button>
-          </div>
-        </Modal>
-      )}
-
       {/* Image Preview Lightbox */}
       {previewImage && (
         <Modal isOpen={!!previewImage} onClose={() => setPreviewImage(null)} maxWidth="840px">
           <div className="modal-header">
             <h3>
-              <Receipt size={18} /> Payment Screenshot {previewImage.utr ? `(UTR: ${previewImage.utr})` : ''}
+              <Receipt size={18} /> Backed-up Payment Screenshot {previewImage.utr ? `(UTR: ${previewImage.utr})` : ''}
             </h3>
             <button className="modal-close" onClick={() => setPreviewImage(null)}>
               &times;
             </button>
           </div>
           <div className="preview-image-container">
-            <img src={previewImage.url} alt="Payment Receipt Proof" className="preview-image-full" />
+            <img src={previewImage.url} alt="Backed-up Receipt Proof" className="preview-image-full" />
           </div>
           <div className="modal-actions">
             <a href={previewImage.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary">

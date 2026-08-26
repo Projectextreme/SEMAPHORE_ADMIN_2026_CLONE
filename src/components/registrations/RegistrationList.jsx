@@ -445,6 +445,10 @@ export const RegistrationList = () => {
                                 src={receiptImg}
                                 alt="Receipt"
                                 className="table-receipt-thumb"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.style.display = 'none';
+                                }}
                               />
                               <div className="table-receipt-zoom">
                                 <Eye size={11} />

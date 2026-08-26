@@ -10,29 +10,32 @@ import {
   XCircle, 
   Eye, 
   Search, 
-  Copy,
-  Receipt,
-  Building2,
-  RefreshCw,
-  X,
-  Calendar,
-  User,
-  ShieldCheck,
-  ArrowUpRight,
-  Clock,
-  Tag,
-  Trash2,
-  AlertTriangle
+  Copy, 
+  Receipt, 
+  Building2, 
+  RefreshCw, 
+  X, 
+  Calendar, 
+  User, 
+  ShieldCheck, 
+  ArrowUpRight, 
+  Clock, 
+  Tag, 
+  Trash2, 
+  AlertTriangle,
+  Archive
 } from 'lucide-react';
 import { PaymentDetailsModal } from './PaymentDetailsModal';
+import { ReceiptThumbnail } from '../common/ReceiptThumbnail';
+import { resolveImageUrl } from '../../services/apiConfig';
 import './PaymentApprovals.css';
 
 export const PaymentApprovals = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [payments, setPayments] = useState([]);
-
   const [activeFilter, setActiveFilter] = useState('All');
   const [selectedEvent, setSelectedEvent] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +55,7 @@ export const PaymentApprovals = () => {
     }
   };
 
+  // Load Live Payments
   const loadPayments = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -76,7 +80,7 @@ export const PaymentApprovals = () => {
         rawStatus: (p.status || 'pending').toLowerCase(),
         message: p.message || '',
         approvedBy: p.approvedBy || null,
-        proofUrl: p.imageUrl || p.imageurl || p.proofUrl || null,
+        proofUrl: resolveImageUrl(p.imageUrl || p.imageurl || p.proofUrl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.receipt || p.image || null),
         rawItem: p
       }));
       setPayments(formatted);
@@ -90,7 +94,9 @@ export const PaymentApprovals = () => {
   useEffect(() => {
     let isSubscribed = true;
     queueMicrotask(() => {
-      if (isSubscribed) loadPayments();
+      if (isSubscribed) {
+        loadPayments();
+      }
     });
     return () => {
       isSubscribed = false;
@@ -152,9 +158,9 @@ export const PaymentApprovals = () => {
     setActionLoading(true);
     try {
       const res = await apiService.deletePayment(paymentId);
-      showToast(res?.message || 'Payment record deleted successfully.');
+      showToast(res?.message || 'Payment record deleted and safely archived to Backup Vault.');
       setDeletingPayment(null);
-      loadPayments();
+      await loadPayments();
     } catch (err) {
       showToast(err.message || 'Failed to delete payment.', true);
     } finally {
@@ -166,12 +172,13 @@ export const PaymentApprovals = () => {
     setSelectedPaymentId(paymentId);
   };
 
-  const handleCopyUtr = (utr) => {
-    if (!utr || utr === 'N/A') return;
-    navigator.clipboard.writeText(utr);
-    showToast(`UTR '${utr}' copied to clipboard`);
+  const handleCopyText = (text, label = 'UTR') => {
+    if (!text || text === 'N/A') return;
+    navigator.clipboard.writeText(text);
+    showToast(`${label} '${text}' copied to clipboard`);
   };
 
+  // Filtered Live Payments
   const eventsList = ['All', ...new Set(payments.map(p => p.event).filter(Boolean))];
 
   const filteredPayments = payments.filter((p) => {
@@ -209,16 +216,27 @@ export const PaymentApprovals = () => {
           </p>
         </div>
 
-        <button 
-          onClick={loadPayments} 
-          className="btn btn-secondary"
-          disabled={isRefreshing}
-          title="Refresh All Payments"
-          aria-label="Refresh Payments"
-        >
-          <RefreshCw size={15} className={isRefreshing ? 'spin-icon' : ''} />
-          <span>{isRefreshing ? 'Refreshing...' : 'Refresh Payments'}</span>
-        </button>
+        <div className="header-actions-cluster">
+          <button 
+            onClick={() => navigate('/backup-payments')}
+            className="btn btn-outline-danger-subtle"
+            title="View Backup & Deleted Payments Vault"
+          >
+            <Archive size={15} />
+            <span>Backup Vault</span>
+          </button>
+
+          <button 
+            onClick={loadPayments} 
+            className="btn btn-secondary"
+            disabled={isRefreshing}
+            title="Refresh Live Payments"
+            aria-label="Refresh Live Payments"
+          >
+            <RefreshCw size={15} className={isRefreshing ? 'spin-icon' : ''} />
+            <span>{isRefreshing ? 'Refreshing...' : 'Refresh Payments'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Summary Metrics */}
@@ -309,7 +327,7 @@ export const PaymentApprovals = () => {
           {filteredPayments.length === 0 ? (
             <EmptyState
               type="payments"
-              title="No payment records found"
+              title="No live payment records found"
               description="No payment verification entries match your search query or filter selection."
               primaryAction={{
                 label: 'Reset Filters',
@@ -333,7 +351,7 @@ export const PaymentApprovals = () => {
                   key={paymentId} 
                   className={`payment-card status-border-${rawStatus} clickable-card`}
                   onClick={(e) => {
-                    if (!e.target.closest('button') && !e.target.closest('.payment-thumbnail-box')) {
+                    if (!e.target.closest('button') && !e.target.closest('.receipt-thumb-wrapper')) {
                       handleViewPaymentDetails(paymentId);
                     }
                   }}
@@ -408,7 +426,7 @@ export const PaymentApprovals = () => {
                             className="btn-copy-mini"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleCopyUtr(p.utr);
+                              handleCopyText(p.utr, 'UTR');
                             }}
                             title="Copy UTR Reference"
                           >
@@ -430,28 +448,18 @@ export const PaymentApprovals = () => {
                       </div>
                     </div>
 
-                    {/* Right: Receipt thumbnail */}
-                    {proofImg ? (
-                      <div 
-                        className="payment-thumbnail-box"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewImage({ url: proofImg, utr: p.utr });
-                        }}
-                        title="Click to zoom receipt image"
-                      >
-                        <img src={proofImg} alt="Receipt Proof" className="payment-thumb-img" />
-                        <div className="thumb-hover-hint">
-                          <Eye size={14} />
-                          <span>Zoom</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="payment-thumb-placeholder">
-                        <Receipt size={20} />
-                        <span>No Proof</span>
-                      </div>
-                    )}
+                    {/* Right: Resilient Receipt Thumbnail */}
+                    <ReceiptThumbnail
+                      src={proofImg}
+                      utr={p.utr}
+                      onClick={(url) => {
+                        if (url) {
+                          setPreviewImage({ url, utr: p.utr });
+                        } else {
+                          handleViewPaymentDetails(paymentId);
+                        }
+                      }}
+                    />
                   </div>
 
                   {/* Card Footer: Timestamp & Action Buttons */}
@@ -509,7 +517,7 @@ export const PaymentApprovals = () => {
                           e.stopPropagation();
                           setDeletingPayment(p);
                         }}
-                        title="Delete Payment Record"
+                        title="Delete Payment Record (Archives to Backup Vault)"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -591,7 +599,7 @@ export const PaymentApprovals = () => {
         </Modal>
       )}
 
-      {/* 2. Payment Full Details Modal */}
+      {/* 2. Payment Full Details Modal (Live) */}
       <PaymentDetailsModal
         isOpen={!!selectedPaymentId}
         onClose={() => setSelectedPaymentId(null)}
@@ -608,10 +616,10 @@ export const PaymentApprovals = () => {
             <button className="modal-close" onClick={() => setDeletingPayment(null)}>&times;</button>
           </div>
           <p className="modal-subtitle">
-            Are you sure you want to permanently delete payment record <code>{deletingPayment.id || deletingPayment._id}</code> (UTR: <strong>{deletingPayment.utr}</strong>, Amount: <strong>{deletingPayment.amount}</strong>)?
+            Are you sure you want to delete payment record <code>{deletingPayment.id || deletingPayment._id}</code> (UTR: <strong>{deletingPayment.utr}</strong>, Amount: <strong>{deletingPayment.amount}</strong>)?
           </p>
-          <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Associated event registrations will be disassociated and reverted to unpaid status.
+          <div style={{ padding: '0.85rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem', lineHeight: '1.4' }}>
+            <strong style={{ color: 'var(--danger)' }}>Automatic Archival:</strong> A complete snapshot of this payment, its UTR, receipt screenshot, and registered participants will be safely preserved in the <strong>Deleted Payments Backup Vault</strong>.
           </div>
           <div className="modal-actions">
             <button type="button" className="btn btn-secondary" onClick={() => setDeletingPayment(null)}>
@@ -623,7 +631,7 @@ export const PaymentApprovals = () => {
               onClick={handleDeleteConfirmPayment}
               disabled={actionLoading}
             >
-              {actionLoading ? 'Deleting Payment...' : 'Confirm Delete Payment'}
+              {actionLoading ? 'Deleting & Archiving...' : 'Confirm Delete Payment'}
             </button>
           </div>
         </Modal>

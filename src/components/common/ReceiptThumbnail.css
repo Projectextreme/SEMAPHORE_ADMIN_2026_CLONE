@@ -1,0 +1,99 @@
+/* Receipt Thumbnail Component Styles */
+.receipt-thumb-wrapper {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  min-width: 76px;
+  border-radius: var(--radius-md, 10px);
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-surface, #ffffff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.receipt-thumb-wrapper:hover {
+  transform: scale(1.04);
+  border-color: var(--primary-border, rgba(79, 70, 229, 0.4));
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+}
+
+.receipt-thumb-wrapper.thumb-compact {
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+}
+
+.receipt-thumb-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.receipt-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.receipt-thumb-wrapper:hover .receipt-thumb-overlay {
+  opacity: 1;
+}
+
+/* Fallback & Placeholder States */
+.receipt-thumb-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.06) 0%, rgba(2, 132, 199, 0.06) 100%);
+  color: var(--text-dim, #64748b);
+  padding: 4px;
+  text-align: center;
+}
+
+.fallback-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan, #0284c7);
+}
+
+.fallback-lbl-text {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90%;
+}
+
+.fallback-inspect-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--primary, #4f46e5);
+}
