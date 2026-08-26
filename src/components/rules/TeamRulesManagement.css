@@ -64,13 +64,7 @@
   background: var(--success);
   border: 2px solid var(--bg-card);
   border-radius: 50%;
-  animation: beacon-pulse 2s infinite;
-}
-
-@keyframes beacon-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+  animation: beaconSonarPing 2.2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
 }
 
 .rules-title-row {

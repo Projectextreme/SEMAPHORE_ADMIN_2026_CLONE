@@ -1,0 +1,6 @@
+/* Confetti / Popper overlay disabled */
+.confetti-canvas-overlay {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}

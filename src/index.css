@@ -763,6 +763,33 @@ code, pre, .code-font {
 }
 
 /* Global Modal Styles */
+@keyframes modalBackdropFade {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes modalSlideUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(24px);
+  }
+  65% {
+    transform: scale(1.015) translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 .modal-overlay {
   position: fixed !important;
   inset: 0 !important;
@@ -774,14 +801,14 @@ code, pre, .code-font {
   height: 100vh !important;
   height: 100dvh !important;
   background: var(--modal-overlay-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   display: flex !important;
   align-items: flex-start !important;
   justify-content: center !important;
   z-index: 99999 !important;
   padding: 2.5rem 1rem !important;
-  animation: fadeIn 0.2s ease-out;
+  animation: modalBackdropFade 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
@@ -792,12 +819,12 @@ code, pre, .code-font {
   background: var(--modal-bg);
   color: var(--text-main);
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
+  border-radius: 20px;
   width: 100%;
   max-width: min(calc(100vw - 1.5rem), 560px);
-  padding: 1.65rem;
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6);
-  animation: modalSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 1.75rem;
+  box-shadow: 0 25px 70px -10px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  animation: modalSlideUp 0.36s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   max-height: calc(100dvh - 5rem);
   max-height: calc(100vh - 5rem);
   overflow-y: auto;
@@ -809,6 +836,17 @@ code, pre, .code-font {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+}
+
+.modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--primary), var(--cyan), transparent);
+  pointer-events: none;
 }
 
 .modal-header {
@@ -1050,7 +1088,7 @@ table tbody tr:last-child td {
 }
 
 /* ==========================================================================
-   Professional Global Animations & Micro-Interactions Suite
+   Professional Global Animations & Motion Physics Engine
    ========================================================================== */
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -1060,11 +1098,11 @@ table tbody tr:last-child td {
 @keyframes viewEnter {
   0% {
     opacity: 0;
-    transform: translateY(12px) scale(0.995);
+    transform: translateY(16px) scale(0.992);
   }
   60% {
-    opacity: 0.95;
-    transform: translateY(-1px) scale(1.001);
+    opacity: 0.98;
+    transform: translateY(-2px) scale(1.002);
   }
   100% {
     opacity: 1;
@@ -1073,7 +1111,7 @@ table tbody tr:last-child td {
 }
 
 .view-transition-container {
-  animation: viewEnter 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: viewEnter 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   width: 100%;
   min-height: 100%;
   display: flex;
@@ -1083,10 +1121,10 @@ table tbody tr:last-child td {
 @keyframes modalSlideUp {
   0% {
     opacity: 0;
-    transform: translateY(22px) scale(0.94);
+    transform: translateY(28px) scale(0.92);
   }
-  70% {
-    transform: translateY(-2px) scale(1.005);
+  65% {
+    transform: translateY(-4px) scale(1.012);
   }
   100% {
     opacity: 1;
@@ -1095,13 +1133,13 @@ table tbody tr:last-child td {
 }
 
 @keyframes cardStaggerIn {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(18px) scale(0.985);
   }
-  to {
+  100% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -1117,10 +1155,11 @@ table tbody tr:last-child td {
 .college-matrix-card,
 .summary-card,
 .report-mobile-card {
-  animation: cardStaggerIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), 
-              border-color 0.2s ease;
+  animation: cardStaggerIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.24s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.22s ease,
+              background-color 0.22s ease;
 }
 
 .card:hover,
@@ -1129,7 +1168,7 @@ table tbody tr:last-child td {
 .coord-card:hover,
 .kpi-card:hover,
 .summary-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px) scale(1.002);
   box-shadow: var(--card-shadow-hover);
 }
 
@@ -1184,19 +1223,56 @@ table tbody tr:last-child td {
 .colleges-grid > *:nth-child(6),
 .payment-cards-grid > *:nth-child(6) { animation-delay: 0.24s; }
 
+/* Table Row Waterfall Cascading Entrance */
+@keyframes rowWaterfallIn {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) translateX(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+tbody tr,
+.table-row-animate {
+  animation: rowWaterfallIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: background-color 0.18s ease, transform 0.18s ease;
+}
+
+tbody tr:nth-child(1) { animation-delay: 0.02s; }
+tbody tr:nth-child(2) { animation-delay: 0.05s; }
+tbody tr:nth-child(3) { animation-delay: 0.08s; }
+tbody tr:nth-child(4) { animation-delay: 0.11s; }
+tbody tr:nth-child(5) { animation-delay: 0.14s; }
+tbody tr:nth-child(6) { animation-delay: 0.17s; }
+tbody tr:nth-child(7) { animation-delay: 0.20s; }
+tbody tr:nth-child(8) { animation-delay: 0.23s; }
+tbody tr:nth-child(9) { animation-delay: 0.26s; }
+tbody tr:nth-child(10) { animation-delay: 0.29s; }
+tbody tr:nth-child(n+11) { animation-delay: 0.32s; }
+
+tbody tr:hover {
+  transform: translateY(-1px);
+}
+
 /* Button Light Sheen Animation */
 .btn-primary,
 .btn-master-export-top,
 .btn-download-master,
-.btn-tab-export {
+.btn-tab-export,
+.btn-glow-sheen {
   position: relative;
   overflow: hidden;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-primary::after,
 .btn-master-export-top::after,
 .btn-download-master::after,
-.btn-tab-export::after {
+.btn-tab-export::after,
+.btn-glow-sheen::after {
   content: '';
   position: absolute;
   top: -50%;
@@ -1206,7 +1282,7 @@ table tbody tr:last-child td {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.25),
+    rgba(255, 255, 255, 0.35),
     transparent
   );
   transform: rotate(25deg);
@@ -1217,40 +1293,144 @@ table tbody tr:last-child td {
 .btn-primary:hover::after,
 .btn-master-export-top:hover::after,
 .btn-download-master:hover::after,
-.btn-tab-export:hover::after {
-  left: 140%;
+.btn-tab-export:hover::after,
+.btn-glow-sheen:hover::after {
+  left: 150%;
   transition: left 0.85s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Radar Pulse on Live Status Dots */
-@keyframes liveRadarPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+/* Tactile Squish on Click */
+button:active,
+.btn:active,
+.btn-icon:active,
+.tab-btn:active {
+  transform: scale(0.96) !important;
+}
+
+/* Breathing Glow Status Badges */
+@keyframes statusBreatheWarning {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4), inset 0 0 0 1px rgba(245, 158, 11, 0.3);
   }
-  70% {
-    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  50% {
+    box-shadow: 0 0 12px 2px rgba(245, 158, 11, 0.35), inset 0 0 0 1px rgba(245, 158, 11, 0.6);
+  }
+}
+
+@keyframes statusBreatheSuccess {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4), inset 0 0 0 1px rgba(16, 185, 129, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(16, 185, 129, 0.35), inset 0 0 0 1px rgba(16, 185, 129, 0.6);
+  }
+}
+
+@keyframes statusBreathePrimary {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4), inset 0 0 0 1px rgba(99, 102, 241, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgba(99, 102, 241, 0.35), inset 0 0 0 1px rgba(99, 102, 241, 0.6);
+  }
+}
+
+.badge-pending,
+.status-pill.status-pending,
+.badge-warning {
+  animation: statusBreatheWarning 2.4s ease-in-out infinite;
+}
+
+.badge-approved,
+.status-pill.status-approved,
+.badge-success {
+  animation: statusBreatheSuccess 2.8s ease-in-out infinite;
+}
+
+.badge-active,
+.system-live-pill {
+  animation: statusBreathePrimary 2.2s ease-in-out infinite;
+}
+
+/* Radar Sonar Multi-Wave Ping */
+@keyframes beaconSonarPing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8), 0 0 0 0 rgba(6, 182, 212, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.15), 0 0 0 14px rgba(6, 182, 212, 0.05);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 16px rgba(16, 185, 129, 0), 0 0 0 22px rgba(6, 182, 212, 0);
   }
 }
 
 .pulse-dot.dot-online,
-.pulse-live-dot {
-  animation: liveRadarPulse 2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+.pulse-live-dot,
+.logo-beacon {
+  animation: beaconSonarPing 2.2s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+/* Animated Cyber Gradient Border Container */
+.cyber-glow-border {
+  position: relative;
+  border-radius: 18px;
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.cyber-glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, var(--primary), var(--cyan), var(--purple), var(--primary));
+  background-size: 300% 300%;
+  animation: gradientFlow 6s linear infinite;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.6;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Input Focus Glow Ring Pulse */
+@keyframes inputFocusGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 3px var(--primary-light), 0 0 12px var(--glow-primary);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--primary-light), 0 0 18px var(--glow-primary);
+  }
+}
+
+.form-input:focus,
+.search-input:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  animation: inputFocusGlow 2.5s ease-in-out infinite;
 }
 
 /* Copy Tag & Chip Pop Micro-Interaction */
 @keyframes copyPopFeedback {
   0% { transform: scale(1); }
-  45% { transform: scale(1.15); }
+  45% { transform: scale(1.18); filter: brightness(1.2); }
   100% { transform: scale(1); }
 }
 
 .team-id-badge:active,
 .utr-copy-tag:active,
-.slot-team-id:active {
-  animation: copyPopFeedback 0.22s ease-out;
+.slot-team-id:active,
+.copy-badge:active {
+  animation: copyPopFeedback 0.24s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes spin {
@@ -1258,7 +1438,7 @@ table tbody tr:last-child td {
 }
 
 .spin-icon {
-  animation: spin 0.9s linear infinite;
+  animation: spin 0.85s linear infinite;
 }
 
 /* Skeleton Shimmer Loaders */
@@ -1306,42 +1486,41 @@ table tbody tr:last-child td {
   border-radius: 50%;
 }
 
-/* Floating Ambient Glow Orbs */
-@keyframes floatOrb1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-20px, 15px) scale(1.05); }
+/* Progress Fill Animation */
+@keyframes progressFillBar {
+  from { width: 0%; }
 }
 
-@keyframes floatOrb2 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(15px, -20px) scale(1.08); }
+.animated-progress-fill {
+  animation: progressFillBar 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+  overflow: hidden;
 }
 
-.ambient-glow-orb {
+.animated-progress-fill::after {
+  content: '';
   position: absolute;
-  border-radius: 50%;
-  filter: blur(60px);
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.45;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background-image: linear-gradient(
+    -45deg,
+    rgba(255, 255, 255, 0.18) 25%,
+    transparent 25%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.18) 75%,
+    transparent 75%,
+    transparent
+  );
+  background-size: 20px 20px;
+  animation: progressStripes 1.8s linear infinite;
 }
 
-.orb-primary {
-  width: 320px;
-  height: 320px;
-  background: var(--glow-primary);
-  top: -80px;
-  right: -60px;
-  animation: floatOrb1 12s ease-in-out infinite;
-}
-
-.orb-cyan {
-  width: 260px;
-  height: 260px;
-  background: var(--glow-cyan);
-  bottom: -40px;
-  left: 10%;
-  animation: floatOrb2 14s ease-in-out infinite;
+@keyframes progressStripes {
+  0% { background-position: 0 0; }
+  100% { background-position: 20px 0; }
 }
 
 /* Responsive Visibility Utility Classes */

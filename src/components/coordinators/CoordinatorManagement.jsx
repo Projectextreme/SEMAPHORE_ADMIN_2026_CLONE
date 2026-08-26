@@ -18,6 +18,7 @@ import {
   Loader2,
   AlertTriangle
 } from 'lucide-react';
+import { TiltCard } from '../common/TiltCard';
 import './CoordinatorManagement.css';
 
 export const CoordinatorManagement = () => {
@@ -101,8 +102,12 @@ export const CoordinatorManagement = () => {
     setActionLoading(true);
     try {
       const created = await apiService.addCoordinator(newCoord);
-      setCoordinators(prev => [created, ...prev.filter(c => (c._id || c.id) !== (created._id || created.id))]);
+      setCoordinators(prev => {
+        const filtered = prev.filter(c => (c._id || c.id) !== (created._id || created.id) && c.email !== created.email);
+        return [created, ...filtered];
+      });
       setShowAddModal(false);
+      const coordName = created.name;
       setNewCoord({
         name: '',
         email: '',
@@ -111,8 +116,11 @@ export const CoordinatorManagement = () => {
         department: '',
         status: 'Active'
       });
-      showToast(`Coordinator "${created.name}" created and assigned successfully!`);
-      loadData();
+      showToast(`Coordinator "${coordName}" created and assigned successfully!`);
+      const refreshed = await apiService.getCoordinators();
+      if (Array.isArray(refreshed) && refreshed.length > 0) {
+        setCoordinators(refreshed);
+      }
     } catch (err) {
       console.error('Error creating coordinator:', err);
       showToast(err.message || 'Failed to save coordinator.', true);
@@ -130,7 +138,10 @@ export const CoordinatorManagement = () => {
       setCoordinators(prev => prev.map(c => (c.id === editingCoord.id || c._id === editingCoord._id) ? updated : c));
       setEditingCoord(null);
       showToast(`Coordinator "${updated.name || editingCoord.name}" details updated!`);
-      loadData();
+      const refreshed = await apiService.getCoordinators();
+      if (Array.isArray(refreshed)) {
+        setCoordinators(refreshed);
+      }
     } catch (err) {
       console.error('Error updating coordinator:', err);
       showToast('Failed to update coordinator.', true);
@@ -145,10 +156,11 @@ export const CoordinatorManagement = () => {
     setActionLoading(true);
     try {
       await apiService.deleteCoordinator(id, coord);
-      setCoordinators(prev => prev.filter(c => (c.id !== id && c._id !== id)));
+      setCoordinators(prev => prev.filter(c => (c.id !== id && c._id !== id && c.email !== coord.email)));
       setDeletingCoord(null);
       showToast(`Coordinator "${coord?.name || 'Entry'}" removed successfully.`);
-      await loadData();
+      const refreshed = await apiService.getCoordinators();
+      setCoordinators(refreshed);
     } catch (err) {
       console.error('Error deleting coordinator:', err);
       showToast(err.message || 'Failed to delete coordinator.', true);
@@ -271,55 +283,57 @@ export const CoordinatorManagement = () => {
       ) : (
         <div className="coords-grid">
           {filtered.map((coord) => (
-            <div key={coord.id || coord._id} className="card coord-card">
-              <div className="coord-card-header">
-                <div className="coord-avatar">
-                  {(coord.name || 'C').charAt(0).toUpperCase()}
+            <TiltCard key={coord.id || coord._id} maxTilt={5} glareOpacity={0.12} className="coord-card-tilt">
+              <div className="card coord-card">
+                <div className="coord-card-header">
+                  <div className="coord-avatar">
+                    {(coord.name || 'C').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="coord-meta">
+                    <h4 className="coord-name">{coord.name}</h4>
+                    <span className="coord-dept">{coord.department || 'Department Lead'}</span>
+                  </div>
+                  <span className={`status-pill status-${(coord.status || 'active').toLowerCase()}`}>
+                    {coord.status || 'Active'}
+                  </span>
                 </div>
-                <div className="coord-meta">
-                  <h4 className="coord-name">{coord.name}</h4>
-                  <span className="coord-dept">{coord.department || 'Department Lead'}</span>
-                </div>
-                <span className={`status-pill status-${(coord.status || 'active').toLowerCase()}`}>
-                  {coord.status || 'Active'}
-                </span>
-              </div>
 
-              <div className="coord-body">
-                <div className="coord-detail-row">
-                  <Tag size={13} className="detail-icon" />
-                  <span className="detail-val font-bold text-primary">{coord.assignedEvent || 'General Event'}</span>
+                <div className="coord-body">
+                  <div className="coord-detail-row">
+                    <Tag size={13} className="detail-icon" />
+                    <span className="detail-val font-bold text-primary">{coord.assignedEvent || 'General Event'}</span>
+                  </div>
+                  <div className="coord-detail-row">
+                    <Mail size={13} className="detail-icon" />
+                    <span className="detail-val">{coord.email || 'N/A'}</span>
+                  </div>
+                  <div className="coord-detail-row">
+                    <Phone size={13} className="detail-icon" />
+                    <span className="detail-val">{coord.phone || 'N/A'}</span>
+                  </div>
                 </div>
-                <div className="coord-detail-row">
-                  <Mail size={13} className="detail-icon" />
-                  <span className="detail-val">{coord.email || 'N/A'}</span>
-                </div>
-                <div className="coord-detail-row">
-                  <Phone size={13} className="detail-icon" />
-                  <span className="detail-val">{coord.phone || 'N/A'}</span>
-                </div>
-              </div>
 
-              <div className="coord-card-footer">
-                <span className="coord-id-tag code-font">{coord.id || coord._id}</span>
-                <div className="coord-actions">
-                  <button
-                    onClick={() => setEditingCoord({ ...coord })}
-                    className="btn-icon btn-edit"
-                    title="Edit Coordinator Details"
-                  >
-                    <Edit2 size={13} />
-                  </button>
-                  <button
-                    onClick={() => setDeletingCoord(coord)}
-                    className="btn-icon btn-delete"
-                    title="Remove Coordinator"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                <div className="coord-card-footer">
+                  <span className="coord-id-tag code-font">{coord.id || coord._id}</span>
+                  <div className="coord-actions">
+                    <button
+                      onClick={() => setEditingCoord({ ...coord })}
+                      className="btn-icon btn-edit"
+                      title="Edit Coordinator Details"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => setDeletingCoord(coord)}
+                      className="btn-icon btn-delete"
+                      title="Remove Coordinator"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </TiltCard>
           ))}
         </div>
       )}

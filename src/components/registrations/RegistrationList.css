@@ -13,24 +13,35 @@
 .registration-kpi-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
-  gap: 0.85rem;
+  gap: 1rem;
+}
+
+.registration-kpi-tilt {
+  height: 100%;
+  display: flex;
+  border-radius: 14px;
 }
 
 .kpi-mini-card {
-  background: var(--bg-card);
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 0.95rem 1.15rem;
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   box-shadow: var(--card-shadow);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .kpi-mini-card:hover {
   transform: translateY(-2px);
   border-color: var(--primary-border);
+  box-shadow: 0 8px 20px var(--glow-primary);
 }
 
 .kpi-mini-label {

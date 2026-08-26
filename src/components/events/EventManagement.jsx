@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { apiService } from '../../services/apiService';
+import { TiltCard } from '../common/TiltCard';
 import './EventManagement.css';
 
 const initialEventState = {
@@ -424,111 +425,113 @@ export const EventManagement = () => {
               : 'Flexible';
 
             return (
-              <div key={evt._id || evt.id} className="card event-card">
-                <div className="event-card-header">
-                  <span className="category-pill">{evt.category || 'General'}</span>
-                  <button
-                    onClick={() => toggleEventStatus(evt)}
-                    className={`status-toggle ${(evt.status || 'Active').toLowerCase()}`}
-                    title="Click to Toggle Active / Draft"
-                  >
-                    {evt.status === 'Active' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                    <span>{evt.status || 'Active'}</span>
-                  </button>
-                </div>
+              <TiltCard key={evt._id || evt.id} maxTilt={5} glareOpacity={0.12} className="event-card-tilt">
+                <div className="card event-card">
+                  <div className="event-card-header">
+                    <span className="category-pill">{evt.category || 'General'}</span>
+                    <button
+                      onClick={() => toggleEventStatus(evt)}
+                      className={`status-toggle ${(evt.status || 'Active').toLowerCase()}`}
+                      title="Click to Toggle Active / Draft"
+                    >
+                      {evt.status === 'Active' ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                      <span>{evt.status || 'Active'}</span>
+                    </button>
+                  </div>
 
-                <h3 className="event-title">{evt.title}</h3>
-                {evt.description && (
-                  <p className="event-desc-snippet" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
-                    {evt.description}
-                  </p>
-                )}
+                  <h3 className="event-title">{evt.title}</h3>
+                  {evt.description && (
+                    <p className="event-desc-snippet" style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.75rem', lineHeight: 1.4 }}>
+                      {evt.description}
+                    </p>
+                  )}
 
-                <div className="event-meta-grid">
-                  <div className="meta-item">
-                    <DollarSign size={14} className="meta-icon text-success" />
-                    <div className="meta-text">
-                      <span className="meta-lbl">Registration Fee</span>
-                      <strong>{feeDisplay}</strong>
+                  <div className="event-meta-grid">
+                    <div className="meta-item">
+                      <DollarSign size={14} className="meta-icon text-success" />
+                      <div className="meta-text">
+                        <span className="meta-lbl">Registration Fee</span>
+                        <strong>{feeDisplay}</strong>
+                      </div>
+                    </div>
+
+                    <div className="meta-item">
+                      <Users size={14} className="meta-icon text-cyan" />
+                      <div className="meta-text">
+                        <span className="meta-lbl">Team Size</span>
+                        <strong>{teamSizeDisplay}</strong>
+                      </div>
+                    </div>
+
+                    <div className="meta-item full-width">
+                      <MapPin size={14} className="meta-icon text-primary" />
+                      <div className="meta-text">
+                        <span className="meta-lbl">Venue Location</span>
+                        <span>{locationDisplay}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="meta-item">
-                    <Users size={14} className="meta-icon text-cyan" />
-                    <div className="meta-text">
-                      <span className="meta-lbl">Team Size</span>
-                      <strong>{teamSizeDisplay}</strong>
+                  <div className="event-card-footer">
+                    <div className="coordinators-list">
+                      <UserCheck size={13} className="coord-icon" />
+                      <span className="coord-names">
+                        {Array.isArray(evt.coordinators) && evt.coordinators.length > 0
+                          ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.userName || c.email || c._id) : c).join(', ')
+                          : (evt.coordinators ? evt.coordinators : 'Unassigned')}
+                      </span>
                     </div>
-                  </div>
 
-                  <div className="meta-item full-width">
-                    <MapPin size={14} className="meta-icon text-primary" />
-                    <div className="meta-text">
-                      <span className="meta-lbl">Venue Location</span>
-                      <span>{locationDisplay}</span>
+                    <div className="card-action-btns">
+                      <button
+                        className="btn-icon btn-export"
+                        title="Export Event Participants Sheet (.xlsx)"
+                        onClick={() => handleExportSingleEventXLSX(evt)}
+                      >
+                        <Download size={13} />
+                      </button>
+                      <button
+                        className="btn-icon btn-edit"
+                        title="Edit Event"
+                        onClick={() => {
+                          const coordStr = Array.isArray(evt.coordinators)
+                            ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.email || c._id) : c).join(', ')
+                            : (evt.coordinators || '');
+
+                          setEditingEvent({
+                            ...evt,
+                            title: evt.title || '',
+                            description: evt.description || '',
+                            category: evt.category || '',
+                            location: evt.location || evt.venue || '',
+                            venue: evt.location || evt.venue || '',
+                            date: evt.date ? evt.date.split('T')[0] : '',
+                            registrationFee: evt.registrationFee !== undefined && evt.registrationFee !== null && evt.registrationFee !== ''
+                              ? evt.registrationFee
+                              : (typeof evt.fee === 'string' ? evt.fee.replace(/[^\d]/g, '') : (evt.fee ?? '')),
+                            capacity: evt.capacity ?? '',
+                            minParticipants: evt.minParticipants ?? '',
+                            maxParticipants: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
+                            maxTeamMembers: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
+                            coordinators: coordStr,
+                            image: evt.image || '',
+                            status: evt.status || 'Active'
+                          });
+                        }}
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        className="btn-icon btn-delete"
+                        title="Delete Event"
+                        onClick={() => setDeletingEvent(evt)}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="event-card-footer">
-                  <div className="coordinators-list">
-                    <UserCheck size={13} className="coord-icon" />
-                    <span className="coord-names">
-                      {Array.isArray(evt.coordinators) && evt.coordinators.length > 0
-                        ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.userName || c.email || c._id) : c).join(', ')
-                        : (evt.coordinators ? evt.coordinators : 'Unassigned')}
-                    </span>
-                  </div>
-
-                  <div className="card-action-btns">
-                    <button
-                      className="btn-icon btn-export"
-                      title="Export Event Participants Sheet (.xlsx)"
-                      onClick={() => handleExportSingleEventXLSX(evt)}
-                    >
-                      <Download size={13} />
-                    </button>
-                    <button
-                      className="btn-icon btn-edit"
-                      title="Edit Event"
-                      onClick={() => {
-                        const coordStr = Array.isArray(evt.coordinators)
-                          ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.email || c._id) : c).join(', ')
-                          : (evt.coordinators || '');
-
-                        setEditingEvent({
-                          ...evt,
-                          title: evt.title || '',
-                          description: evt.description || '',
-                          category: evt.category || '',
-                          location: evt.location || evt.venue || '',
-                          venue: evt.location || evt.venue || '',
-                          date: evt.date ? evt.date.split('T')[0] : '',
-                          registrationFee: evt.registrationFee !== undefined && evt.registrationFee !== null && evt.registrationFee !== ''
-                            ? evt.registrationFee
-                            : (typeof evt.fee === 'string' ? evt.fee.replace(/[^\d]/g, '') : (evt.fee ?? '')),
-                          capacity: evt.capacity ?? '',
-                          minParticipants: evt.minParticipants ?? '',
-                          maxParticipants: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
-                          maxTeamMembers: evt.maxParticipants ?? evt.maxTeamMembers ?? '',
-                          coordinators: coordStr,
-                          image: evt.image || '',
-                          status: evt.status || 'Active'
-                        });
-                      }}
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                    <button
-                      className="btn-icon btn-delete"
-                      title="Delete Event"
-                      onClick={() => setDeletingEvent(evt)}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              </TiltCard>
             );
           })}
         </div>

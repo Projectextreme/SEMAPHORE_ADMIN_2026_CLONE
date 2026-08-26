@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
+import { TiltCard } from '../common/TiltCard';
 import './SlotManagement.css';
 
 const initialSlotFormState = {
@@ -255,47 +256,49 @@ export const SlotManagement = () => {
                 {index < filteredSlots.length - 1 && <div className="timeline-line"></div>}
               </div>
 
-              <div className="card timeline-card">
-                <div className="slot-card-header">
-                  <div className="slot-time-badge">
-                    <Clock size={13} />
-                    <span>{slot.startTime && slot.endTime ? `${slot.startTime} – ${slot.endTime}` : (slot.startTime || slot.endTime || 'Time TBA')}</span>
+              <TiltCard maxTilt={4} glareOpacity={0.1} className="timeline-card-tilt">
+                <div className="card timeline-card">
+                  <div className="slot-card-header">
+                    <div className="slot-time-badge">
+                      <Clock size={13} />
+                      <span>{slot.startTime && slot.endTime ? `${slot.startTime} – ${slot.endTime}` : (slot.startTime || slot.endTime || 'Time TBA')}</span>
+                    </div>
+                    {slot.date && <span className="slot-date-tag">{slot.date}</span>}
+                    <span className="status-badge status-approved">{slot.status || 'Scheduled'}</span>
                   </div>
-                  {slot.date && <span className="slot-date-tag">{slot.date}</span>}
-                  <span className="status-badge status-approved">{slot.status || 'Scheduled'}</span>
-                </div>
 
-                <div className="slot-card-body">
-                  <h3 className="slot-title">{slot.eventName}</h3>
-                  <p className="slot-round">{slot.round}</p>
+                  <div className="slot-card-body">
+                    <h3 className="slot-title">{slot.eventName}</h3>
+                    <p className="slot-round">{slot.round}</p>
 
-                  <div className="slot-meta-row">
-                    {slot.venue && (
-                      <div className="meta-chip">
-                        <MapPin size={13} className="chip-icon" />
-                        <span>{slot.venue}</span>
-                      </div>
-                    )}
-                    {slot.capacity && (
-                      <div className="meta-chip">
-                        <Users size={13} className="chip-icon" />
-                        <span>Capacity: {slot.capacity}</span>
-                      </div>
-                    )}
+                    <div className="slot-meta-row">
+                      {slot.venue && (
+                        <div className="meta-chip">
+                          <MapPin size={13} className="chip-icon" />
+                          <span>{slot.venue}</span>
+                        </div>
+                      )}
+                      {slot.capacity && (
+                        <div className="meta-chip">
+                          <Users size={13} className="chip-icon" />
+                          <span>Capacity: {slot.capacity}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="slot-card-footer">
+                    <span className="code-font slot-id">{slot.id}</span>
+                    <button
+                      onClick={() => handleDelete(slot.id)}
+                      className="btn-icon btn-delete"
+                      title="Remove Slot"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
-
-                <div className="slot-card-footer">
-                  <span className="code-font slot-id">{slot.id}</span>
-                  <button
-                    onClick={() => handleDelete(slot.id)}
-                    className="btn-icon btn-delete"
-                    title="Remove Slot"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              </div>
+              </TiltCard>
             </div>
           ))}
         </div>

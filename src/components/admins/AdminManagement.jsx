@@ -22,6 +22,8 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import './AdminManagement.css';
 
 export const AdminManagement = () => {
@@ -123,14 +125,14 @@ export const AdminManagement = () => {
     }
   };
 
-  const handleDeleteAdmin = async (id, name) => {
+  const handleDeleteAdmin = async (id, name, email = '') => {
     if (!window.confirm(`Are you sure you want to remove standard admin "${name}"?`)) {
       return;
     }
     setActionLoading(true);
     try {
-      await apiService.deleteAdmin(id);
-      showSuccess(`Standard admin "${name}" deleted successfully.`);
+      const res = await apiService.deleteAdmin(id, { name, email });
+      showSuccess(res?.message || `Standard admin "${name}" removed successfully.`);
       fetchAdminData();
     } catch (err) {
       showError(err.message || 'Failed to delete admin');
@@ -166,7 +168,7 @@ export const AdminManagement = () => {
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <ShieldCheck className="title-icon" /> Administrator & Security Access
+            <ShieldCheck className="title-icon text-cyan" /> Administrator & Security Access
           </h2>
           <p className="page-description">
             Manage system administrators, provision new admin accounts, and assign role privileges.
@@ -178,7 +180,7 @@ export const AdminManagement = () => {
             <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
           </button>
           {isSuperAdmin && (
-            <button onClick={() => setShowAddModal(true)} className="btn btn-primary">
+            <button onClick={() => setShowAddModal(true)} className="btn btn-primary btn-glow-sheen">
               <UserPlus size={15} /> Add New Admin
             </button>
           )}
@@ -186,53 +188,55 @@ export const AdminManagement = () => {
       </div>
 
       {/* My Profile Card (GET /api/admin/profile) */}
-      <div className="card profile-card">
-        <div className="card-header">
-          <div>
-            <h3 className="card-title">
-              <UserCheck size={17} /> Active Admin Session Profile
-            </h3>
-            <p className="card-subtitle">Endpoint: <code>GET /api/admin/profile</code></p>
-          </div>
-          <span className="badge badge-success">Authenticated</span>
-        </div>
-
-        <div className="profile-details-grid">
-          <div className="profile-field">
-            <span className="field-label">Administrator Name</span>
-            <strong className="field-value font-bold">{myProfile?.name || currentAdmin?.name || 'Super Admin'}</strong>
-          </div>
-
-          <div className="profile-field">
-            <span className="field-label">Email Address</span>
-            <span className="field-value">{myProfile?.email || currentAdmin?.email}</span>
-          </div>
-
-          <div className="profile-field">
-            <span className="field-label">Security Role</span>
+      <TiltCard maxTilt={4} glareOpacity={0.12} className="admin-profile-tilt">
+        <div className="card profile-card">
+          <div className="card-header">
             <div>
-              <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-                {myProfile?.role === 'superadmin' ? <Crown size={12} /> : null}
-                {myProfile?.role || currentAdmin?.role || 'admin'}
-              </span>
+              <h3 className="card-title">
+                <UserCheck size={17} className="text-cyan" /> Active Admin Session Profile
+              </h3>
+              <p className="card-subtitle">Endpoint: <code>GET /api/admin/profile</code></p>
             </div>
+            <span className="badge badge-success">Authenticated</span>
           </div>
 
-          <div className="profile-field">
-            <span className="field-label">Admin ID Reference</span>
-            <div className="field-copy-row">
-              <span className="field-value code-font">{myProfile?._id || currentAdmin?._id}</span>
-              <button 
-                onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)} 
-                className="copy-btn"
-                title="Copy Admin ID"
-              >
-                {copiedId ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-              </button>
+          <div className="profile-details-grid">
+            <div className="profile-field">
+              <span className="field-label">Administrator Name</span>
+              <strong className="field-value font-bold">{myProfile?.name || currentAdmin?.name || 'Super Admin'}</strong>
+            </div>
+
+            <div className="profile-field">
+              <span className="field-label">Email Address</span>
+              <span className="field-value">{myProfile?.email || currentAdmin?.email}</span>
+            </div>
+
+            <div className="profile-field">
+              <span className="field-label">Security Role</span>
+              <div>
+                <span className={`role-badge ${myProfile?.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
+                  {myProfile?.role === 'superadmin' ? <Crown size={12} /> : null}
+                  {myProfile?.role || currentAdmin?.role || 'admin'}
+                </span>
+              </div>
+            </div>
+
+            <div className="profile-field">
+              <span className="field-label">Admin ID Reference</span>
+              <div className="field-copy-row">
+                <span className="field-value code-font">{myProfile?._id || currentAdmin?._id}</span>
+                <button 
+                  onClick={() => handleCopyId(myProfile?._id || currentAdmin?._id)} 
+                  className="copy-btn"
+                  title="Copy Admin ID"
+                >
+                  {copiedId ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </TiltCard>
 
       {/* All Admins Table */}
       <div className="card table-card">
@@ -349,7 +353,7 @@ export const AdminManagement = () => {
                         ) : (
                           <div className="table-actions-cell">
                             <button
-                              onClick={() => handleDeleteAdmin(adm._id, adm.name)}
+                              onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
                               className="btn btn-xs btn-outline-danger"
                               title="Remove Standard Admin Account"
                             >
@@ -417,7 +421,7 @@ export const AdminManagement = () => {
                       </span>
                     ) : (
                       <button
-                        onClick={() => handleDeleteAdmin(adm._id, adm.name)}
+                        onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
                         className="btn btn-danger btn-sm"
                         style={{ width: '100%', justifyContent: 'center' }}
                       >

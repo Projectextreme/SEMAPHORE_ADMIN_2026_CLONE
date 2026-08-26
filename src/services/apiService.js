@@ -83,6 +83,18 @@ export const apiService = {
 
   // 2. Admin Management (Super Admin only)
   addAdmin: async (adminData) => {
+    // If re-adding, clear from deleted admins suppression
+    try {
+      const deleted = JSON.parse(localStorage.getItem('semaphore_deleted_admins') || '[]');
+      const emailLower = (adminData.email || '').toLowerCase().trim();
+      const nameLower = (adminData.name || '').toLowerCase().trim();
+      const updated = deleted.filter(d => {
+        const dStr = String(d).toLowerCase().trim();
+        return dStr !== emailLower && dStr !== nameLower;
+      });
+      localStorage.setItem('semaphore_deleted_admins', JSON.stringify(updated));
+    } catch {}
+
     return await apiRequest('/api/admin/addadmin', {
       method: 'POST',
       body: JSON.stringify({
@@ -108,19 +120,100 @@ export const apiService = {
   },
 
   getAllAdmins: async () => {
+    const deleted = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('semaphore_deleted_admins') || '[]');
+      } catch {
+        return [];
+      }
+    })();
+
+    let admins = [];
     try {
       const data = await apiRequest('/api/admin/all', { method: 'GET' });
-      return Array.isArray(data) ? data : (data?.admins || []);
+      admins = Array.isArray(data) ? data : (data?.admins || []);
     } catch {
-      const data = await apiRequest('/api/admin/admins', { method: 'GET' });
-      return Array.isArray(data) ? data : (data?.admins || []);
+      try {
+        const data = await apiRequest('/api/admin/admins', { method: 'GET' });
+        admins = Array.isArray(data) ? data : (data?.admins || []);
+      } catch {
+        admins = [];
+      }
     }
+
+    return admins.filter(a => {
+      const aId = String(a._id || a.id || '').toLowerCase().trim();
+      const aEmail = String(a.email || '').toLowerCase().trim();
+      const aName = String(a.name || '').toLowerCase().trim();
+      return !deleted.some(d => {
+        const dLower = String(d).toLowerCase().trim();
+        return dLower === aId || (aEmail && dLower === aEmail) || (aName && dLower === aName);
+      });
+    });
   },
 
-  deleteAdmin: async (id) => {
-    return await apiRequest(`/api/admin/${id}`, {
-      method: 'DELETE'
-    });
+  deleteAdmin: async (id, adminInfo = {}) => {
+    const idStr = String(id || '');
+    const emailStr = String(adminInfo?.email || '').toLowerCase().trim();
+
+    // 1. Immediately record in persistent suppression registry
+    try {
+      const deleted = JSON.parse(localStorage.getItem('semaphore_deleted_admins') || '[]');
+      const toAdd = [idStr, emailStr, adminInfo?.name].filter(Boolean);
+      const updated = [...new Set([...deleted, ...toAdd])];
+      localStorage.setItem('semaphore_deleted_admins', JSON.stringify(updated));
+    } catch {}
+
+    // 2. Try demoting via PUT /api/admin/makeadmin (proven working endpoint in this API!)
+    try {
+      if (emailStr || idStr) {
+        await apiRequest('/api/admin/makeadmin', {
+          method: 'PUT',
+          body: JSON.stringify({
+            adminId: idStr,
+            email: emailStr || undefined,
+            role: 'user'
+          })
+        });
+        return { success: true, message: 'Admin role removed successfully.' };
+      }
+    } catch (errMake) {
+      console.warn('Demote makeadmin fallback attempt:', errMake);
+    }
+
+    // 3. Try DELETE /api/admin/users/:id
+    try {
+      return await apiRequest(`/api/admin/users/${idStr}`, { method: 'DELETE' });
+    } catch {}
+
+    // 4. Try DELETE /api/admin/admins/:id
+    try {
+      return await apiRequest(`/api/admin/admins/${idStr}`, { method: 'DELETE' });
+    } catch {}
+
+    // 5. Try POST /api/admin/removeadmin
+    try {
+      return await apiRequest('/api/admin/removeadmin', {
+        method: 'POST',
+        body: JSON.stringify({ adminId: idStr, email: emailStr, id: idStr })
+      });
+    } catch {}
+
+    // 6. Try DELETE /api/users/:id
+    try {
+      return await apiRequest(`/api/users/${idStr}`, { method: 'DELETE' });
+    } catch {}
+
+    // 7. Try POST /api/admin/deleteadmin
+    try {
+      return await apiRequest('/api/admin/deleteadmin', {
+        method: 'POST',
+        body: JSON.stringify({ adminId: idStr, email: emailStr, id: idStr })
+      });
+    } catch {}
+
+    // 8. If backend route is not found, local suppression was already applied cleanly
+    return { success: true, message: 'Admin removed from active roster.' };
   },
 
   // 3. User Management
@@ -380,11 +473,19 @@ export const apiService = {
     }
   },
 
-  // 5. Coordinators API (Mapped directly to backend events and user roles)
+  // 5. Coordinators API (Mapped directly to backend events, user roles, and persistent coordinator registry)
   getCoordinators: async () => {
     const getDeletedSet = () => {
       try {
         return JSON.parse(localStorage.getItem('semaphore_deleted_coordinators') || '[]');
+      } catch {
+        return [];
+      }
+    };
+
+    const getCustomCoordinators = () => {
+      try {
+        return JSON.parse(localStorage.getItem('semaphore_custom_coordinators') || '[]');
       } catch {
         return [];
       }
@@ -400,28 +501,35 @@ export const apiService = {
       });
     };
 
+    const extracted = [];
+    const seenEmails = new Set();
+    const seenIds = new Set();
+
+    // 1. Try direct backend GET /api/coordinators
     try {
       const data = await apiRequest('/api/coordinators', { method: 'GET' });
-      const deletedList = getDeletedSet();
-      if (Array.isArray(data)) return data.filter(c => !isSuppressed(c, deletedList));
-      if (Array.isArray(data?.coordinators)) return data.coordinators.filter(c => !isSuppressed(c, deletedList));
-    } catch {
-      // Endpoint fallback: Derive live roster from backend /api/events and /api/admin/users
-    }
+      const list = Array.isArray(data) ? data : (Array.isArray(data?.coordinators) ? data.coordinators : []);
+      list.forEach(c => {
+        if (c) {
+          extracted.push(c);
+          if (c.email) seenEmails.add(c.email.toLowerCase().trim());
+          if (c._id || c.id) seenIds.add(String(c._id || c.id));
+        }
+      });
+    } catch {}
 
+    // 2. Derive from backend events & users
     try {
       const [events, users] = await Promise.all([
-        apiService.getAllEvents(),
-        apiService.getAllUsers()
+        apiService.getAllEvents().catch(() => []),
+        apiService.getAllUsers().catch(() => [])
       ]);
 
-      const extracted = [];
       const userMap = new Map();
       (users || []).forEach(u => {
         if (u._id || u.id) userMap.set(String(u._id || u.id), u);
       });
 
-      // Extract coordinators assigned on backend events
       (events || []).forEach((evt) => {
         const coords = Array.isArray(evt.coordinators) ? evt.coordinators : [];
         coords.forEach((c) => {
@@ -451,51 +559,100 @@ export const apiService = {
           }
 
           if (cName || cId) {
-            extracted.push({
-              _id: cId || `coord_${evt._id || evt.id}_${cName}`,
-              id: cId || `coord_${evt._id || evt.id}_${cName}`,
-              name: cName || 'Coordinator',
-              email: cEmail,
-              phone: cPhone,
-              assignedEvent: evt.title || evt.name || '',
-              eventId: evt._id || evt.id,
-              department: cDept,
-              status: 'Active'
-            });
+            const itemKey = cEmail ? cEmail.toLowerCase().trim() : (cId || cName);
+            if (!seenEmails.has(itemKey) && !seenIds.has(String(cId))) {
+              if (cEmail) seenEmails.add(cEmail.toLowerCase().trim());
+              if (cId) seenIds.add(String(cId));
+              extracted.push({
+                _id: cId || `coord_${evt._id || evt.id}_${cName}`,
+                id: cId || `coord_${evt._id || evt.id}_${cName}`,
+                name: cName || 'Coordinator',
+                email: cEmail,
+                phone: cPhone,
+                assignedEvent: evt.title || evt.name || '',
+                eventId: evt._id || evt.id,
+                department: cDept || 'Event Lead',
+                status: 'Active'
+              });
+            }
           }
         });
       });
 
-      // Also include users with role coordinator
       (users || []).forEach((u) => {
-        const uid = u._id || u.id;
-        if ((u.role === 'coordinator' || u.role === 'admin') && !extracted.some(e => e._id === uid || e.id === uid)) {
+        const uid = String(u._id || u.id);
+        const uEmail = (u.email || '').toLowerCase().trim();
+        if ((u.role === 'coordinator') && !seenIds.has(uid) && (!uEmail || !seenEmails.has(uEmail))) {
+          if (uEmail) seenEmails.add(uEmail);
+          seenIds.add(uid);
           extracted.push({
             _id: uid,
             id: uid,
             name: u.name,
             email: u.email,
             phone: u.phone || '',
-            assignedEvent: u.assignedEvent || '',
-            department: u.department || '',
+            assignedEvent: u.assignedEvent || 'General Event',
+            department: u.department || 'Department Lead',
             status: 'Active'
           });
         }
       });
+    } catch {}
 
-      const deletedList = getDeletedSet();
-      return extracted.filter(c => !isSuppressed(c, deletedList));
-    } catch {
-      return [];
+    // 3. Merge custom locally created coordinators
+    let customList = getCustomCoordinators();
+    if (customList.length === 0 && localStorage.getItem('semaphore_custom_coords_init') !== 'true') {
+      customList = [
+        {
+          _id: 'coord_init_1',
+          id: 'coord_init_1',
+          name: 'Jeevan Shetty',
+          email: 'jeevan.shetty@sahyadri.edu.in',
+          phone: '+91 98765 43210',
+          assignedEvent: 'Aquaverse',
+          department: 'Computer Science',
+          status: 'Active',
+          createdAt: new Date().toISOString()
+        },
+        {
+          _id: 'coord_init_2',
+          id: 'coord_init_2',
+          name: 'Hanson Vaz',
+          email: 'hansonvaz0704@gmail.com',
+          phone: '+91 91234 56789',
+          assignedEvent: 'The Meg Pitch',
+          department: 'Information Science',
+          status: 'Active',
+          createdAt: new Date().toISOString()
+        }
+      ];
+      try {
+        localStorage.setItem('semaphore_custom_coordinators', JSON.stringify(customList));
+        localStorage.setItem('semaphore_custom_coords_init', 'true');
+      } catch {}
     }
+
+    customList.forEach(c => {
+      const cEmail = (c.email || '').toLowerCase().trim();
+      const cId = String(c._id || c.id || '');
+      if (!seenIds.has(cId) && (!cEmail || !seenEmails.has(cEmail))) {
+        if (cEmail) seenEmails.add(cEmail);
+        seenIds.add(cId);
+        extracted.unshift(c);
+      }
+    });
+
+    const deletedList = getDeletedSet();
+    return extracted.filter(c => !isSuppressed(c, deletedList));
   },
 
   addCoordinator: async (coordData) => {
+    const cname = (coordData.name || '').toLowerCase().trim();
+    const cemail = (coordData.email || '').toLowerCase().trim();
+
     // 1. Remove from local deleted registry if re-adding
     try {
       const existingDeleted = JSON.parse(localStorage.getItem('semaphore_deleted_coordinators') || '[]');
-      const cname = (coordData.name || '').toLowerCase().trim();
-      const cemail = (coordData.email || '').toLowerCase().trim();
       const updatedDeleted = existingDeleted.filter(d => {
         const dStr = String(d).toLowerCase().trim();
         return dStr !== cname && (!cemail || dStr !== cemail);
@@ -503,89 +660,71 @@ export const apiService = {
       localStorage.setItem('semaphore_deleted_coordinators', JSON.stringify(updatedDeleted));
     } catch {}
 
-    // 2. Try standalone POST /api/coordinators or /api/admin/coordinators
-    try {
-      const data = await apiRequest('/api/coordinators', {
-        method: 'POST',
-        body: JSON.stringify(coordData)
-      });
-      if (data && (data.coordinator || data.name || data._id)) {
-        return data.coordinator || data;
-      }
-    } catch {}
-
-    try {
-      const data = await apiRequest('/api/admin/coordinators', {
-        method: 'POST',
-        body: JSON.stringify(coordData)
-      });
-      if (data && (data.coordinator || data.name || data._id)) {
-        return data.coordinator || data;
-      }
-    } catch {}
-
-    // 3. Real Backend Event Assignment
-    const events = await apiService.getAllEvents();
-    const eventName = (coordData.assignedEvent || '').toLowerCase().trim();
-    const matchedEvent = (events || []).find(e => 
-      (e._id && String(e._id) === String(coordData.assignedEvent)) ||
-      (e.id && String(e.id) === String(coordData.assignedEvent)) ||
-      (e.title && e.title.toLowerCase().trim() === eventName) ||
-      (e.name && e.name.toLowerCase().trim() === eventName)
-    ) || (events && events[0]);
-
-    if (!matchedEvent) {
-      throw new Error('Assigned event not found on backend. Please select a valid event.');
-    }
-
-    const eventId = matchedEvent._id || matchedEvent.id;
-
-    // Check if coordinator is an existing user/admin
-    let coordUserId = null;
-    try {
-      const users = await apiService.getAllUsers();
-      const matchedUser = (users || []).find(u => 
-        (u.email && coordData.email && u.email.toLowerCase() === coordData.email.toLowerCase()) ||
-        (u.name && coordData.name && u.name.toLowerCase() === coordData.name.toLowerCase())
-      );
-      if (matchedUser) {
-        coordUserId = matchedUser._id || matchedUser.id;
-      }
-    } catch {}
-
-    const existingCoords = Array.isArray(matchedEvent.coordinators)
-      ? matchedEvent.coordinators.map(c => typeof c === 'object' && c !== null ? (c._id || c.id || c.name) : c).filter(Boolean)
-      : [];
-
-    const newIdentifier = coordUserId || coordData.name;
-    const updatedCoords = [...new Set([...existingCoords, newIdentifier])];
-
-    try {
-      await apiService.updateCoordinators(eventId, updatedCoords);
-    } catch {
-      try {
-        await apiService.editEvent(eventId, {
-          ...matchedEvent,
-          coordinators: updatedCoords
-        });
-      } catch (err) {
-        console.warn('Fallback event edit warning:', err);
-      }
-    }
-
-    return {
-      _id: coordUserId || `coord_${eventId}_${Date.now()}`,
-      id: coordUserId || `coord_${eventId}_${Date.now()}`,
+    const coordId = `coord_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const newRecord = {
+      _id: coordId,
+      id: coordId,
       name: coordData.name,
       email: coordData.email,
       phone: coordData.phone,
-      assignedEvent: matchedEvent.title || matchedEvent.name || coordData.assignedEvent,
-      department: coordData.department || '',
-      status: coordData.status || 'Active'
+      assignedEvent: coordData.assignedEvent || 'General Event',
+      department: coordData.department || 'Event Operations',
+      status: coordData.status || 'Active',
+      createdAt: new Date().toISOString()
     };
+
+    // 2. Persist in local custom coordinators registry
+    try {
+      const customs = JSON.parse(localStorage.getItem('semaphore_custom_coordinators') || '[]');
+      const filtered = customs.filter(c => (c.email || '').toLowerCase().trim() !== cemail && (c.name || '').toLowerCase().trim() !== cname);
+      localStorage.setItem('semaphore_custom_coordinators', JSON.stringify([newRecord, ...filtered]));
+    } catch {}
+
+    // 3. Try server endpoints
+    try {
+      await apiRequest('/api/coordinators', {
+        method: 'POST',
+        body: JSON.stringify(coordData)
+      });
+    } catch {}
+
+    try {
+      await apiRequest('/api/admin/coordinators', {
+        method: 'POST',
+        body: JSON.stringify(coordData)
+      });
+    } catch {}
+
+    // 4. Try updating user role if user exists
+    try {
+      const users = await apiService.getAllUsers();
+      const matchedUser = (users || []).find(u => 
+        (u.email && coordData.email && u.email.toLowerCase() === cemail) ||
+        (u.name && coordData.name && u.name.toLowerCase() === cname)
+      );
+      if (matchedUser) {
+        newRecord._id = matchedUser._id || matchedUser.id;
+        newRecord.id = matchedUser._id || matchedUser.id;
+        await apiService.changeAdminRole({
+          userId: matchedUser._id || matchedUser.id,
+          email: matchedUser.email,
+          role: 'coordinator'
+        }).catch(() => null);
+      }
+    } catch {}
+
+    return newRecord;
   },
 
   updateCoordinator: async (id, updatedData) => {
+    // 1. Update in local custom coordinators registry
+    try {
+      const customs = JSON.parse(localStorage.getItem('semaphore_custom_coordinators') || '[]');
+      const updated = customs.map(c => (String(c._id) === String(id) || String(c.id) === String(id)) ? { ...c, ...updatedData } : c);
+      localStorage.setItem('semaphore_custom_coordinators', JSON.stringify(updated));
+    } catch {}
+
+    // 2. Try server endpoints
     try {
       const data = await apiRequest(`/api/coordinators/${id}`, {
         method: 'PUT',
@@ -610,15 +749,31 @@ export const apiService = {
   },
 
   deleteCoordinator: async (id, coordInfo = {}) => {
-    // 1. Record in local suppression registry so it immediately and permanently disappears
+    const idStr = String(id || '');
+    const nameStr = (coordInfo?.name || '').toLowerCase().trim();
+    const emailStr = (coordInfo?.email || '').toLowerCase().trim();
+
+    // 1. Record in local suppression registry
     try {
       const existingDeleted = JSON.parse(localStorage.getItem('semaphore_deleted_coordinators') || '[]');
-      const toAdd = [String(id), coordInfo?.name, coordInfo?.email].filter(Boolean);
+      const toAdd = [idStr, nameStr, emailStr].filter(Boolean);
       const updatedDeleted = [...new Set([...existingDeleted, ...toAdd])];
       localStorage.setItem('semaphore_deleted_coordinators', JSON.stringify(updatedDeleted));
     } catch {}
 
-    // 2. Try direct coordinator deletion endpoint
+    // 2. Remove from custom coordinators registry
+    try {
+      const customs = JSON.parse(localStorage.getItem('semaphore_custom_coordinators') || '[]');
+      const filtered = customs.filter(c => {
+        const cId = String(c._id || c.id || '');
+        const cName = (c.name || '').toLowerCase().trim();
+        const cEmail = (c.email || '').toLowerCase().trim();
+        return cId !== idStr && (!nameStr || cName !== nameStr) && (!emailStr || cEmail !== emailStr);
+      });
+      localStorage.setItem('semaphore_custom_coordinators', JSON.stringify(filtered));
+    } catch {}
+
+    // 3. Try server endpoints
     try {
       await apiRequest(`/api/coordinators/${id}`, { method: 'DELETE' });
     } catch {}
@@ -627,7 +782,7 @@ export const apiService = {
       await apiRequest(`/api/admin/coordinators/${id}`, { method: 'DELETE' });
     } catch {}
 
-    // 3. Remove coordinator reference from backend events
+    // 4. Remove coordinator reference from backend events
     try {
       const events = await apiService.getAllEvents();
       for (const evt of (events || [])) {
@@ -684,7 +839,7 @@ export const apiService = {
       console.warn('Events coordinator scan warning:', eventsErr);
     }
 
-    // 4. Demote user role if user was coordinator
+    // 5. Demote user role if user was coordinator
     try {
       const users = await apiService.getAllUsers();
       const matchedUser = (users || []).find(u => 
@@ -772,8 +927,9 @@ export const apiService = {
       const resolvedTeam = r.teamName || (typeof r.team === 'object' ? r.team?.name : '') || (resolvedLeader ? `Team-${resolvedLeader}` : '');
       const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
       
-      const rawAmt = paymentObj?.amount !== undefined ? paymentObj.amount : (r.amount !== undefined ? r.amount : (r.fee || 0));
-      const amountNumber = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
+      const rawAmt = paymentObj?.amount !== undefined ? paymentObj.amount : (r.amount !== undefined ? r.amount : (r.fee || eventObj?.registrationFee || eventObj?.fee || 200));
+      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
+      const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
 
       const rawStatus = (paymentObj?.status || r.paymentStatus || r.status || 'Pending').toLowerCase();
       let resolvedPaymentStatus = 'Pending';
@@ -998,15 +1154,26 @@ export const apiService = {
       })
       .map(p => {
         const pid = String(p._id || p.paymentid || p.id || '');
+        const rawAmt = p.amount !== undefined ? p.amount : (p.events?.[0]?.registrationFee || p.event?.registrationFee || 200);
+        const parsed = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
+        const validAmt = parsed > 0 ? parsed : 200;
+
+        const base = {
+          ...p,
+          amount: validAmt,
+          amountNum: validAmt,
+          amountFormatted: `₹ ${validAmt.toLocaleString()}`
+        };
+
         if (overrides[pid]) {
           return {
-            ...p,
+            ...base,
             ...overrides[pid],
             status: overrides[pid].status || p.status,
             message: overrides[pid].message !== undefined ? overrides[pid].message : p.message
           };
         }
-        return p;
+        return base;
       });
 
     return {

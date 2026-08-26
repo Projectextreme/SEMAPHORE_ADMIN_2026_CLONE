@@ -27,6 +27,16 @@
   border: 1px solid rgba(239, 68, 68, 0.25);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  animation: statusBreatheWarning 2.5s ease-in-out infinite;
+}
+
+.backup-metric-box {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.backup-metric-box:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.16);
 }
 
 @media (max-width: 768px) {

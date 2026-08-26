@@ -116,16 +116,28 @@
   font-size: 0.84rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   width: 100%;
   text-align: left;
   font-family: var(--font-sans);
   text-decoration: none;
+  position: relative;
+}
+
+.nav-item .nav-icon {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.2s ease;
+  flex-shrink: 0;
 }
 
 .nav-item:hover {
   background: var(--nav-hover-bg);
   color: var(--text-main);
+  transform: translateX(4px);
+}
+
+.nav-item:hover .nav-icon {
+  transform: scale(1.18) rotate(4deg);
+  color: var(--primary);
 }
 
 .nav-active {
@@ -133,11 +145,26 @@
   border: 1px solid var(--nav-active-border);
   color: var(--nav-active-text);
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.12);
+  box-shadow: 0 4px 14px var(--glow-primary);
+  transform: translateX(3px);
+}
+
+.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 15%;
+  bottom: 15%;
+  width: 3.5px;
+  background: var(--brand-gradient);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 8px var(--primary);
+  animation: beaconSonarPing 3s ease-in-out infinite;
 }
 
 .nav-active .nav-icon {
   color: var(--cyan);
+  transform: scale(1.08);
 }
 
 .nav-badge {
@@ -149,6 +176,11 @@
   border: 1px solid var(--primary-border);
   padding: 0.1rem 0.45rem;
   border-radius: 5px;
+  transition: transform 0.2s ease;
+}
+
+.nav-item:hover .nav-badge {
+  transform: scale(1.08);
 }
 
 .nav-count {
@@ -160,6 +192,7 @@
   border: 1px solid var(--warning-border);
   padding: 0.08rem 0.48rem;
   border-radius: 12px;
+  animation: statusBreatheWarning 2.5s ease-in-out infinite;
 }
 
 .sidebar-footer {
@@ -171,11 +204,19 @@
 .sidebar-system-card {
   background: var(--badge-bg);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  transition: all 0.25s ease;
+}
+
+.sidebar-system-card:hover {
+  border-color: var(--primary-border);
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
 }
 
 .system-card-top {
@@ -186,6 +227,7 @@
 
 .db-icon {
   color: var(--cyan);
+  animation: pulseGlow 2.5s ease-in-out infinite;
 }
 
 .system-title {

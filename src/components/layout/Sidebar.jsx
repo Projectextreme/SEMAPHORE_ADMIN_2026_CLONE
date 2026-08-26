@@ -13,7 +13,8 @@ import {
   X,
   Building2,
   BookOpen,
-  Archive
+  Archive,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -26,6 +27,7 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
       title: 'OVERVIEW',
       items: [
         { id: 'dashboard', path: '/dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
+        { id: 'analytics', path: '/analytics', label: 'Analytics & Graphs', icon: BarChart3, badge: 'LIVE' },
         { id: 'reports', path: '/reports', label: 'Reports & Export Hub', icon: FileSpreadsheet, badge: 'XLSX' }
       ]
     },

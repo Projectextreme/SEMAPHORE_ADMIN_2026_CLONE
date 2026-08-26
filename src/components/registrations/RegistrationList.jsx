@@ -31,7 +31,8 @@ import { apiService } from '../../services/apiService';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
-import { DEFAULT_RECEIPT_PLACEHOLDER } from '../common/constants';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import './RegistrationList.css';
 
 export const RegistrationList = () => {
@@ -186,7 +187,6 @@ export const RegistrationList = () => {
   };
 
   const handleExportTeamsXLSX = async () => {
-
     try {
       await apiService.exportTeams('Semaphore_2026_Teams_Report.xlsx');
       showToast('Teams Excel Report downloaded successfully (.xlsx)!');
@@ -256,7 +256,7 @@ export const RegistrationList = () => {
             <span>{loading ? 'Refreshing...' : 'Refresh Data'}</span>
           </button>
 
-          <button onClick={handleExportTeamsXLSX} className="btn btn-primary" title="Download Excel (.xlsx) with Teams Summary & Participants">
+          <button onClick={handleExportTeamsXLSX} className="btn btn-primary btn-glow-sheen" title="Download Excel (.xlsx) with Teams Summary & Participants">
             <Download size={15} /> Export Teams (.xlsx)
           </button>
 
@@ -266,25 +266,43 @@ export const RegistrationList = () => {
         </div>
       </div>
 
-
-      {/* Summary KPI Strip */}
+      {/* Summary KPI Strip with 3D Tilt & CountUp Numbers */}
       <div className="registration-kpi-strip">
-        <div className="kpi-mini-card">
-          <span className="kpi-mini-label">Total Teams</span>
-          <span className="kpi-mini-val text-cyan">{registrations.length}</span>
-        </div>
-        <div className="kpi-mini-card">
-          <span className="kpi-mini-label">Pending Payments</span>
-          <span className="kpi-mini-val text-warning">{pendingCount}</span>
-        </div>
-        <div className="kpi-mini-card">
-          <span className="kpi-mini-label">Approved & Verified</span>
-          <span className="kpi-mini-val text-success">{approvedCount}</span>
-        </div>
-        <div className="kpi-mini-card">
-          <span className="kpi-mini-label">Colleges Enrolled</span>
-          <span className="kpi-mini-val text-indigo">{collegesList.length - 1}</span>
-        </div>
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="registration-kpi-tilt">
+          <div className="kpi-mini-card">
+            <span className="kpi-mini-label">Total Teams</span>
+            <span className="kpi-mini-val text-cyan">
+              <CountUp value={registrations.length} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="registration-kpi-tilt">
+          <div className="kpi-mini-card">
+            <span className="kpi-mini-label">Pending Payments</span>
+            <span className="kpi-mini-val text-warning">
+              <CountUp value={pendingCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="registration-kpi-tilt">
+          <div className="kpi-mini-card">
+            <span className="kpi-mini-label">Approved & Verified</span>
+            <span className="kpi-mini-val text-success">
+              <CountUp value={approvedCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="registration-kpi-tilt">
+          <div className="kpi-mini-card">
+            <span className="kpi-mini-label">Colleges Enrolled</span>
+            <span className="kpi-mini-val text-indigo">
+              <CountUp value={Math.max(0, collegesList.length - 1)} />
+            </span>
+          </div>
+        </TiltCard>
       </div>
 
       {/* College Rule Banner */}

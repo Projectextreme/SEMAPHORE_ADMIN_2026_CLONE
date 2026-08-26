@@ -20,6 +20,8 @@ import {
   X,
   Copy
 } from 'lucide-react';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import './UserManagement.css';
 
 export const UserManagement = () => {
@@ -118,13 +120,17 @@ export const UserManagement = () => {
     return matchesSearch && matchesRole;
   });
 
+  const participantsCount = users.filter((u) => u.role === 'user' || !u.role).length;
+  const coordinatorsCount = users.filter((u) => u.role === 'coordinator').length;
+  const uniqueCollegesCount = new Set(users.map((u) => u.collegeName).filter(Boolean)).size;
+
   return (
     <div className="user-mgmt-container">
       {/* Page Header */}
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <Users className="title-icon" /> User & Participant Directory
+            <Users className="title-icon text-cyan" /> User & Participant Directory
           </h2>
           <p className="page-description">
             Inspect registered student leaders, filter colleges, modify user profiles, and manage active accounts.
@@ -136,6 +142,45 @@ export const UserManagement = () => {
             <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
           </button>
         </div>
+      </div>
+
+      {/* Summary KPI Strip */}
+      <div className="user-kpi-strip">
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt">
+          <div className="user-kpi-card">
+            <span className="user-kpi-label">Total Accounts</span>
+            <span className="user-kpi-val text-cyan">
+              <CountUp value={users.length} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt">
+          <div className="user-kpi-card">
+            <span className="user-kpi-label">Student Participants</span>
+            <span className="user-kpi-val text-primary">
+              <CountUp value={participantsCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt">
+          <div className="user-kpi-card">
+            <span className="user-kpi-label">Event Coordinators</span>
+            <span className="user-kpi-val text-warning">
+              <CountUp value={coordinatorsCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt">
+          <div className="user-kpi-card">
+            <span className="user-kpi-label">Represented Colleges</span>
+            <span className="user-kpi-val text-success">
+              <CountUp value={uniqueCollegesCount} />
+            </span>
+          </div>
+        </TiltCard>
       </div>
 
       {/* User Table Card */}

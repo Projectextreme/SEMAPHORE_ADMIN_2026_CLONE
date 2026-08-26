@@ -7,6 +7,19 @@
   box-sizing: border-box;
 }
 
+.admin-profile-tilt {
+  width: 100%;
+  border-radius: 16px;
+}
+
+.profile-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
 .profile-details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

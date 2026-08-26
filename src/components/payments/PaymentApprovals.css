@@ -14,20 +14,28 @@
   gap: 1rem;
 }
 
+.payment-metric-tilt {
+  height: 100%;
+  display: flex;
+  border-radius: 16px;
+}
+
 .payment-metric-card {
   background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  padding: 1.1rem 1.25rem;
+  border-radius: 16px;
+  padding: 1.15rem 1.35rem;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   box-shadow: var(--glass-shadow);
   position: relative;
   overflow: hidden;
-  transition: transform 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .payment-metric-card::before {
@@ -36,14 +44,29 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 1px;
+  height: 2px;
   background: var(--glass-shine);
   pointer-events: none;
 }
 
-.payment-metric-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--primary-border);
+.payment-metric-card.metric-approved:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 10px 24px rgba(16, 185, 129, 0.18);
+}
+
+.payment-metric-card.metric-pending:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: 0 10px 24px rgba(245, 158, 11, 0.18);
+}
+
+.payment-metric-card.metric-verified:hover {
+  border-color: rgba(6, 182, 212, 0.45);
+  box-shadow: 0 10px 24px rgba(6, 182, 212, 0.18);
+}
+
+.payment-metric-card.metric-rejected:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 10px 24px rgba(239, 68, 68, 0.18);
 }
 
 .metric-label {

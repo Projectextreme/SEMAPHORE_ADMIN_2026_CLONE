@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { ToastProvider } from './context/ToastContext';
 import { ToastContainer } from './components/common/ToastContainer';
+import { AmbientBackground } from './components/common/AmbientBackground';
 import { LoginView } from './components/auth/LoginView';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
@@ -19,6 +20,7 @@ import { CoordinatorManagement } from './components/coordinators/CoordinatorMana
 import { SlotManagement } from './components/slots/SlotManagement';
 import { CollegeManagement } from './components/colleges/CollegeManagement';
 import { ReportsHub } from './components/reports/ReportsHub';
+import { VisualAnalyticsHub } from './components/analytics/VisualAnalyticsHub';
 import { TeamRulesManagement } from './components/rules/TeamRulesManagement';
 import './App.css';
 
@@ -29,9 +31,8 @@ function AdminLayout() {
 
   return (
     <div className="admin-app-layout">
-      {/* Subtle Ambient Background Mesh Lights */}
-      <div className="ambient-glow-orb orb-primary" />
-      <div className="ambient-glow-orb orb-cyan" />
+      {/* High-Performance Ambient Particle & Aurora Background */}
+      <AmbientBackground />
 
       <Header 
         isMobileNavOpen={isMobileNavOpen} 
@@ -142,6 +143,8 @@ export default function App() {
                 <Route path="/coordinators" element={<CoordinatorManagement />} />
                 <Route path="/slots" element={<SlotManagement />} />
                 <Route path="/reports" element={<ReportsHub />} />
+                <Route path="/analytics" element={<VisualAnalyticsHub />} />
+                <Route path="/charts" element={<VisualAnalyticsHub />} />
                 <Route path="/users" element={<UserManagement />} />
 
                 <Route path="/user/:userId" element={<UserProfileView />} />

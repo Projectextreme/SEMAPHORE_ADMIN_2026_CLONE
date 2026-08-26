@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import { BackupPaymentDetailsModal } from './BackupPaymentDetailsModal';
 import { ReceiptThumbnail } from '../common/ReceiptThumbnail';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import './BackupPaymentsVault.css';
 
 export const BackupPaymentsVault = () => {
@@ -121,24 +123,43 @@ export const BackupPaymentsVault = () => {
         </button>
       </div>
 
-      {/* Summary Metrics Strip */}
+      {/* Summary Metrics Strip with 3D Tilt & CountUp */}
       <div className="payment-summary-strip">
-        <div className="payment-metric-card backup-metric-box">
-          <span className="metric-label">Archived Payments</span>
-          <span className="metric-val text-danger">{backupPayments.length} Records</span>
-        </div>
-        <div className="payment-metric-card backup-metric-box">
-          <span className="metric-label">Backed-up Revenue</span>
-          <span className="metric-val text-emerald">₹ {totalBackupVolume.toLocaleString()}</span>
-        </div>
-        <div className="payment-metric-card backup-metric-box">
-          <span className="metric-label">Preserved Event Regs</span>
-          <span className="metric-val text-cyan">{totalBackupEvents} Registrations</span>
-        </div>
-        <div className="payment-metric-card backup-metric-box">
-          <span className="metric-label">Approved at Deletion</span>
-          <span className="metric-val text-success">{backupApprovedCount} Items</span>
-        </div>
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card backup-metric-box">
+            <span className="metric-label">Archived Payments</span>
+            <span className="metric-val text-danger">
+              <CountUp value={backupPayments.length} suffix=" Records" />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card backup-metric-box">
+            <span className="metric-label">Backed-up Revenue</span>
+            <span className="metric-val text-emerald">
+              <CountUp prefix="₹ " value={totalBackupVolume} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card backup-metric-box">
+            <span className="metric-label">Preserved Event Regs</span>
+            <span className="metric-val text-cyan">
+              <CountUp value={totalBackupEvents} suffix=" Registrations" />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card backup-metric-box">
+            <span className="metric-label">Approved at Deletion</span>
+            <span className="metric-val text-success">
+              <CountUp value={backupApprovedCount} suffix=" Items" />
+            </span>
+          </div>
+        </TiltCard>
       </div>
 
       {/* Filters & Search Card */}

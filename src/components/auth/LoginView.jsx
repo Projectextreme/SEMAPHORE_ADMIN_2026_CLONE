@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { AnimatedCyberShield } from '../common/AnimatedSvg';
+import { AmbientBackground } from '../common/AmbientBackground';
+import { TiltCard } from '../common/TiltCard';
 import './LoginView.css';
 
 export const LoginView = () => {
@@ -42,19 +44,21 @@ export const LoginView = () => {
 
   return (
     <div className="login-container">
+      <AmbientBackground />
       <div className="login-background-glow"></div>
       <div className="login-secondary-glow"></div>
 
-      <div className="login-card">
-        {/* Header */}
-        <div className="login-header">
-          <AnimatedCyberShield size={74} className="login-logo-anim" />
-          <div className="login-title-row">
-            <h1 className="login-title">SEMAPHORE</h1>
-            <span className="login-year-tag">2026</span>
+      <TiltCard maxTilt={5} perspective={1200} glareOpacity={0.12} className="login-tilt-wrapper">
+        <div className="login-card">
+          {/* Header */}
+          <div className="login-header">
+            <AnimatedCyberShield size={78} className="login-logo-anim" />
+            <div className="login-title-row">
+              <h1 className="login-title">SEMAPHORE</h1>
+              <span className="login-year-tag">2026</span>
+            </div>
+            <p className="login-subtitle">National Level IT Fest • Admin Console</p>
           </div>
-          <p className="login-subtitle">National Level IT Fest • Admin Console</p>
-        </div>
 
         {/* Error / Success Banners */}
         {errorMessage && (
@@ -141,6 +145,7 @@ export const LoginView = () => {
           <span>Secure Administrator Portal • 256-bit Encrypted Session</span>
         </div>
       </div>
-    </div>
-  );
+    </TiltCard>
+  </div>
+);
 };

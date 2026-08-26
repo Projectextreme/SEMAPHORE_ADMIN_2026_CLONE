@@ -27,6 +27,8 @@ import {
 } from 'lucide-react';
 import { PaymentDetailsModal } from './PaymentDetailsModal';
 import { ReceiptThumbnail } from '../common/ReceiptThumbnail';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import { resolveImageUrl } from '../../services/apiConfig';
 import './PaymentApprovals.css';
 
@@ -61,28 +63,34 @@ export const PaymentApprovals = () => {
     try {
       const data = await apiService.getRecentPayments();
       const rawList = data?.payments || (Array.isArray(data) ? data : []);
-      const formatted = rawList.map(p => ({
-        id: p._id || p.paymentid || p.id,
-        _id: p._id || p.paymentid,
-        paymentid: p.paymentid || p._id,
-        utr: p.utr || 'N/A',
-        teamName: p.user?.team?.name || p.teamName || '',
-        collegeName: p.user?.collegeName || p.collegeName || '',
-        userName: p.user?.name || p.leaderName || 'Participant',
-        userEmail: p.user?.email || p.email || '',
-        userAvatar: p.user?.avatar || p.avatar || null,
-        amountNum: typeof p.amount === 'number' ? p.amount : Number(String(p.amount || 0).replace(/[^0-9]/g, '')),
-        amount: typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹0'),
-        event: (p.events && p.events[0]?.title) || p.event || 'General Registration',
-        events: p.events || [],
-        date: p.timestamp ? new Date(p.timestamp).toLocaleString() : (p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Recent'),
-        status: (p.status || 'Pending').charAt(0).toUpperCase() + (p.status || 'Pending').slice(1).toLowerCase(),
-        rawStatus: (p.status || 'pending').toLowerCase(),
-        message: p.message || '',
-        approvedBy: p.approvedBy || null,
-        proofUrl: resolveImageUrl(p.imageUrl || p.imageurl || p.proofUrl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.receipt || p.image || null),
-        rawItem: p
-      }));
+      const formatted = rawList.map(p => {
+        const amtParsed = typeof p.amount === 'number' && p.amount > 0 ? p.amount : Number(String(p.amount || 0).replace(/[^0-9.]/g, ''));
+        const eventFee = Number(p.events?.[0]?.registrationFee || p.event?.registrationFee || 200) || 200;
+        const validAmt = amtParsed > 0 ? amtParsed : eventFee;
+
+        return {
+          id: p._id || p.paymentid || p.id,
+          _id: p._id || p.paymentid,
+          paymentid: p.paymentid || p._id,
+          utr: p.utr || 'N/A',
+          teamName: p.user?.team?.name || p.teamName || '',
+          collegeName: p.user?.collegeName || p.collegeName || '',
+          userName: p.user?.name || p.leaderName || 'Participant',
+          userEmail: p.user?.email || p.email || '',
+          userAvatar: p.user?.avatar || p.avatar || null,
+          amountNum: validAmt,
+          amount: `₹ ${validAmt.toLocaleString()}`,
+          event: (p.events && p.events[0]?.title) || p.event || 'General Registration',
+          events: p.events || [],
+          date: p.timestamp ? new Date(p.timestamp).toLocaleString() : (p.createdAt ? new Date(p.createdAt).toLocaleString() : 'Recent'),
+          status: (p.status || 'Pending').charAt(0).toUpperCase() + (p.status || 'Pending').slice(1).toLowerCase(),
+          rawStatus: (p.status || 'pending').toLowerCase(),
+          message: p.message || '',
+          approvedBy: p.approvedBy || null,
+          proofUrl: resolveImageUrl(p.imageUrl || p.imageurl || p.proofUrl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.receipt || p.image || null),
+          rawItem: p
+        };
+      });
       setPayments(formatted);
     } catch (_err) {
       console.warn('Error loading payments:', _err);
@@ -203,6 +211,10 @@ export const PaymentApprovals = () => {
     .filter((p) => p.rawStatus === 'approved')
     .reduce((sum, p) => sum + (p.amountNum || 0), 0);
 
+  const pendingVolume = payments
+    .filter((p) => p.rawStatus === 'pending')
+    .reduce((sum, p) => sum + (p.amountNum || 0), 0);
+
   return (
     <div className="payments-container">
       {/* Page Header */}
@@ -239,24 +251,43 @@ export const PaymentApprovals = () => {
         </div>
       </div>
 
-      {/* Summary Metrics */}
+      {/* Summary Metrics with 3D Tilt & CountUp Numbers */}
       <div className="payment-summary-strip">
-        <div className="payment-metric-card">
-          <span className="metric-label">Approved Revenue</span>
-          <span className="metric-val text-success">₹ {totalVerifiedVolume.toLocaleString()}</span>
-        </div>
-        <div className="payment-metric-card">
-          <span className="metric-label">Pending Verification</span>
-          <span className="metric-val text-warning">{pendingCount} Submissions</span>
-        </div>
-        <div className="payment-metric-card">
-          <span className="metric-label">Verified Approvals</span>
-          <span className="metric-val text-cyan">{approvedCount} Teams</span>
-        </div>
-        <div className="payment-metric-card">
-          <span className="metric-label">Rejected Payments</span>
-          <span className="metric-val text-danger">{rejectedCount} Entries</span>
-        </div>
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card metric-approved">
+            <span className="metric-label">Approved Revenue</span>
+            <span className="metric-val text-success">
+              <CountUp prefix="₹ " value={totalVerifiedVolume} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card metric-pending">
+            <span className="metric-label">Pending Verification ({pendingCount})</span>
+            <span className="metric-val text-warning">
+              <CountUp prefix="₹ " value={pendingVolume} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card metric-verified">
+            <span className="metric-label">Verified Approvals</span>
+            <span className="metric-val text-cyan">
+              <CountUp value={approvedCount} suffix=" Teams" />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="payment-metric-tilt">
+          <div className="payment-metric-card metric-rejected">
+            <span className="metric-label">Rejected Payments</span>
+            <span className="metric-val text-danger">
+              <CountUp value={rejectedCount} suffix=" Entries" />
+            </span>
+          </div>
+        </TiltCard>
       </div>
 
       {/* Filters & Search Card */}

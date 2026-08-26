@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 
 import { apiService } from '../../services/apiService';
+import { CountUp } from '../common/CountUp';
+import { TiltCard } from '../common/TiltCard';
 import './CollegeManagement.css';
 
 export const CollegeManagement = () => {
@@ -165,7 +167,7 @@ export const CollegeManagement = () => {
       <div className="page-title-bar">
         <div>
           <h2 className="page-title">
-            <Building2 className="title-icon" /> College Directory & Quota Controls
+            <Building2 className="title-icon text-cyan" /> College Directory & Quota Controls
           </h2>
           <p className="page-description">
             Register participating institutions, audit enrolled team capacities (strict 2 teams/college), and manage college profiles.
@@ -186,7 +188,7 @@ export const CollegeManagement = () => {
 
           <button 
             onClick={handleExportCollegesXLSX} 
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-glow-sheen"
             title="Download Colleges 2-Teams Report (.xlsx)"
           >
             <Download size={15} />
@@ -199,25 +201,43 @@ export const CollegeManagement = () => {
         </div>
       </div>
 
-
-      {/* Metric Strip */}
+      {/* Metric Strip with 3D Tilt & CountUp Numbers */}
       <div className="college-metric-strip">
-        <div className="metric-chip">
-          <span className="metric-chip-label">Total Colleges</span>
-          <span className="metric-chip-val text-cyan">{colleges.length}</span>
-        </div>
-        <div className="metric-chip">
-          <span className="metric-chip-label">Quota Full (2/2 Teams)</span>
-          <span className="metric-chip-val text-warning">{fullQuotaCount}</span>
-        </div>
-        <div className="metric-chip">
-          <span className="metric-chip-label">Open Slots Available</span>
-          <span className="metric-chip-val text-success">{availableSlotsCount}</span>
-        </div>
-        <div className="metric-chip">
-          <span className="metric-chip-label">Total Active Teams</span>
-          <span className="metric-chip-val text-indigo">{totalTeamsEnrolled}</span>
-        </div>
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="college-metric-tilt">
+          <div className="metric-chip">
+            <span className="metric-chip-label">Total Colleges</span>
+            <span className="metric-chip-val text-cyan">
+              <CountUp value={colleges.length} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="college-metric-tilt">
+          <div className="metric-chip">
+            <span className="metric-chip-label">Quota Full (2/2 Teams)</span>
+            <span className="metric-chip-val text-warning">
+              <CountUp value={fullQuotaCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="college-metric-tilt">
+          <div className="metric-chip">
+            <span className="metric-chip-label">Open Slots Available</span>
+            <span className="metric-chip-val text-success">
+              <CountUp value={availableSlotsCount} />
+            </span>
+          </div>
+        </TiltCard>
+
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="college-metric-tilt">
+          <div className="metric-chip">
+            <span className="metric-chip-label">Total Active Teams</span>
+            <span className="metric-chip-val text-indigo">
+              <CountUp value={totalTeamsEnrolled} />
+            </span>
+          </div>
+        </TiltCard>
       </div>
 
       {/* Toolbar Card */}
