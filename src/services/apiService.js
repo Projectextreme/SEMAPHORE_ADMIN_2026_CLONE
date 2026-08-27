@@ -908,37 +908,61 @@ export const apiService = {
   // 7. Event Registrations & Payment Approvals (Live backend)
   getRegistrations: async () => {
     let rawList = [];
+    let paymentsList = [];
+
     try {
-      const data = await apiRequest('/api/registrations/all', { method: 'GET' });
-      if (Array.isArray(data)) rawList = data;
-      else if (Array.isArray(data?.registrations)) rawList = data.registrations;
-      else if (Array.isArray(data?.data)) rawList = data.data;
+      const [regsRes, paymentsRes] = await Promise.allSettled([
+        apiRequest('/api/registrations/all', { method: 'GET' }).catch(() => apiRequest('/api/registrations', { method: 'GET' })),
+        apiService.getRecentPayments().catch(() => [])
+      ]);
+
+      if (regsRes.status === 'fulfilled') {
+        const data = regsRes.value;
+        if (Array.isArray(data)) rawList = data;
+        else if (Array.isArray(data?.registrations)) rawList = data.registrations;
+        else if (Array.isArray(data?.data)) rawList = data.data;
+      }
+
+      if (paymentsRes.status === 'fulfilled') {
+        paymentsList = Array.isArray(paymentsRes.value) ? paymentsRes.value : (paymentsRes.value?.payments || []);
+      }
     } catch {
-      const data = await apiRequest('/api/registrations', { method: 'GET' });
-      if (Array.isArray(data)) rawList = data;
-      else if (Array.isArray(data?.registrations)) rawList = data.registrations;
-      else if (Array.isArray(data?.data)) rawList = data.data;
+      rawList = [];
     }
 
-    // Format registration fields cleanly for UI tables
+    // Local overrides cache
+    let overrides = {};
+    try {
+      overrides = JSON.parse(localStorage.getItem('semaphore_payment_overrides') || '{}');
+    } catch {}
+
+    // Format registration fields cleanly and cross-reference with live Payments collection
     return rawList.map((r, idx) => {
       const id = r._id || r.id || `reg_${idx}`;
       const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : null);
+      const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
       const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : null);
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
+      const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');
 
       const resolvedLeader = r.leaderName || r.name || userObj?.name || (typeof r.leader === 'string' ? r.leader : '') || '';
-      const resolvedEmail = r.email || r.leaderEmail || userObj?.email || '';
+      const resolvedEmail = (r.email || r.leaderEmail || userObj?.email || '').toLowerCase().trim();
       const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '';
       const resolvedCollege = r.collegeName || userObj?.collegeName || (typeof r.college === 'object' ? r.college?.collegeName : '') || '';
       const resolvedTeam = r.teamName || (typeof r.team === 'object' ? r.team?.name : '') || (resolvedLeader ? `Team-${resolvedLeader}` : '');
       const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
-      
-      const rawAmt = paymentObj?.amount !== undefined ? paymentObj.amount : (r.amount !== undefined ? r.amount : (r.fee || eventObj?.registrationFee || eventObj?.fee || 200));
-      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
-      const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
 
-      const rawStatus = (paymentObj?.status || r.paymentStatus || r.status || 'Pending').toLowerCase();
+      // Cross-reference with Payments collection
+      const matchedPayment = paymentsList.find(p => {
+        if (payIdStr && (p._id === payIdStr || p.id === payIdStr || p.paymentid === payIdStr)) return true;
+        if (resolvedEmail && p.userEmail && p.userEmail.toLowerCase().trim() === resolvedEmail) return true;
+        if (userIdStr && (p.user?._id === userIdStr || p.rawItem?.user === userIdStr || p.rawItem?.userId === userIdStr)) return true;
+        if (resolvedLeader && p.userName && p.userName.toLowerCase().trim() === resolvedLeader.toLowerCase().trim()) return true;
+        return false;
+      });
+
+      // Priority: Local Override > Matched Verified Payment > Direct Registration Document Status
+      let rawStatus = (matchedPayment?.rawStatus || matchedPayment?.status || paymentObj?.status || r.paymentStatus || r.status || 'Pending').toLowerCase();
       let resolvedPaymentStatus = 'Pending';
       if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
         resolvedPaymentStatus = 'Approved';
@@ -946,26 +970,35 @@ export const apiService = {
         resolvedPaymentStatus = 'Rejected';
       }
 
-      const utr = paymentObj?.utr || r.utr || r.transactionId || '';
-      const proofUrl = paymentObj?.imageUrl || paymentObj?.proofUrl || r.imageUrl || r.proofUrl || '';
-      const participants = Array.isArray(r.participants) && r.participants.length > 0
-        ? r.participants
-        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
-
       // Check local override cache for instant updates
-      let overrides = {};
-      try {
-        overrides = JSON.parse(localStorage.getItem('semaphore_payment_overrides') || '{}');
-      } catch {}
-      const ov = overrides[id] || overrides[paymentObj?._id] || overrides[paymentObj?.id];
+      const ov = overrides[id] || (payIdStr && overrides[payIdStr]) || (matchedPayment?.id && overrides[matchedPayment.id]);
       if (ov && ov.paymentStatus) {
         resolvedPaymentStatus = ov.paymentStatus;
       }
+
+      const utr = (matchedPayment?.utr && matchedPayment.utr !== 'N/A')
+        ? matchedPayment.utr 
+        : (paymentObj?.utr || r.utr || r.transactionId || 'N/A');
+
+      const proofUrl = (matchedPayment?.proofUrl)
+        ? matchedPayment.proofUrl 
+        : (paymentObj?.imageUrl || paymentObj?.proofUrl || r.imageUrl || r.proofUrl || '');
+
+      const rawAmt = matchedPayment?.amountNum || paymentObj?.amount !== undefined ? (matchedPayment?.amountNum || paymentObj?.amount) : (r.amount !== undefined ? r.amount : (r.fee || eventObj?.registrationFee || eventObj?.fee || 200));
+      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
+      const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
+
+      const participants = Array.isArray(r.participants) && r.participants.length > 0
+        ? r.participants
+        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
 
       return {
         ...r,
         _id: id,
         id: id,
+        paymentId: matchedPayment?.id || payIdStr || null,
+        paymentIdStr: matchedPayment?.id || payIdStr || null,
+        hasPaymentRecord: !!matchedPayment,
         leaderName: resolvedLeader,
         name: resolvedLeader,
         email: resolvedEmail,
