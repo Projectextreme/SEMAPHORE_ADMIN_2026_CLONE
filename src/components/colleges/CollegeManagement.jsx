@@ -141,20 +141,19 @@ export const CollegeManagement = () => {
       id.toLowerCase().includes(searchTerm.toLowerCase());
 
     const teams = Number(c.totalTeams) || 0;
-    if (quotaFilter === 'Full') return matchesSearch && teams >= 2;
-    if (quotaFilter === 'One') return matchesSearch && teams === 1;
+    if (quotaFilter === 'Full') return matchesSearch && teams >= 1;
     if (quotaFilter === 'Zero') return matchesSearch && teams === 0;
     return matchesSearch;
   });
 
-  const fullQuotaCount = colleges.filter((c) => (Number(c.totalTeams) || 0) >= 2).length;
-  const availableSlotsCount = colleges.filter((c) => (Number(c.totalTeams) || 0) < 2).length;
+  const fullQuotaCount = colleges.filter((c) => (Number(c.totalTeams) || 0) >= 1).length;
+  const availableSlotsCount = colleges.filter((c) => (Number(c.totalTeams) || 0) < 1).length;
   const totalTeamsEnrolled = colleges.reduce((sum, c) => sum + (Number(c.totalTeams) || 0), 0);
 
   const handleExportCollegesXLSX = async () => {
     try {
       await apiService.exportColleges('Semaphore_2026_Colleges_Report.xlsx');
-      showToast('Colleges 2-Teams Report downloaded successfully (.xlsx)!');
+      showToast('Colleges Report downloaded successfully (.xlsx)!');
     } catch (err) {
       console.error(err);
       showToast('Failed to export Colleges Excel report.', true);
@@ -170,7 +169,7 @@ export const CollegeManagement = () => {
             <Building2 className="title-icon text-cyan" /> College Directory & Quota Controls
           </h2>
           <p className="page-description">
-            Register participating institutions, audit enrolled team capacities (strict 2 teams/college), and manage college profiles.
+            Register participating institutions, audit enrolled team capacities (strict 1 team/college), and manage college profiles.
           </p>
         </div>
 
@@ -189,7 +188,7 @@ export const CollegeManagement = () => {
           <button 
             onClick={handleExportCollegesXLSX} 
             className="btn btn-secondary btn-glow-sheen"
-            title="Download Colleges 2-Teams Report (.xlsx)"
+            title="Download Colleges Report (.xlsx)"
           >
             <Download size={15} />
             <span>Export Colleges (.xlsx)</span>
@@ -214,7 +213,7 @@ export const CollegeManagement = () => {
 
         <TiltCard maxTilt={5} glareOpacity={0.12} className="college-metric-tilt">
           <div className="metric-chip">
-            <span className="metric-chip-label">Quota Full (2/2 Teams)</span>
+            <span className="metric-chip-label">Quota Full (1/1 Team)</span>
             <span className="metric-chip-val text-warning">
               <CountUp value={fullQuotaCount} />
             </span>
@@ -273,8 +272,7 @@ export const CollegeManagement = () => {
                 onChange={(e) => setQuotaFilter(e.target.value)}
               >
                 <option value="All">All Quota States</option>
-                <option value="Full">Quota Full (2 Teams)</option>
-                <option value="One">1 Team Enrolled</option>
+                <option value="Full">Quota Full (1 Team)</option>
                 <option value="Zero">0 Teams Enrolled</option>
               </select>
             </div>
@@ -323,7 +321,7 @@ export const CollegeManagement = () => {
                 <tbody>
                   {filteredColleges.map((college) => {
                     const teams = Number(college.totalTeams) || 0;
-                    const isFull = teams >= 2;
+                    const isFull = teams >= 1;
                     const collegeId = college._id || college.id;
 
                     return (
@@ -344,16 +342,16 @@ export const CollegeManagement = () => {
                           <div className="quota-bar-wrapper">
                             <div className="quota-bar-bg">
                               <div 
-                                className={`quota-bar-fill ${isFull ? 'fill-full' : teams === 1 ? 'fill-half' : 'fill-empty'}`}
-                                style={{ width: `${Math.min(100, (teams / 2) * 100)}%` }}
+                                className={`quota-bar-fill ${isFull ? 'fill-full' : 'fill-empty'}`}
+                                style={{ width: `${Math.min(100, teams * 100)}%` }}
                               />
                             </div>
-                            <span className="quota-bar-text">{teams} / 2 Teams</span>
+                            <span className="quota-bar-text">{teams} / 1 Team</span>
                           </div>
                         </td>
                         <td>
-                          <span className={`quota-pill ${isFull ? 'pill-full' : teams === 1 ? 'pill-half' : 'pill-empty'}`}>
-                            {isFull ? 'Quota Full (2/2)' : teams === 1 ? '1 Slot Available' : '2 Slots Available'}
+                          <span className={`quota-pill ${isFull ? 'pill-full' : 'pill-empty'}`}>
+                            {isFull ? 'Quota Full (1/1)' : '1 Slot Available'}
                           </span>
                         </td>
                         <td className="date-text">
@@ -390,7 +388,7 @@ export const CollegeManagement = () => {
             <div className="college-mobile-cards mobile-only">
               {filteredColleges.map((college) => {
                 const teams = Number(college.totalTeams) || 0;
-                const isFull = teams >= 2;
+                const isFull = teams >= 1;
                 const collegeId = college._id || college.id;
 
                 return (
@@ -406,8 +404,8 @@ export const CollegeManagement = () => {
                           <span className="college-subtext">Verified Institution</span>
                         </div>
                       </div>
-                      <span className={`quota-pill ${isFull ? 'pill-full' : teams === 1 ? 'pill-half' : 'pill-empty'}`}>
-                        {isFull ? 'Quota Full (2/2)' : teams === 1 ? '1 Slot Left' : '2 Slots Left'}
+                      <span className={`quota-pill ${isFull ? 'pill-full' : 'pill-empty'}`}>
+                        {isFull ? 'Quota Full (1/1)' : '1 Slot Left'}
                       </span>
                     </div>
 
@@ -437,11 +435,11 @@ export const CollegeManagement = () => {
                         <div className="quota-bar-wrapper" style={{ flex: 1, maxWidth: '160px' }}>
                           <div className="quota-bar-bg">
                             <div 
-                              className={`quota-bar-fill ${isFull ? 'fill-full' : teams === 1 ? 'fill-half' : 'fill-empty'}`}
-                              style={{ width: `${Math.min(100, (teams / 2) * 100)}%` }}
+                              className={`quota-bar-fill ${isFull ? 'fill-full' : 'fill-empty'}`}
+                              style={{ width: `${Math.min(100, teams * 100)}%` }}
                             />
                           </div>
-                          <span className="quota-bar-text">{teams} / 2 Teams Enrolled</span>
+                          <span className="quota-bar-text">{teams} / 1 Team Enrolled</span>
                         </div>
                       </div>
 
@@ -513,11 +511,10 @@ export const CollegeManagement = () => {
                   onChange={(e) => setNewCollege({ ...newCollege, totalTeams: Number(e.target.value) })}
                 >
                   <option value={0}>0 Teams (Freshly Enrolled)</option>
-                  <option value={1}>1 Team Enrolled</option>
-                  <option value={2}>2 Teams (Quota Full)</option>
+                  <option value={1}>1 Team (Quota Full)</option>
                 </select>
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
-                  Maximum allowed: 2 teams per college (enforced by Semaphore rules).
+                  Maximum allowed: 1 team per college (enforced by Semaphore rules).
                 </small>
               </div>
 
@@ -566,9 +563,11 @@ export const CollegeManagement = () => {
                   onChange={(e) => setEditingCollege({ ...editingCollege, totalTeams: Number(e.target.value) })}
                 >
                   <option value={0}>0 Teams</option>
-                  <option value={1}>1 Team</option>
-                  <option value={2}>2 Teams (Quota Full)</option>
+                  <option value={1}>1 Team (Quota Full)</option>
                 </select>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
+                  Maximum allowed: 1 team per college (enforced by Semaphore rules).
+                </small>
               </div>
 
               <div className="modal-actions">

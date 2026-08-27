@@ -172,7 +172,7 @@ export const ReportsHub = () => {
         }
       } else if (type === 'colleges') {
         await apiService.exportColleges('Semaphore_2026_Colleges_Report.xlsx');
-        showSuccess('Colleges 2-Teams Report downloaded (.xlsx)');
+        showSuccess('Colleges Report downloaded (.xlsx)');
       }
     } catch (err) {
       console.error('Download error:', err);
@@ -383,7 +383,7 @@ export const ReportsHub = () => {
                 onClick={() => handleDownload('colleges')}
                 disabled={downloadingType === 'colleges'}
               >
-                <Download size={12} /> Colleges 2-Teams (.xlsx)
+                <Download size={12} /> Colleges Report (.xlsx)
               </button>
             </div>
           </div>
@@ -426,7 +426,7 @@ export const ReportsHub = () => {
           onClick={() => { setActiveTab('colleges'); setSearchQuery(''); }}
         >
           <Building2 size={16} />
-          <span>Colleges 2-Teams Matrix</span>
+          <span>Colleges Quota Matrix</span>
           <span className="tab-count-pill">{collegesData.collegesCount || 0}</span>
         </button>
 
@@ -1007,13 +1007,13 @@ export const ReportsHub = () => {
         </div>
       )}
 
-      {/* Tab 3: Colleges 2-Teams Matrix */}
+      {/* Tab 3: Colleges Quota Matrix */}
       {activeTab === 'colleges' && (
         <div className="report-content-panel">
           {isLoadingData ? (
             <div className="report-loading-state">
               <div className="spinner"></div>
-              <span>Fetching College-wise 2-Teams Matrix...</span>
+              <span>Fetching College-wise Quota Matrix...</span>
             </div>
           ) : filteredColleges.length === 0 ? (
             <div className="report-empty-state">
@@ -1035,7 +1035,7 @@ export const ReportsHub = () => {
                         <div>
                           <h3 className="col-name">{col.collegeName || 'Unknown College'}</h3>
                           <span className="col-slots-tag">
-                            Slots Filled: <strong>{col.registeredTeamsCount ?? (team1 ? (team2 ? 2 : 1) : 0)} / {col.maxAllowedTeams ?? 2}</strong>
+                            Slots Filled: <strong>{col.registeredTeamsCount ?? (team1 ? 1 : 0)} / {col.maxAllowedTeams ?? 1}</strong>
                           </span>
                         </div>
                       </div>

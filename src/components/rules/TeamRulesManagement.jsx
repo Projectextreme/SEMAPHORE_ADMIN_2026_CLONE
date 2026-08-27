@@ -32,7 +32,7 @@ import { apiService } from '../../services/apiService';
 import './TeamRulesManagement.css';
 
 const DEFAULT_SEMAPHORE_RULES = [
-  "Each college can register a maximum of two teams (Team 1 and Team 2).",
+  "Each college can register a maximum of one team only.",
   "Every team must have a designated Team Leader who acts as the primary point of contact.",
   "A participant cannot be a member of multiple teams or represent more than one college.",
   "All team members must carry their official college ID cards and registration pass throughout the fest.",

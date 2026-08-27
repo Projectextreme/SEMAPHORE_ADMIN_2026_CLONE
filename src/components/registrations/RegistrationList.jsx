@@ -240,7 +240,7 @@ export const RegistrationList = () => {
             <FileSpreadsheet className="title-icon" /> Event Registrations & Payment Approvals
           </h2>
           <p className="page-description">
-            Audit enrolled teams, edit participant details, verify UPI payments, inspect proof screenshots, and enforce 2-team college quotas.
+            Audit enrolled teams, edit participant details, verify UPI payments, inspect proof screenshots, and enforce 1-team per college quota.
           </p>
         </div>
 
@@ -309,8 +309,8 @@ export const RegistrationList = () => {
       <div className="college-rule-alert">
         <AlertTriangle size={18} className="alert-rule-icon" />
         <div className="rule-text">
-          <strong>Semaphore 2026 Quota Rule:</strong> Maximum 2 teams per institution permitted.
-          Colleges with 2 registered teams are tagged with <span className="quota-tag-inline">2/2 Quota Reached</span>.
+          <strong>Semaphore 2026 Quota Rule:</strong> Maximum 1 team per institution permitted.
+          Colleges with 1 registered team are tagged with <span className="quota-tag-inline">1/1 Quota Full</span>.
         </div>
       </div>
 

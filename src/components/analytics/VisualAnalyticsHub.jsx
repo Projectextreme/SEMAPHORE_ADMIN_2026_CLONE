@@ -163,16 +163,16 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       collegeCounts[name] = {
         name,
         teams: Number(c.totalTeams) || 0,
-        maxQuota: 2
+        maxQuota: 1
       };
     });
 
     effectiveTeams.forEach(t => {
       const cName = t.collegeName || t.user?.collegeName || 'General College';
       if (!collegeCounts[cName]) {
-        collegeCounts[cName] = { name: cName, teams: 0, maxQuota: 2 };
+        collegeCounts[cName] = { name: cName, teams: 0, maxQuota: 1 };
       }
-      collegeCounts[cName].teams = Math.min(2, Math.max(collegeCounts[cName].teams, (collegeCounts[cName].teams || 0) + 1));
+      collegeCounts[cName].teams = Math.min(1, Math.max(collegeCounts[cName].teams, (collegeCounts[cName].teams || 0) + 1));
     });
 
     const collegeBarData = Object.values(collegeCounts).slice(0, 6);
@@ -406,7 +406,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
               <h3 className="kpi-value text-indigo">
                 <CountUp value={metrics.collegeBarData.length} suffix=" Institutions" />
               </h3>
-              <span className="kpi-subtext">2 Teams / College Quota Cap</span>
+              <span className="kpi-subtext">1 Team / College Quota Cap</span>
             </div>
           </div>
         </TiltCard>
@@ -712,7 +712,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
           </div>
         </TiltCard>
 
-        {/* Chart 4: College Quota Utilization (Max 2 Teams Cap) */}
+        {/* Chart 4: College Quota Utilization (Max 1 Team Cap) */}
         <TiltCard maxTilt={3} glareOpacity={0.08} className="chart-card-tilt flex-1">
           <div className="card chart-card">
             <div className="chart-card-header">
@@ -720,7 +720,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
                 <Building2 size={18} className="text-indigo" />
                 <div>
                   <h4 className="chart-title">College Quota Status</h4>
-                  <p className="chart-subtitle">Max 2 Teams / Institution</p>
+                  <p className="chart-subtitle">Max 1 Team / Institution</p>
                 </div>
               </div>
               <button 
@@ -733,7 +733,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
 
             <div className="college-quota-list">
               {metrics.collegeBarData.map((col, idx) => {
-                const isFull = col.teams >= 2;
+                const isFull = col.teams >= 1;
                 return (
                   <div key={idx} className="college-quota-row">
                     <div className="college-name-group">
@@ -746,10 +746,9 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
                     </div>
 
                     <div className="quota-pill-meter">
-                      <div className={`quota-slot ${col.teams >= 1 ? 'slot-filled' : ''}`}>1</div>
-                      <div className={`quota-slot ${col.teams >= 2 ? 'slot-filled slot-full' : ''}`}>2</div>
+                      <div className={`quota-slot ${col.teams >= 1 ? 'slot-filled slot-full' : ''}`}>1</div>
                       <span className={`quota-status-tag ${isFull ? 'tag-full' : 'tag-available'}`}>
-                        {isFull ? 'Quota Full' : `${col.teams}/2 Quota`}
+                        {isFull ? 'Quota Full (1/1)' : '0/1 Enrolled'}
                       </span>
                     </div>
                   </div>
