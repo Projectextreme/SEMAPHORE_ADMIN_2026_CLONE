@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/apiService';
+import { useAuth } from '../../context/AuthContext';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
 import {
@@ -29,6 +30,7 @@ import './VisualAnalyticsHub.css';
 
 export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
   const navigate = useNavigate();
+  const { admin: authAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframe, setTimeframe] = useState('all');
@@ -41,16 +43,20 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
   const [rawRegs, setRawRegs] = useState([]);
   const [rawPayments, setRawPayments] = useState([]);
   const [rawColleges, setRawColleges] = useState([]);
+  const [rawCoordinators, setRawCoordinators] = useState([]);
+  const [rawAdmins, setRawAdmins] = useState([]);
 
   const loadAllAnalyticsData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const [usersData, eventsData, regsData, paymentsData, collegesData] = await Promise.all([
+      const [usersData, eventsData, regsData, paymentsData, collegesData, coordsData, adminsData] = await Promise.all([
         apiService.getAllUsers().catch(() => []),
         apiService.getAllEvents().catch(() => []),
         apiService.getRegistrations().catch(() => []),
         apiService.getRecentPayments().catch(() => ({ payments: [] })),
-        apiService.getColleges().catch(() => [])
+        apiService.getColleges().catch(() => []),
+        apiService.getCoordinators().catch(() => []),
+        apiService.getAllAdmins().catch(() => [])
       ]);
 
       const usersList = Array.isArray(usersData) ? usersData : (usersData?.users || []);
@@ -58,12 +64,16 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       const regsList = Array.isArray(regsData) ? regsData : (regsData?.registrations || []);
       const paymentsList = paymentsData?.payments || (Array.isArray(paymentsData) ? paymentsData : []);
       const collegesList = Array.isArray(collegesData) ? collegesData : (collegesData?.colleges || []);
+      const coordsList = Array.isArray(coordsData) ? coordsData : (coordsData?.coordinators || []);
+      const adminsList = Array.isArray(adminsData) ? adminsData : (adminsData?.admins || []);
 
       setRawUsers(usersList);
       setRawEvents(eventsList);
       setRawRegs(regsList);
       setRawPayments(paymentsList);
       setRawColleges(collegesList);
+      setRawCoordinators(coordsList);
+      setRawAdmins(adminsList);
     } catch (err) {
       console.warn('Analytics data loading fallback:', err);
     } finally {
@@ -177,22 +187,62 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
 
     const collegeBarData = Object.values(collegeCounts).slice(0, 6);
 
-    // User Roles Breakdown
-    const roles = {
-      participants: 0,
-      coordinators: 0,
-      admins: 0
-    };
-    rawUsers.forEach(u => {
-      const r = (u.role || 'user').toLowerCase();
-      if (r.includes('admin')) roles.admins += 1;
-      else if (r.includes('coord')) roles.coordinators += 1;
-      else roles.participants += 1;
+    // Coordinators & Admins identification and resolution
+    const coordIds = new Set(rawCoordinators.map(c => String(c._id || c.id || '')).filter(Boolean));
+    const coordEmails = new Set(rawCoordinators.map(c => (c.email || '').toLowerCase().trim()).filter(Boolean));
+    const coordNames = new Set(rawCoordinators.map(c => (c.name || '').toLowerCase().trim()).filter(Boolean));
+
+    // Also collect event-assigned coordinator identifiers
+    rawEvents.forEach(evt => {
+      const coords = Array.isArray(evt.coordinators) ? evt.coordinators : [];
+      coords.forEach(c => {
+        if (typeof c === 'string' && c.trim()) {
+          coordIds.add(c.trim());
+          coordNames.add(c.trim().toLowerCase());
+        } else if (typeof c === 'object' && c !== null) {
+          if (c._id || c.id) coordIds.add(String(c._id || c.id));
+          if (c.email) coordEmails.add(c.email.toLowerCase().trim());
+          if (c.name) coordNames.add(c.name.toLowerCase().trim());
+        }
+      });
     });
 
-    if (roles.participants === 0 && rawUsers.length > 0 && roles.admins === 0 && roles.coordinators === 0) {
-      roles.participants = rawUsers.length;
-    }
+    const isCoordUser = (u) => {
+      if (!u) return false;
+      const r = (u.role || '').toLowerCase();
+      if (r === 'coordinator' || r.includes('coord')) return true;
+      const uid = String(u._id || u.id || '');
+      const uemail = (u.email || '').toLowerCase().trim();
+      const uname = (u.name || '').toLowerCase().trim();
+      return (uid && coordIds.has(uid)) || (uemail && coordEmails.has(uemail)) || (uname && coordNames.has(uname));
+    };
+
+    const adminIds = new Set(rawAdmins.map(a => String(a._id || a.id || '')).filter(Boolean));
+    const adminEmails = new Set(rawAdmins.map(a => (a.email || '').toLowerCase().trim()).filter(Boolean));
+    if (authAdmin?.email) adminEmails.add(authAdmin.email.toLowerCase().trim());
+    if (authAdmin?._id || authAdmin?.id) adminIds.add(String(authAdmin._id || authAdmin.id));
+
+    const isAdminUser = (u) => {
+      if (!u) return false;
+      const r = (u.role || '').toLowerCase();
+      if (r.includes('admin') || r.includes('superadmin')) return true;
+      const uid = String(u._id || u.id || '');
+      const uemail = (u.email || '').toLowerCase().trim();
+      return (uid && adminIds.has(uid)) || (uemail && adminEmails.has(uemail));
+    };
+
+    const matchedAdminsInUsers = rawUsers.filter(isAdminUser).length;
+    const matchedCoordsInUsers = rawUsers.filter(u => isCoordUser(u) && !isAdminUser(u)).length;
+
+    const adminsCount = Math.max(matchedAdminsInUsers, rawAdmins.length, authAdmin ? 1 : 0);
+    const coordinatorsCount = Math.max(matchedCoordsInUsers, rawCoordinators.length, coordIds.size > 0 ? coordIds.size : 0);
+    const participantsCount = Math.max(0, rawUsers.length - matchedCoordsInUsers - matchedAdminsInUsers);
+
+    const roles = {
+      participants: participantsCount,
+      coordinators: coordinatorsCount,
+      admins: adminsCount
+    };
 
     // Area Trend Data (7-step progression curve)
     const totalCount = effectiveTeams.length;
@@ -225,7 +275,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       roles,
       trendPoints
     };
-  }, [rawUsers, rawEvents, rawRegs, rawPayments, rawColleges, resolveItemAmount]);
+  }, [rawUsers, rawEvents, rawRegs, rawPayments, rawColleges, rawCoordinators, rawAdmins, authAdmin, resolveItemAmount]);
 
   // Donut Angles Computation
   const donutData = useMemo(() => {
@@ -762,31 +812,52 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       {/* Bottom Insights Bar: Role Distribution & System Health */}
       <div className="analytics-bottom-strip">
         <div className="card role-insights-card">
-          <div className="role-insights-header">
-            <div className="flex items-center gap-2">
-              <Users size={16} className="text-cyan" />
-              <h5 className="font-bold text-heading">User Directory Role Breakdown</h5>
+          <div className="role-insights-info">
+            <div className="role-insights-icon-box">
+              <Users size={19} className="text-cyan" />
             </div>
-            <span className="text-dim text-xs">Active Directory Accounts</span>
+            <div className="role-insights-text">
+              <div className="role-insights-title-row">
+                <h5 className="role-insights-title">User Directory Role Breakdown</h5>
+                <span className="role-count-tag">
+                  {metrics.totalUsers} Active Accounts
+                </span>
+              </div>
+              <p className="role-insights-subtitle">
+                Live role distribution across participants, assigned coordinators & platform administrators
+              </p>
+            </div>
           </div>
 
           <div className="role-pills-row">
-            <div className="role-pill-metric">
+            <div 
+              className="role-pill-metric pill-participants" 
+              onClick={() => navigate('/users')}
+              title="Click to view all registered participants"
+            >
               <span className="role-dot dot-cyan"></span>
               <span className="role-lbl">Participants:</span>
-              <strong className="text-heading"><CountUp value={metrics.roles.participants} /></strong>
+              <strong className="role-val val-cyan"><CountUp value={metrics.roles.participants} /></strong>
             </div>
 
-            <div className="role-pill-metric">
-              <span className="role-dot dot-indigo"></span>
+            <div 
+              className="role-pill-metric pill-coordinators" 
+              onClick={() => navigate('/coordinators')}
+              title="Click to manage event coordinators"
+            >
+              <span className="role-dot dot-amber"></span>
               <span className="role-lbl">Coordinators:</span>
-              <strong className="text-heading"><CountUp value={metrics.roles.coordinators} /></strong>
+              <strong className="role-val val-amber"><CountUp value={metrics.roles.coordinators} /></strong>
             </div>
 
-            <div className="role-pill-metric">
-              <span className="role-dot dot-emerald"></span>
+            <div 
+              className="role-pill-metric pill-admins" 
+              onClick={() => navigate('/admins')}
+              title="Click to inspect platform administrators"
+            >
+              <span className="role-dot dot-purple"></span>
               <span className="role-lbl">Admins:</span>
-              <strong className="text-heading"><CountUp value={metrics.roles.admins} /></strong>
+              <strong className="role-val val-purple"><CountUp value={metrics.roles.admins} /></strong>
             </div>
           </div>
         </div>
