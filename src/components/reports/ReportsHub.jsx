@@ -204,30 +204,6 @@ export const ReportsHub = () => {
     }));
   };
 
-  // Expandable Registered Events State
-  const [expandedEvents, setExpandedEvents] = useState({});
-
-  const toggleEventsExpand = (id) => {
-    setExpandedEvents(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
-
-  const areAllEventsExpanded = filteredTeams?.length > 0 && filteredTeams.every((team, idx) => !!expandedEvents[team.teamId || idx]);
-
-  const toggleAllEvents = () => {
-    if (areAllEventsExpanded) {
-      setExpandedEvents({});
-    } else {
-      const next = {};
-      filteredTeams.forEach((team, idx) => {
-        next[team.teamId || idx] = true;
-      });
-      setExpandedEvents(next);
-    }
-  };
-
   // Filtered Teams List
   const filteredTeams = (teamsData.teams || []).filter((team) => {
     const q = searchQuery.toLowerCase().trim();
@@ -258,6 +234,30 @@ export const ReportsHub = () => {
       (college.team2?.teamId || '').toLowerCase().includes(q)
     );
   });
+
+  // Expandable Registered Events State
+  const [expandedEvents, setExpandedEvents] = useState({});
+
+  const toggleEventsExpand = (id) => {
+    setExpandedEvents(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const areAllEventsExpanded = filteredTeams?.length > 0 && filteredTeams.every((team, idx) => !!expandedEvents[team.teamId || idx]);
+
+  const toggleAllEvents = () => {
+    if (areAllEventsExpanded) {
+      setExpandedEvents({});
+    } else {
+      const next = {};
+      filteredTeams.forEach((team, idx) => {
+        next[team.teamId || idx] = true;
+      });
+      setExpandedEvents(next);
+    }
+  };
 
   return (
     <div className="reports-hub-page">
