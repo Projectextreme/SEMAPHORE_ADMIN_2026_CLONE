@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { TiltCard } from '../common/TiltCard';
+import { Modal } from '../common/Modal';
 import './SlotManagement.css';
 
 const initialSlotFormState = {
@@ -414,15 +415,14 @@ export const SlotManagement = () => {
 
       {/* Add Slot Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Plus size={19} /> Schedule Competition Slot</h3>
-              <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">Allocate time window and venue for fest rounds</p>
+        <Modal isOpen={showModal} onClose={() => setShowModal(false)} maxWidth="580px">
+          <div className="modal-header">
+            <h3><Plus size={19} /> Schedule Competition Slot</h3>
+            <button className="modal-close" onClick={() => setShowModal(false)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">Allocate time window and venue for fest rounds</p>
 
-            <form onSubmit={handleAddSubmit} className="modal-form">
+          <form onSubmit={handleAddSubmit} className="modal-form">
               <div className="form-group">
                 <label className="form-label">Competition Event</label>
                 <input
@@ -595,21 +595,19 @@ export const SlotManagement = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Edit Slot Modal */}
       {editingSlot && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit Schedule Slot</h3>
-              <button className="modal-close" onClick={() => setEditingSlot(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">Modify competition timing, round details, or venue</p>
+        <Modal isOpen={!!editingSlot} onClose={() => setEditingSlot(null)} maxWidth="580px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit Schedule Slot</h3>
+            <button className="modal-close" onClick={() => setEditingSlot(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">Modify competition timing, round details, or venue</p>
 
-            <form onSubmit={handleEditSubmit} className="modal-form">
+          <form onSubmit={handleEditSubmit} className="modal-form">
               <div className="form-group">
                 <label className="form-label">Competition Event</label>
                 <input
@@ -782,8 +780,7 @@ export const SlotManagement = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

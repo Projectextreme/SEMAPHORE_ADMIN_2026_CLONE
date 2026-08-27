@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
+import { Modal } from '../common/Modal';
 import './UserManagement.css';
 
 export const UserManagement = () => {
@@ -466,161 +467,155 @@ export const UserManagement = () => {
 
       {/* View User Modal (GET /api/admin/users/:id) */}
       {selectedUserView && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Eye size={19} /> User Profile Inspection</h3>
-              <button className="modal-close" onClick={() => setSelectedUserView(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>GET /api/admin/users/{selectedUserView._id}</code>
-            </p>
+        <Modal isOpen={!!selectedUserView} onClose={() => setSelectedUserView(null)} maxWidth="540px">
+          <div className="modal-header">
+            <h3><Eye size={19} /> User Profile Inspection</h3>
+            <button className="modal-close" onClick={() => setSelectedUserView(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>GET /api/admin/users/{selectedUserView._id}</code>
+          </p>
 
-            <div className="user-detail-card">
-              <div className="detail-row">
-                <span className="detail-label">User ID</span>
-                <span className="code-font">{selectedUserView._id}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Full Name</span>
-                <span className="font-bold">{selectedUserView.name}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Email Address</span>
-                <span>{selectedUserView.email}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Assigned Role</span>
-                <span className={`role-badge ${isUserCoordinator(selectedUserView) ? 'badge-coord' : 'badge-user'}`}>
-                  {isUserCoordinator(selectedUserView) ? 'coordinator' : (selectedUserView.role || 'user')}
-                </span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">College Name</span>
-                <span>{selectedUserView.collegeName || selectedUserView.college?.collegeName || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Registered Teams</span>
-                <span className="teams-count-badge">{Math.min(1, selectedUserView.college?.totalTeams ?? (selectedUserView.team ? 1 : 0))} Team</span>
-              </div>
-              <div className="detail-row">
-                <span className="detail-label">Created At</span>
-                <span className="date-text">{new Date(selectedUserView.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
-              </div>
+          <div className="user-detail-card">
+            <div className="detail-row">
+              <span className="detail-label">User ID</span>
+              <span className="code-font">{selectedUserView._id}</span>
             </div>
-
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setSelectedUserView(null)}>
-                Close
-              </button>
+            <div className="detail-row">
+              <span className="detail-label">Full Name</span>
+              <span className="font-bold">{selectedUserView.name}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Email Address</span>
+              <span className="detail-val">{selectedUserView.email}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Assigned Role</span>
+              <span className={`role-badge ${isUserCoordinator(selectedUserView) ? 'badge-coord' : 'badge-user'}`}>
+                {isUserCoordinator(selectedUserView) ? 'coordinator' : (selectedUserView.role || 'user')}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">College Name</span>
+              <span className="detail-val">{selectedUserView.collegeName || selectedUserView.college?.collegeName || 'N/A'}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Registered Teams</span>
+              <span className="teams-count-badge">{Math.min(1, selectedUserView.college?.totalTeams ?? (selectedUserView.team ? 1 : 0))} Team</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Created At</span>
+              <span className="date-text">{new Date(selectedUserView.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
             </div>
           </div>
-        </div>
+
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setSelectedUserView(null)}>
+              Close
+            </button>
+          </div>
+        </Modal>
       )}
 
       {/* Edit User Modal (PUT /api/admin/users/:id) */}
       {editUserData && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit User Details</h3>
-              <button className="modal-close" onClick={() => setEditUserData(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>PUT /api/admin/users/{editUserData._id}</code>
-            </p>
-
-            <form onSubmit={handleSaveEdit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editUserData.name}
-                  onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  value={editUserData.email}
-                  onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">College Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editUserData.collegeName}
-                  onChange={(e) => setEditUserData({ ...editUserData, collegeName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Role</label>
-                <select
-                  className="form-select"
-                  value={editUserData.role}
-                  onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
-                >
-                  <option value="user">user (Participant)</option>
-                  <option value="coordinator">coordinator (Event Organizer)</option>
-                </select>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditUserData(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving...' : 'Save User Changes'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editUserData} onClose={() => setEditUserData(null)} maxWidth="540px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit User Details</h3>
+            <button className="modal-close" onClick={() => setEditUserData(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>PUT /api/admin/users/{editUserData._id}</code>
+          </p>
+
+          <form onSubmit={handleSaveEdit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editUserData.name}
+                onChange={(e) => setEditUserData({ ...editUserData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                className="form-input"
+                value={editUserData.email}
+                onChange={(e) => setEditUserData({ ...editUserData, email: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">College Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editUserData.collegeName}
+                onChange={(e) => setEditUserData({ ...editUserData, collegeName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Role</label>
+              <select
+                className="form-select"
+                value={editUserData.role}
+                onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
+              >
+                <option value="user">user (Participant)</option>
+                <option value="coordinator">coordinator (Event Organizer)</option>
+              </select>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditUserData(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving...' : 'Save User Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Delete User Dialog (DELETE /api/admin/users/:id) */}
       {deleteUserObj && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm User Deletion</h3>
-              <button className="modal-close" onClick={() => setDeleteUserObj(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>DELETE /api/admin/users/{deleteUserObj._id}</code>
-            </p>
-
-            <div className="delete-target-info" style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>{deleteUserObj.name}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{deleteUserObj.email} • {deleteUserObj.collegeName || deleteUserObj.college?.collegeName || 'N/A'}</div>
-              <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>ID: {deleteUserObj._id}</div>
-            </div>
-
-            <p className="delete-warning-text">
-              Are you sure you want to permanently delete this user account? This user will no longer be able to log in or register teams.
-            </p>
-
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setDeleteUserObj(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-danger" onClick={handleConfirmDelete} disabled={actionLoading}>
-                {actionLoading ? 'Deleting User...' : 'Confirm Delete'}
-              </button>
-            </div>
+        <Modal isOpen={!!deleteUserObj} onClose={() => setDeleteUserObj(null)} maxWidth="480px" isDanger>
+          <div className="modal-header">
+            <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm User Deletion</h3>
+            <button className="modal-close" onClick={() => setDeleteUserObj(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>DELETE /api/admin/users/{deleteUserObj._id}</code>
+          </p>
+
+          <div className="delete-target-info" style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>{deleteUserObj.name}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>{deleteUserObj.email} • {deleteUserObj.collegeName || deleteUserObj.college?.collegeName || 'N/A'}</div>
+            <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>ID: {deleteUserObj._id}</div>
+          </div>
+
+          <p className="delete-warning-text">
+            Are you sure you want to permanently delete this user account? This user will no longer be able to log in or register teams.
+          </p>
+
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setDeleteUserObj(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-danger" onClick={handleConfirmDelete} disabled={actionLoading}>
+              {actionLoading ? 'Deleting User...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

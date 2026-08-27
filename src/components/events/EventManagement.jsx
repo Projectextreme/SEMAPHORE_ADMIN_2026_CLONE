@@ -27,6 +27,7 @@ import {
 
 import { apiService } from '../../services/apiService';
 import { TiltCard } from '../common/TiltCard';
+import { Modal } from '../common/Modal';
 import './EventManagement.css';
 
 const initialEventState = {
@@ -539,374 +540,368 @@ export const EventManagement = () => {
 
       {/* Add Event Modal */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '650px' }}>
-            <div className="modal-header">
-              <h3><Plus size={19} /> Create New Event</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
+        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="650px">
+          <div className="modal-header">
+            <h3><Plus size={19} /> Create New Event</h3>
+            <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">Configure festival event schedule, capacity, and rules</p>
+
+          <form onSubmit={handleCreateEvent} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Event Title *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Code Sprint 2026"
+                value={newEvent.title}
+                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                required
+              />
             </div>
-            <p className="modal-subtitle">Configure festival event schedule, capacity, and rules</p>
 
-            <form onSubmit={handleCreateEvent} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Description *</label>
+              <textarea
+                className="form-input"
+                rows="3"
+                placeholder="Enter event description and rules..."
+                value={newEvent.description}
+                onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Event Title *</label>
+                <label className="form-label">Category</label>
                 <input
                   type="text"
+                  list="create-category-list"
                   className="form-input"
-                  placeholder="e.g. Code Sprint 2026"
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  required
+                  placeholder="e.g. Coding, Robotics, Gaming..."
+                  value={newEvent.category}
+                  onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Description *</label>
-                <textarea
-                  className="form-input"
-                  rows="3"
-                  placeholder="Enter event description and rules..."
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <input
-                    type="text"
-                    list="create-category-list"
-                    className="form-input"
-                    placeholder="e.g. Coding, Robotics, Gaming..."
-                    value={newEvent.category}
-                    onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
-                  />
-                  <datalist id="create-category-list">
-                    {availableCategories.map((cat) => (
-                      <option key={cat} value={cat} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Registration Fee (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-input"
-                    placeholder="e.g. 200 (or 0 for Free)"
-                    value={newEvent.registrationFee}
-                    onChange={(e) => setNewEvent({ ...newEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Event Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Capacity (Max Registrations)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="e.g. 50"
-                    value={newEvent.capacity}
-                    onChange={(e) => setNewEvent({ ...newEvent, capacity: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Min Participants / Team</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="e.g. 1"
-                    value={newEvent.minParticipants}
-                    onChange={(e) => setNewEvent({ ...newEvent, minParticipants: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Max Participants / Team</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="e.g. 4"
-                    value={newEvent.maxParticipants}
-                    onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Venue Location *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. Main Auditorium, Lab 2"
-                  value={newEvent.location}
-                  onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value, venue: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Banner Image URL (Optional)</label>
-                <input
-                  type="url"
-                  className="form-input"
-                  placeholder="https://example.com/images/banner.jpg"
-                  value={newEvent.image}
-                  onChange={(e) => setNewEvent({ ...newEvent, image: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Coordinators (Optional)</label>
-                <input
-                  type="text"
-                  list="create-coordinators-list"
-                  className="form-input"
-                  placeholder="Search user name or email..."
-                  value={newEvent.coordinators}
-                  onChange={(e) => setNewEvent({ ...newEvent, coordinators: e.target.value })}
-                />
-                <datalist id="create-coordinators-list">
-                  {availableUsers.map((u) => (
-                    <option key={u._id || u.id} value={u.name || u.email}>
-                      {u.name} ({u.email || u.role || 'User'})
-                    </option>
+                <datalist id="create-category-list">
+                  {availableCategories.map((cat) => (
+                    <option key={cat} value={cat} />
                   ))}
                 </datalist>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
-                  Assign registered platform users or admins as coordinators
-                </span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Initial Status</label>
-                <select
-                  className="form-select"
-                  value={newEvent.status}
-                  onChange={(e) => setNewEvent({ ...newEvent, status: e.target.value })}
-                >
-                  <option value="Active">Active (Open for registrations)</option>
-                  <option value="Draft">Draft (Hidden)</option>
-                </select>
+                <label className="form-label">Registration Fee (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  placeholder="e.g. 200 (or 0 for Free)"
+                  value={newEvent.registrationFee}
+                  onChange={(e) => setNewEvent({ ...newEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Event Date</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={newEvent.date}
+                  onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                />
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving...' : 'Create Event'}
-                </button>
+              <div className="form-group">
+                <label className="form-label">Capacity (Max Registrations)</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  placeholder="e.g. 50"
+                  value={newEvent.capacity}
+                  onChange={(e) => setNewEvent({ ...newEvent, capacity: e.target.value })}
+                />
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Min Participants / Team</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  placeholder="e.g. 1"
+                  value={newEvent.minParticipants}
+                  onChange={(e) => setNewEvent({ ...newEvent, minParticipants: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Max Participants / Team</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  placeholder="e.g. 4"
+                  value={newEvent.maxParticipants}
+                  onChange={(e) => setNewEvent({ ...newEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Venue Location *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Main Auditorium, Lab 2"
+                value={newEvent.location}
+                onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value, venue: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Banner Image URL (Optional)</label>
+              <input
+                type="url"
+                className="form-input"
+                placeholder="https://example.com/images/banner.jpg"
+                value={newEvent.image}
+                onChange={(e) => setNewEvent({ ...newEvent, image: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Coordinators (Optional)</label>
+              <input
+                type="text"
+                list="create-coordinators-list"
+                className="form-input"
+                placeholder="Search user name or email..."
+                value={newEvent.coordinators}
+                onChange={(e) => setNewEvent({ ...newEvent, coordinators: e.target.value })}
+              />
+              <datalist id="create-coordinators-list">
+                {availableUsers.map((u) => (
+                  <option key={u._id || u.id} value={u.name || u.email}>
+                    {u.name} ({u.email || u.role || 'User'})
+                  </option>
+                ))}
+              </datalist>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
+                Assign registered platform users or admins as coordinators
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Initial Status</label>
+              <select
+                className="form-select"
+                value={newEvent.status}
+                onChange={(e) => setNewEvent({ ...newEvent, status: e.target.value })}
+              >
+                <option value="Active">Active (Open for registrations)</option>
+                <option value="Draft">Draft (Hidden)</option>
+              </select>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Saving...' : 'Create Event'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Edit Event Modal */}
       {editingEvent && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '650px' }}>
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Modify Event Details</h3>
-              <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
+        <Modal isOpen={!!editingEvent} onClose={() => setEditingEvent(null)} maxWidth="650px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Modify Event Details</h3>
+            <button className="modal-close" onClick={() => setEditingEvent(null)}>&times;</button>
+          </div>
+          <p className="modal-subtitle">Update parameters for {editingEvent.title}</p>
+
+          <form onSubmit={handleUpdateEvent} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Event Title *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingEvent.title}
+                onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+                required
+              />
             </div>
-            <p className="modal-subtitle">Update parameters for {editingEvent.title}</p>
 
-            <form onSubmit={handleUpdateEvent} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">Description *</label>
+              <textarea
+                className="form-input"
+                rows="3"
+                value={editingEvent.description || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+              />
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Event Title *</label>
+                <label className="form-label">Category</label>
                 <input
                   type="text"
+                  list="edit-category-list"
                   className="form-input"
-                  value={editingEvent.title}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
-                  required
+                  placeholder="e.g. Coding, Robotics, Gaming..."
+                  value={editingEvent.category || ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, category: e.target.value })}
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Description *</label>
-                <textarea
-                  className="form-input"
-                  rows="3"
-                  value={editingEvent.description || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <input
-                    type="text"
-                    list="edit-category-list"
-                    className="form-input"
-                    placeholder="e.g. Coding, Robotics, Gaming..."
-                    value={editingEvent.category || ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, category: e.target.value })}
-                  />
-                  <datalist id="edit-category-list">
-                    {availableCategories.map((cat) => (
-                      <option key={cat} value={cat} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Registration Fee (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-input"
-                    value={editingEvent.registrationFee !== undefined && editingEvent.registrationFee !== null ? editingEvent.registrationFee : (typeof editingEvent.fee === 'string' ? editingEvent.fee.replace(/[^\d]/g, '') : (editingEvent.fee ?? ''))}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Capacity</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="e.g. 50"
-                    value={editingEvent.capacity ?? ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, capacity: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Max Participants</label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="e.g. 4"
-                    value={editingEvent.maxParticipants ?? editingEvent.maxTeamMembers ?? ''}
-                    onChange={(e) => setEditingEvent({ ...editingEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Venue Location *</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingEvent.location || editingEvent.venue || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value, venue: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Banner Image URL</label>
-                <input
-                  type="url"
-                  className="form-input"
-                  value={editingEvent.image || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, image: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Coordinators (Optional)</label>
-                <input
-                  type="text"
-                  list="edit-coordinators-list"
-                  className="form-input"
-                  placeholder="Search user name or email..."
-                  value={editingEvent.coordinators || ''}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, coordinators: e.target.value })}
-                />
-                <datalist id="edit-coordinators-list">
-                  {availableUsers.map((u) => (
-                    <option key={u._id || u.id} value={u.name || u.email}>
-                      {u.name} ({u.email || u.role || 'User'})
-                    </option>
+                <datalist id="edit-category-list">
+                  {availableCategories.map((cat) => (
+                    <option key={cat} value={cat} />
                   ))}
                 </datalist>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
-                  Assign registered platform users or admins as coordinators
-                </span>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Status</label>
-                <select
-                  className="form-select"
-                  value={editingEvent.status || 'Active'}
-                  onChange={(e) => setEditingEvent({ ...editingEvent, status: e.target.value })}
-                >
-                  <option value="Active">Active</option>
-                  <option value="Draft">Draft</option>
-                </select>
+                <label className="form-label">Registration Fee (₹)</label>
+                <input
+                  type="number"
+                  min="0"
+                  className="form-input"
+                  value={editingEvent.registrationFee !== undefined && editingEvent.registrationFee !== null ? editingEvent.registrationFee : (typeof editingEvent.fee === 'string' ? editingEvent.fee.replace(/[^\d]/g, '') : (editingEvent.fee ?? ''))}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, registrationFee: e.target.value, fee: e.target.value !== '' ? `₹ ${e.target.value}` : '' })}
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Capacity</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  placeholder="e.g. 50"
+                  value={editingEvent.capacity ?? ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, capacity: e.target.value })}
+                />
               </div>
 
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingEvent(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Saving Changes...' : 'Save Changes'}
-                </button>
+              <div className="form-group">
+                <label className="form-label">Max Participants</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="form-input"
+                  placeholder="e.g. 4"
+                  value={editingEvent.maxParticipants ?? editingEvent.maxTeamMembers ?? ''}
+                  onChange={(e) => setEditingEvent({ ...editingEvent, maxParticipants: e.target.value, maxTeamMembers: e.target.value })}
+                />
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Venue Location *</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingEvent.location || editingEvent.venue || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value, venue: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Banner Image URL</label>
+              <input
+                type="url"
+                className="form-input"
+                value={editingEvent.image || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, image: e.target.value })}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Coordinators (Optional)</label>
+              <input
+                type="text"
+                list="edit-coordinators-list"
+                className="form-input"
+                placeholder="Search user name or email..."
+                value={editingEvent.coordinators || ''}
+                onChange={(e) => setEditingEvent({ ...editingEvent, coordinators: e.target.value })}
+              />
+              <datalist id="edit-coordinators-list">
+                {availableUsers.map((u) => (
+                  <option key={u._id || u.id} value={u.name || u.email}>
+                    {u.name} ({u.email || u.role || 'User'})
+                  </option>
+                ))}
+              </datalist>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
+                Assign registered platform users or admins as coordinators
+              </span>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select
+                className="form-select"
+                value={editingEvent.status || 'Active'}
+                onChange={(e) => setEditingEvent({ ...editingEvent, status: e.target.value })}
+              >
+                <option value="Active">Active</option>
+                <option value="Draft">Draft</option>
+              </select>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingEvent(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'Saving Changes...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Delete Event Confirmation Modal */}
       {deletingEvent && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Delete Event</h3>
-              <button className="modal-close" onClick={() => setDeletingEvent(null)}>&times;</button>
-            </div>
-
-            <p className="delete-warning-text">
-              Are you sure you want to remove event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id || deletingEvent._id})? This will unassign any scheduled slots.
-            </p>
-
-            <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setDeletingEvent(null)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                disabled={submitting}
-                onClick={() => handleDeleteEvent(deletingEvent._id || deletingEvent.id)}
-              >
-                {submitting ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
+        <Modal isOpen={!!deletingEvent} onClose={() => setDeletingEvent(null)} maxWidth="480px" isDanger>
+          <div className="modal-header">
+            <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm Delete Event</h3>
+            <button className="modal-close" onClick={() => setDeletingEvent(null)}>&times;</button>
           </div>
-        </div>
+
+          <p className="delete-warning-text">
+            Are you sure you want to remove event <strong>"{deletingEvent.title}"</strong> ({deletingEvent.id || deletingEvent._id})? This will unassign any scheduled slots.
+          </p>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setDeletingEvent(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={submitting}
+              onClick={() => handleDeleteEvent(deletingEvent._id || deletingEvent.id)}
+            >
+              {submitting ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

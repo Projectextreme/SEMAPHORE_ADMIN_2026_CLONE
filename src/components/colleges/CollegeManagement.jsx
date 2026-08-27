@@ -23,6 +23,7 @@ import {
 import { apiService } from '../../services/apiService';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
+import { Modal } from '../common/Modal';
 import './CollegeManagement.css';
 
 export const CollegeManagement = () => {
@@ -480,141 +481,135 @@ export const CollegeManagement = () => {
 
       {/* Add College Modal (POST /api/colleges) */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Building2 size={19} /> Add New Participating College</h3>
-              <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>POST /api/colleges</code>
-            </p>
-
-            <form onSubmit={handleAddSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">College / Institution Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. BMS College of Engineering"
-                  value={newCollege.collegeName}
-                  onChange={(e) => setNewCollege({ ...newCollege, collegeName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Initial Enrolled Teams</label>
-                <select
-                  className="form-select"
-                  value={newCollege.totalTeams}
-                  onChange={(e) => setNewCollege({ ...newCollege, totalTeams: Number(e.target.value) })}
-                >
-                  <option value={0}>0 Teams (Freshly Enrolled)</option>
-                  <option value={1}>1 Team (Quota Full)</option>
-                </select>
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
-                  Maximum allowed: 1 team per college (enforced by Semaphore rules).
-                </small>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Adding...' : 'Add College'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} maxWidth="540px">
+          <div className="modal-header">
+            <h3><Building2 size={19} /> Add New Participating College</h3>
+            <button className="modal-close" onClick={() => setShowAddModal(false)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>POST /api/colleges</code>
+          </p>
+
+          <form onSubmit={handleAddSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">College / Institution Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. BMS College of Engineering"
+                value={newCollege.collegeName}
+                onChange={(e) => setNewCollege({ ...newCollege, collegeName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Initial Enrolled Teams</label>
+              <select
+                className="form-select"
+                value={newCollege.totalTeams}
+                onChange={(e) => setNewCollege({ ...newCollege, totalTeams: Number(e.target.value) })}
+              >
+                <option value={0}>0 Teams (Freshly Enrolled)</option>
+                <option value={1}>1 Team (Quota Full)</option>
+              </select>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
+                Maximum allowed: 1 team per college (enforced by Semaphore rules).
+              </small>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Adding...' : 'Add College'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Edit College Modal (PUT /api/colleges/:id) */}
       {editingCollege && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3><Edit2 size={19} /> Edit College Details</h3>
-              <button className="modal-close" onClick={() => setEditingCollege(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>PUT /api/colleges/{editingCollege._id || editingCollege.id}</code>
-            </p>
-
-            <form onSubmit={handleEditSubmit} className="modal-form">
-              <div className="form-group">
-                <label className="form-label">College Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={editingCollege.collegeName}
-                  onChange={(e) => setEditingCollege({ ...editingCollege, collegeName: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Enrolled Teams Count</label>
-                <select
-                  className="form-select"
-                  value={editingCollege.totalTeams || 0}
-                  onChange={(e) => setEditingCollege({ ...editingCollege, totalTeams: Number(e.target.value) })}
-                >
-                  <option value={0}>0 Teams</option>
-                  <option value={1}>1 Team (Quota Full)</option>
-                </select>
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
-                  Maximum allowed: 1 team per college (enforced by Semaphore rules).
-                </small>
-              </div>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setEditingCollege(null)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
-                  {actionLoading ? 'Saving Changes...' : 'Save College'}
-                </button>
-              </div>
-            </form>
+        <Modal isOpen={!!editingCollege} onClose={() => setEditingCollege(null)} maxWidth="540px">
+          <div className="modal-header">
+            <h3><Edit2 size={19} /> Edit College Details</h3>
+            <button className="modal-close" onClick={() => setEditingCollege(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>PUT /api/colleges/{editingCollege._id || editingCollege.id}</code>
+          </p>
+
+          <form onSubmit={handleEditSubmit} className="modal-form">
+            <div className="form-group">
+              <label className="form-label">College Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={editingCollege.collegeName}
+                onChange={(e) => setEditingCollege({ ...editingCollege, collegeName: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Enrolled Teams Count</label>
+              <select
+                className="form-select"
+                value={editingCollege.totalTeams || 0}
+                onChange={(e) => setEditingCollege({ ...editingCollege, totalTeams: Number(e.target.value) })}
+              >
+                <option value={0}>0 Teams</option>
+                <option value={1}>1 Team (Quota Full)</option>
+              </select>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
+                Maximum allowed: 1 team per college (enforced by Semaphore rules).
+              </small>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setEditingCollege(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                {actionLoading ? 'Saving Changes...' : 'Save College'}
+              </button>
+            </div>
+          </form>
+        </Modal>
       )}
 
       {/* Delete College Modal (DELETE /api/colleges/:id) */}
       {deletingCollege && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm College Deletion</h3>
-              <button className="modal-close" onClick={() => setDeletingCollege(null)}>&times;</button>
-            </div>
-            <p className="modal-subtitle">
-              Endpoint: <code>DELETE /api/colleges/{deletingCollege._id || deletingCollege.id}</code>
-            </p>
-
-            <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>{deletingCollege.collegeName}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Enrolled Teams: {deletingCollege.totalTeams || 0} / 2</div>
-              <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>ID: {deletingCollege._id || deletingCollege.id}</div>
-            </div>
-
-            <p className="delete-warning-text">
-              Are you sure you want to permanently delete this college entry? Teams registered under this college will be affected.
-            </p>
-
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setDeletingCollege(null)}>
-                Cancel
-              </button>
-              <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
-                {actionLoading ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
+        <Modal isOpen={!!deletingCollege} onClose={() => setDeletingCollege(null)} maxWidth="480px" isDanger>
+          <div className="modal-header">
+            <h3 style={{ color: 'var(--danger)' }}><Trash2 size={19} /> Confirm College Deletion</h3>
+            <button className="modal-close" onClick={() => setDeletingCollege(null)}>&times;</button>
           </div>
-        </div>
+          <p className="modal-subtitle">
+            Endpoint: <code>DELETE /api/colleges/{deletingCollege._id || deletingCollege.id}</code>
+          </p>
+
+          <div style={{ background: 'var(--badge-bg)', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '0.85rem 1rem', margin: '1rem 0' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-heading)' }}>{deletingCollege.collegeName}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>Enrolled Teams: {deletingCollege.totalTeams || 0} / 2</div>
+            <div className="code-font" style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.35rem' }}>ID: {deletingCollege._id || deletingCollege.id}</div>
+          </div>
+
+          <p className="delete-warning-text">
+            Are you sure you want to permanently delete this college entry? Teams registered under this college will be affected.
+          </p>
+
+          <div className="modal-actions">
+            <button className="btn btn-secondary" onClick={() => setDeletingCollege(null)}>
+              Cancel
+            </button>
+            <button className="btn btn-danger" onClick={handleDeleteConfirm} disabled={actionLoading}>
+              {actionLoading ? 'Deleting...' : 'Confirm Delete'}
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

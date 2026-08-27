@@ -29,6 +29,7 @@ import {
   ListOrdered
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
+import { Modal } from '../common/Modal';
 import './TeamRulesManagement.css';
 
 const DEFAULT_SEMAPHORE_RULES = [
@@ -795,119 +796,115 @@ export const TeamRulesManagement = () => {
 
       {/* Bulk Import Modal */}
       {showBulkModal && (
-        <div className="modal-overlay" onClick={() => setShowBulkModal(false)}>
-          <div className="modal-content bulk-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-row">
-                <ClipboardList size={20} className="modal-icon" />
-                <h3>Bulk Import Pointwise Rules</h3>
-              </div>
-              <button className="modal-close" onClick={() => setShowBulkModal(false)}>
-                <X size={18} />
-              </button>
+        <Modal isOpen={showBulkModal} onClose={() => setShowBulkModal(false)} maxWidth="580px" className="bulk-modal">
+          <div className="modal-header">
+            <div className="modal-title-row">
+              <ClipboardList size={20} className="modal-icon" />
+              <h3>Bulk Import Pointwise Rules</h3>
             </div>
+            <button className="modal-close" onClick={() => setShowBulkModal(false)}>
+              <X size={18} />
+            </button>
+          </div>
 
+          <div className="modal-body">
+            <p className="modal-helper-text">
+              Paste your pointwise rules below (one rule per line). Numbering (e.g. 1., 2.), dashes, or bullets will be automatically cleaned!
+            </p>
+            <textarea
+              className="form-input form-textarea bulk-textarea"
+              rows={8}
+              placeholder="1. Each team must consist of max 2 members.&#10;2. Participants must carry ID cards.&#10;3. Reporting time is 9:00 AM."
+              value={bulkText}
+              onChange={e => setBulkText(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className="modal-footer">
+            <button 
+              type="button" 
+              className="btn btn-secondary" 
+              onClick={() => setShowBulkModal(false)}
+            >
+              Cancel
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-primary" 
+              onClick={handleBulkImport}
+              disabled={!bulkText.trim()}
+            >
+              <Plus size={16} /> Import Rules
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Create New Rule Set Modal */}
+      {showCreateModal && (
+        <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} maxWidth="540px" className="set-modal">
+          <div className="modal-header">
+            <div className="modal-title-row">
+              <Plus size={20} className="modal-icon" />
+              <h3>Create New Rule Set Category</h3>
+            </div>
+            <button className="modal-close" onClick={() => setShowCreateModal(false)}>
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreateNewSet}>
             <div className="modal-body">
-              <p className="modal-helper-text">
-                Paste your pointwise rules below (one rule per line). Numbering (e.g. 1., 2.), dashes, or bullets will be automatically cleaned!
-              </p>
-              <textarea
-                className="form-input form-textarea bulk-textarea"
-                rows={8}
-                placeholder="1. Each team must consist of max 2 members.&#10;2. Participants must carry ID cards.&#10;3. Reporting time is 9:00 AM."
-                value={bulkText}
-                onChange={e => setBulkText(e.target.value)}
-                autoFocus
-              />
+              <div className="form-group">
+                <label className="form-label" htmlFor="set-title">Rule Set Title</label>
+                <input
+                  id="set-title"
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Semaphore 2026 - Coding Event Rules"
+                  value={newSetTitle}
+                  onChange={e => setNewSetTitle(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="set-category">Category</label>
+                <select
+                  id="set-category"
+                  className="form-select"
+                  value={newSetCategory}
+                  onChange={e => setNewSetCategory(e.target.value)}
+                >
+                  <option value="technical">Technical</option>
+                  <option value="cultural">Cultural</option>
+                  <option value="gaming">Gaming</option>
+                  <option value="management">Management</option>
+                  <option value="general">General</option>
+                </select>
+              </div>
             </div>
 
             <div className="modal-footer">
               <button 
                 type="button" 
                 className="btn btn-secondary" 
-                onClick={() => setShowBulkModal(false)}
+                onClick={() => setShowCreateModal(false)}
               >
                 Cancel
               </button>
               <button 
-                type="button" 
+                type="submit" 
                 className="btn btn-primary" 
-                onClick={handleBulkImport}
-                disabled={!bulkText.trim()}
+                disabled={saving || !newSetTitle.trim()}
               >
-                <Plus size={16} /> Import Rules
+                <Plus size={16} /> Create Set
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create New Rule Set Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal-content set-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div className="modal-title-row">
-                <Plus size={20} className="modal-icon" />
-                <h3>Create New Rule Set Category</h3>
-              </div>
-              <button className="modal-close" onClick={() => setShowCreateModal(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateNewSet}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="set-title">Rule Set Title</label>
-                  <input
-                    id="set-title"
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Semaphore 2026 - Coding Event Rules"
-                    value={newSetTitle}
-                    onChange={e => setNewSetTitle(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" htmlFor="set-category">Category</label>
-                  <select
-                    id="set-category"
-                    className="form-select"
-                    value={newSetCategory}
-                    onChange={e => setNewSetCategory(e.target.value)}
-                  >
-                    <option value="technical">Technical</option>
-                    <option value="cultural">Cultural</option>
-                    <option value="gaming">Gaming</option>
-                    <option value="management">Management</option>
-                    <option value="general">General</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn btn-secondary" 
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn btn-primary" 
-                  disabled={saving || !newSetTitle.trim()}
-                >
-                  <Plus size={16} /> Create Set
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+          </form>
+        </Modal>
       )}
 
     </div>
