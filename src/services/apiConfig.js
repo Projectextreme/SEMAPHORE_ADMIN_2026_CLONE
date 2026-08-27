@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://13.201.89.79';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.semaphore2k26.in';
 
 
 export const getAuthToken = () => {
@@ -15,7 +15,8 @@ export const getAuthHeader = () => {
 };
 
 /**
- * Resolves absolute or relative image URLs to load correctly from the backend or CDNs.
+ * Securely resolves image URLs to load correctly from the backend or CDNs.
+ * Sanitizes input to prevent XSS, javascript: URI execution, and protocol-relative bypasses.
  */
 export const resolveImageUrl = (url) => {
   if (!url || typeof url !== 'string') return null;
@@ -23,6 +24,18 @@ export const resolveImageUrl = (url) => {
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined' || trimmed === 'N/A' || trimmed === 'none') {
     return null;
   }
+
+  // Strictly reject dangerous executable schemes (XSS prevention)
+  if (/^(javascript|vbscript|data(?!:image\/))/i.test(trimmed)) {
+    return null;
+  }
+
+  // Reject protocol-relative URLs (//attacker.com)
+  if (trimmed.startsWith('//')) {
+    return null;
+  }
+
+  // Allow verified safe absolute URLs and data/blob image sources
   if (
     trimmed.startsWith('http://') || 
     trimmed.startsWith('https://') || 
@@ -31,9 +44,11 @@ export const resolveImageUrl = (url) => {
   ) {
     return trimmed;
   }
+
+  // Sanitize relative path (prevent directory traversal tricks)
+  const sanitizedPath = trimmed.replace(/\.\./g, '').replace(/^\/+/, '');
   const baseUrl = API_BASE_URL.replace(/\/+$/, '');
-  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-  return `${baseUrl}${cleanPath}`;
+  return `${baseUrl}/${sanitizedPath}`;
 };
 
 

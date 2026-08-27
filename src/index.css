@@ -963,6 +963,13 @@ code, pre, .code-font {
   color: var(--cyan);
 }
 
+.badge-coord,
+.badge-coordinator {
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  color: var(--warning);
+}
+
 /* Common Table Styling */
 .table-responsive {
   width: 100%;

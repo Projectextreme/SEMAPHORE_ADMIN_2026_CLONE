@@ -147,6 +147,16 @@ export const RegistrationList = () => {
   };
 
   // Export CSV Report with UTF-8 BOM for Microsoft Excel compatibility
+  const sanitizeCsvCell = (val) => {
+    if (val === null || val === undefined) return '';
+    let str = String(val);
+    // Neutralize CSV Formula Injection characters (=, +, -, @, \t, \r, %)
+    if (/^[=+\-@\t\r%]/.test(str)) {
+      str = `'${str}`;
+    }
+    return str.replace(/"/g, '""');
+  };
+
   const handleExportCSV = () => {
     const headers = 'Reg ID,Team Name,College Name,Leader Name,Email,Phone,Event,Members,Payment Status,UTR,Amount (INR),Date';
     const rows = filteredRegistrations.map((r) => {
@@ -168,7 +178,7 @@ export const RegistrationList = () => {
         }
       }
 
-      return `"${r.id || r._id}","${(r.teamName || '').replace(/"/g, '""')}","${(r.collegeName || '').replace(/"/g, '""')}","${(r.leaderName || '').replace(/"/g, '""')}","${(r.email || '').replace(/"/g, '""')}","${(r.phone || '').replace(/"/g, '""')}","${(r.event || r.eventName || '').replace(/"/g, '""')}",${r.membersCount || 1},"${r.paymentStatus || 'Pending'}","${(r.utr || '').replace(/"/g, '""')}",${cleanAmount},"${cleanDate}"`;
+      return `"${sanitizeCsvCell(r.id || r._id)}","${sanitizeCsvCell(r.teamName)}","${sanitizeCsvCell(r.collegeName)}","${sanitizeCsvCell(r.leaderName)}","${sanitizeCsvCell(r.email)}","${sanitizeCsvCell(r.phone)}","${sanitizeCsvCell(r.event || r.eventName)}",${Number(r.membersCount) || 1},"${sanitizeCsvCell(r.paymentStatus || 'Pending')}","${sanitizeCsvCell(r.utr)}",${cleanAmount},"${cleanDate}"`;
     });
 
     // Prefix with UTF-8 BOM (\uFEFF) so Excel parses all special characters correctly
@@ -850,7 +860,7 @@ export const RegistrationList = () => {
                       <a 
                         href={inspectingReg.proofUrl || inspectingReg.imageUrl} 
                         target="_blank" 
-                        rel="noreferrer" 
+                        rel="noopener noreferrer" 
                         className="link-external"
                       >
                         Open Full Image ↗

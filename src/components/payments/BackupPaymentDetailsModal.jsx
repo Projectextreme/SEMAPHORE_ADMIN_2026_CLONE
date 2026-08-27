@@ -370,7 +370,7 @@ export const BackupPaymentDetailsModal = ({
                       >
                         <Eye size={13} /> Inspect Receipt
                       </button>
-                      <a href={proofImg} target="_blank" rel="noreferrer" className="btn btn-sm btn-outline">
+                      <a href={proofImg} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline">
                         Open Original <ArrowUpRight size={13} />
                       </a>
                     </div>
@@ -510,7 +510,7 @@ export const BackupPaymentDetailsModal = ({
             <img src={previewImage.url} alt="Backed-up Receipt Proof" className="preview-image-full" />
           </div>
           <div className="modal-actions">
-            <a href={previewImage.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary">
+            <a href={previewImage.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
               Open Original Image <ArrowUpRight size={13} />
             </a>
             <button type="button" className="btn btn-sm btn-primary" onClick={() => setPreviewImage(null)}>

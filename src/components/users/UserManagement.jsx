@@ -28,6 +28,7 @@ export const UserManagement = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
   const [users, setUsers] = useState([]);
+  const [coordinators, setCoordinators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
@@ -38,12 +39,16 @@ export const UserManagement = () => {
   const [deleteUserObj, setDeleteUserObj] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // 6. Retrieve All Users (GET /api/admin/users)
+  // 6. Retrieve All Users & Coordinators (GET /api/admin/users & GET /api/coordinators)
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await apiService.getAllUsers();
-      setUsers(res);
+      const [resUsers, resCoords] = await Promise.all([
+        apiService.getAllUsers().catch(() => []),
+        apiService.getCoordinators().catch(() => [])
+      ]);
+      setUsers(Array.isArray(resUsers) ? resUsers : []);
+      setCoordinators(Array.isArray(resCoords) ? resCoords : []);
     } catch (err) {
       showError(err.message || 'Failed to fetch users list');
     } finally {
@@ -109,20 +114,40 @@ export const UserManagement = () => {
     }
   };
 
+  // Coordinator Resolution
+  const coordinatorIds = new Set(coordinators.map((c) => String(c._id || c.id || '')).filter(Boolean));
+  const coordinatorEmails = new Set(coordinators.map((c) => (c.email || '').toLowerCase().trim()).filter(Boolean));
+
+  const isUserCoordinator = (u) => {
+    if (!u) return false;
+    const r = (u.role || '').toLowerCase();
+    if (r === 'coordinator' || r.includes('coord')) return true;
+    const uid = String(u._id || u.id || '');
+    const uemail = (u.email || '').toLowerCase().trim();
+    return (uid && coordinatorIds.has(uid)) || (uemail && coordinatorEmails.has(uemail));
+  };
+
   const filteredUsers = users.filter((u) => {
     const term = searchTerm.toLowerCase();
     const matchesSearch =
       u.name?.toLowerCase().includes(term) ||
       u.email?.toLowerCase().includes(term) ||
-      u.collegeName?.toLowerCase().includes(term) ||
+      (u.collegeName || u.college?.collegeName)?.toLowerCase().includes(term) ||
       u._id?.toLowerCase().includes(term);
-    const matchesRole = selectedRoleFilter === 'All' || u.role === selectedRoleFilter;
+
+    const isCoord = isUserCoordinator(u);
+    const matchesRole =
+      selectedRoleFilter === 'All' ||
+      (selectedRoleFilter === 'coordinator' && isCoord) ||
+      (selectedRoleFilter === 'user' && !isCoord);
+
     return matchesSearch && matchesRole;
   });
 
-  const participantsCount = users.filter((u) => u.role === 'user' || !u.role).length;
-  const coordinatorsCount = users.filter((u) => u.role === 'coordinator').length;
-  const uniqueCollegesCount = new Set(users.map((u) => u.collegeName).filter(Boolean)).size;
+  const matchedCoordsInUsers = users.filter(isUserCoordinator).length;
+  const coordinatorsCount = Math.max(matchedCoordsInUsers, coordinators.length);
+  const participantsCount = Math.max(0, users.length - matchedCoordsInUsers);
+  const uniqueCollegesCount = new Set(users.map((u) => u.collegeName || u.college?.collegeName).filter(Boolean)).size;
 
   return (
     <div className="user-mgmt-container">
@@ -140,6 +165,13 @@ export const UserManagement = () => {
         <div className="header-button-group">
           <button onClick={fetchUsers} className="btn btn-secondary" title="Refresh List">
             <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
+          </button>
+          <button
+            onClick={() => navigate('/coordinators')}
+            className="btn btn-secondary"
+            title="Open Event Coordinators Directory"
+          >
+            <UserCheck size={15} className="text-warning" /> Manage Coordinators ({coordinatorsCount})
           </button>
         </div>
       </div>
@@ -164,8 +196,8 @@ export const UserManagement = () => {
           </div>
         </TiltCard>
 
-        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt">
-          <div className="user-kpi-card">
+        <TiltCard maxTilt={5} glareOpacity={0.12} className="user-kpi-tilt" onClick={() => navigate('/coordinators')}>
+          <div className="user-kpi-card" style={{ cursor: 'pointer' }} title="Click to view all Event Coordinators">
             <span className="user-kpi-label">Event Coordinators</span>
             <span className="user-kpi-val text-warning">
               <CountUp value={coordinatorsCount} />
@@ -307,12 +339,12 @@ export const UserManagement = () => {
                       </td>
                       <td>
                         <span className="teams-count-badge">
-                          {user.college?.totalTeams ?? (user.team ? 1 : 0)} Team(s)
+                          {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
                         </span>
                       </td>
                       <td>
-                        <span className="role-badge badge-user">
-                          <UserCheck size={11} /> {user.role || 'user'}
+                        <span className={`role-badge ${isUserCoordinator(user) ? 'badge-coord' : 'badge-user'}`}>
+                          <UserCheck size={11} /> {isUserCoordinator(user) ? 'coordinator' : (user.role || 'user')}
                         </span>
                       </td>
                       <td>
@@ -361,8 +393,8 @@ export const UserManagement = () => {
                         <span className="user-cell-email">{user.email}</span>
                       </div>
                     </div>
-                    <span className="role-badge badge-user">
-                      <UserCheck size={11} /> {user.role || 'user'}
+                    <span className={`role-badge ${isUserCoordinator(user) ? 'badge-coord' : 'badge-user'}`}>
+                      <UserCheck size={11} /> {isUserCoordinator(user) ? 'coordinator' : (user.role || 'user')}
                     </span>
                   </div>
 
@@ -396,7 +428,7 @@ export const UserManagement = () => {
                     <div className="mobile-card-row">
                       <span className="mobile-card-label">Teams Enrolled:</span>
                       <span className="teams-count-badge">
-                        {user.college?.totalTeams ?? (user.team ? 1 : 0)} Team(s)
+                        {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
                       </span>
                     </div>
                   </div>
@@ -459,7 +491,9 @@ export const UserManagement = () => {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Assigned Role</span>
-                <span className="role-badge badge-user">{selectedUserView.role || 'user'}</span>
+                <span className={`role-badge ${isUserCoordinator(selectedUserView) ? 'badge-coord' : 'badge-user'}`}>
+                  {isUserCoordinator(selectedUserView) ? 'coordinator' : (selectedUserView.role || 'user')}
+                </span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">College Name</span>
@@ -467,7 +501,7 @@ export const UserManagement = () => {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Registered Teams</span>
-                <span className="teams-count-badge">{selectedUserView.college?.totalTeams ?? (selectedUserView.team ? 1 : 0)} team(s)</span>
+                <span className="teams-count-badge">{Math.min(1, selectedUserView.college?.totalTeams ?? (selectedUserView.team ? 1 : 0))} Team</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Created At</span>

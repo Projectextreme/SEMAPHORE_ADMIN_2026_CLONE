@@ -424,7 +424,7 @@ export const BackupPaymentsVault = () => {
             <img src={previewImage.url} alt="Payment Receipt Large" className="preview-image-full" />
           </div>
           <div className="modal-actions">
-            <a href={previewImage.url} target="_blank" rel="noreferrer" className="btn btn-sm btn-secondary">
+            <a href={previewImage.url} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-secondary">
               Open Original Image <ArrowUpRight size={13} />
             </a>
             <button type="button" className="btn btn-sm btn-primary" onClick={() => setPreviewImage(null)}>

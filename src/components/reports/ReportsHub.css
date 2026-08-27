@@ -526,6 +526,42 @@
   padding-right: 2rem;
 }
 
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.2rem;
+  gap: 0.2rem;
+}
+
+.btn-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-view-toggle:hover {
+  color: var(--text-main);
+}
+
+.btn-view-toggle.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
 .btn-tab-export {
   display: inline-flex;
   align-items: center;
@@ -578,6 +614,338 @@
 .empty-icon {
   color: var(--text-dim);
   opacity: 0.6;
+}
+
+/* ==========================================================================
+   Teams Report - Responsive Cards Grid
+   ========================================================================== */
+.teams-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.team-report-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.team-report-card:hover {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08), 0 0 22px rgba(99, 102, 241, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Card Header */
+.team-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-surface);
+}
+
+.team-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.team-card-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.team-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.team-card-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Card Body */
+.team-card-body {
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  flex: 1;
+}
+
+.team-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.84rem;
+}
+
+.team-info-row.leader-info-row {
+  align-items: flex-start;
+}
+
+.team-info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+  min-width: 90px;
+}
+
+.team-info-val {
+  color: var(--text-main);
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+.college-val {
+  font-weight: 600;
+  color: var(--text-heading);
+  background: var(--badge-bg);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leader-info-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.leader-name-text {
+  font-size: 0.88rem;
+  color: var(--text-heading);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.leader-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.contact-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.45rem;
+  border-radius: 5px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contact-chip:hover {
+  color: var(--primary);
+  border-color: var(--primary-border);
+  background: var(--primary-light);
+}
+
+/* Registered Events */
+.team-events-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.team-events-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.team-events-pill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.event-pill-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  color: var(--text-main);
+  font-weight: 500;
+  max-width: 100%;
+}
+
+.event-pill-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.fee-tag-card {
+  color: var(--success);
+  font-weight: 800;
+  font-size: 0.72rem;
+  background: var(--success-bg);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid var(--success-border);
+}
+
+/* Financial Strip */
+.team-card-financial-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.utr-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.utr-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.total-amount-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.1rem;
+}
+
+.amount-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.amount-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--success);
+  letter-spacing: -0.01em;
+}
+
+/* Card Footer & Roster Button */
+.team-card-footer {
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-card);
+}
+
+.btn-card-toggle-roster {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.9rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-card-toggle-roster:hover {
+  background: var(--nav-hover-bg);
+  border-color: var(--border-strong);
+  color: var(--text-heading);
+}
+
+.btn-card-toggle-roster.active {
+  background: var(--primary-light);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.toggle-btn-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Card Accordion Roster */
+.card-accordion-roster {
+  border-top: none;
+  animation: fadeIn 0.22s ease-out;
+  padding: 1rem 1.25rem;
+  background: var(--bg-surface);
 }
 
 .teams-table-container {
@@ -745,6 +1113,18 @@
   background: var(--warning-bg);
   color: var(--warning);
   border: 1px solid var(--warning-border);
+}
+
+.status-unpaid {
+  background: rgba(249, 115, 22, 0.12);
+  color: #ea580c;
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+.status-rejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .utr-copy-tag {
@@ -1606,6 +1986,21 @@
     grid-template-columns: 1fr;
   }
 
+  .teams-cards-grid {
+    grid-template-columns: 1fr;
+    gap: 0.85rem;
+  }
+
+  .view-mode-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn-view-toggle {
+    flex: 1;
+    justify-content: center;
+  }
+
   .summary-tab-grid {
     grid-template-columns: 1fr;
   }
@@ -1631,5 +2026,43 @@
 
   .chip-btn {
     width: 100%;
+  }
+
+  .team-card-header,
+  .team-card-body,
+  .team-card-financial-strip,
+  .team-card-footer,
+  .card-accordion-roster {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  .team-card-avatar {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    font-size: 0.95rem;
+  }
+
+  .team-card-name {
+    font-size: 0.96rem;
+    max-width: 140px;
+  }
+
+  .leader-contact-links {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .contact-chip {
+    max-width: 100%;
+  }
+
+  .event-pill-card {
+    max-width: 100%;
+  }
+
+  .event-pill-title {
+    max-width: 140px;
   }
 }

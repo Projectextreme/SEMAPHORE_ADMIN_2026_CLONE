@@ -27,7 +27,11 @@ import {
   Sparkles,
   TrendingUp,
   Tag,
-  AlertCircle
+  AlertCircle,
+  LayoutGrid,
+  List,
+  User,
+  XCircle
 } from 'lucide-react';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
@@ -38,6 +42,9 @@ export const ReportsHub = () => {
 
   // Active Tab: 'teams' | 'events' | 'colleges' | 'summary'
   const [activeTab, setActiveTab] = useState('teams');
+
+  // View Mode for Teams Report: 'cards' | 'table' (Defaults to 'cards')
+  const [teamViewMode, setTeamViewMode] = useState('cards');
 
   // Loading & refreshing states
   const [isLoadingSummary, setIsLoadingSummary] = useState(true);
@@ -461,18 +468,43 @@ export const ReportsHub = () => {
             </div>
 
             {activeTab === 'teams' && (
-              <div className="filter-select-wrapper">
-                <Filter size={14} className="filter-icon" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="filter-dropdown"
-                >
-                  <option value="all">All Payment Statuses</option>
-                  <option value="approved">Approved Only</option>
-                  <option value="pending">Pending Only</option>
-                </select>
-              </div>
+              <>
+                <div className="filter-select-wrapper">
+                  <Filter size={14} className="filter-icon" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="filter-dropdown"
+                  >
+                    <option value="all">All Payment Statuses</option>
+                    <option value="approved">Approved Only</option>
+                    <option value="pending">Pending Only</option>
+                  </select>
+                </div>
+
+                <div className="view-mode-toggle">
+                  <button
+                    type="button"
+                    className={`btn-view-toggle ${teamViewMode === 'cards' ? 'active' : ''}`}
+                    onClick={() => setTeamViewMode('cards')}
+                    title="Cards Grid View"
+                    aria-label="Cards Grid View"
+                  >
+                    <LayoutGrid size={14} />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`btn-view-toggle ${teamViewMode === 'table' ? 'active' : ''}`}
+                    onClick={() => setTeamViewMode('table')}
+                    title="Table View"
+                    aria-label="Table View"
+                  >
+                    <List size={14} />
+                    <span>Table</span>
+                  </button>
+                </div>
+              </>
             )}
 
             {activeTab === 'events' && (
@@ -554,277 +586,375 @@ export const ReportsHub = () => {
             </div>
           ) : (
             <>
-              {/* Desktop Table View */}
-              <div className="teams-table-container desktop-only">
-                <table className="reports-data-table">
-                  <thead>
-                    <tr>
-                      <th>TEAM INFO</th>
-                      <th>COLLEGE</th>
-                      <th>LEADER CONTACT</th>
-                      <th>MEMBERS</th>
-                      <th>EVENTS & FEES</th>
-                      <th>PAYMENT & UTR</th>
-                      <th>TOTAL PAID</th>
-                      <th>DETAILS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredTeams.map((team, idx) => {
-                      const isExpanded = !!expandedItems[team.teamId || idx];
-                      const isApproved = (team.paymentStatus || '').toLowerCase().includes('app');
-                      const rawMembers = Array.isArray(team.members) ? team.members : [];
-                      const allMembers = rawMembers.length > 0
-                        ? rawMembers
-                        : (team.leader?.name ? [{ name: team.leader.name, email: team.leader.email, phone: team.leader.phone, role: 'Team Leader' }] : []);
+              {/* 1. Primary Responsive Cards Grid View */}
+              {teamViewMode === 'cards' ? (
+                <div className="teams-cards-grid">
+                  {filteredTeams.map((team, idx) => {
+                    const isExpanded = !!expandedItems[team.teamId || idx];
+                    const rawStatus = (team.paymentStatus || '').toLowerCase();
+                    const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
+                    const isUnpaid = rawStatus === 'unpaid';
+                    const isRejected = rawStatus === 'rejected';
+                    const rawMembers = Array.isArray(team.members) ? team.members : [];
+                    const allMembers = rawMembers.length > 0
+                      ? rawMembers
+                      : (team.leader?.name ? [{ name: team.leader.name, email: team.leader.email, phone: team.leader.phone, role: 'Team Leader' }] : []);
 
-                      return (
-                        <Fragment key={team.teamId || idx}>
-                          <tr className={isExpanded ? 'row-expanded' : ''}>
-                            <td>
-                              <div className="team-cell-info">
-                                <span className="team-name-primary">{team.teamName || 'Unnamed Team'}</span>
-                                <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
-                                  <span>{team.teamId || 'N/A'}</span>
-                                  {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
-                                </div>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="college-cell">
-                                <Building2 size={13} className="cell-sub-icon" />
-                                <span>{team.collegeName || 'Unknown College'}</span>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="leader-cell">
-                                <span className="leader-name">{team.leader?.name || 'Leader N/A'}</span>
-                                {team.leader?.email && (
-                                  <span className="leader-contact">
-                                    <Mail size={11} /> {team.leader.email}
-                                  </span>
-                                )}
-                                {team.leader?.phone && (
-                                  <span className="leader-contact">
-                                    <Phone size={11} /> {team.leader.phone}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            <td>
-                              <span className="members-count-badge">
-                                <Users size={12} /> {team.membersCount || (allMembers.length || 1)} Members
-                              </span>
-                            </td>
-
-                            <td>
-                              <div className="events-cell-list">
-                                {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
-                                  team.registeredEvents.map((ev, evIdx) => (
-                                    <span key={evIdx} className="event-pill">
-                                      {typeof ev === 'object' ? ev.title : ev}
-                                      {typeof ev === 'object' && ev.registrationFee !== undefined && (
-                                        <strong className="fee-tag">₹{ev.registrationFee}</strong>
-                                      )}
-                                    </span>
-                                  ))
-                                ) : (
-                                  <span className="text-muted">No events listed</span>
-                                )}
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="payment-cell-info">
-                                <span className={`status-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
-                                  {isApproved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                                  {team.paymentStatus || 'Pending'}
-                                </span>
-                                {team.paymentUtr && (
-                                  <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
-                                    <span>UTR: {team.paymentUtr}</span>
-                                    {copiedText === team.paymentUtr ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="amount-cell">
-                                <span className="amount-val">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</span>
-                              </div>
-                            </td>
-
-                            <td>
-                              <button
-                                className="btn-toggle-expand"
-                                onClick={() => toggleExpand(team.teamId || idx)}
-                                title="Toggle Full Member Roster"
+                    return (
+                      <div key={`card_${team.teamId || idx}`} className="team-report-card">
+                        {/* Card Top: Identity & Status */}
+                        <div className="team-card-header">
+                          <div className="team-card-identity">
+                            <div className="team-card-avatar">
+                              {(team.teamName || 'T').charAt(0).toUpperCase()}
+                            </div>
+                            <div className="team-card-title-group">
+                              <h3 className="team-card-name" title={team.teamName || 'Unnamed Team'}>
+                                {team.teamName || 'Unnamed Team'}
+                              </h3>
+                              <div
+                                className="team-id-badge"
+                                onClick={() => handleCopy(team.teamId, 'Team ID')}
+                                title="Click to copy Team ID"
                               >
-                                {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                              </button>
-                            </td>
-                          </tr>
-
-                          {/* Inline Expanded Member Details Row */}
-                          {isExpanded && (
-                            <tr className="expanded-roster-row">
-                              <td colSpan={8} style={{ padding: '0.25rem 0', background: 'var(--bg-surface)' }}>
-                                <div className="team-expanded-roster-box">
-                                  <div className="roster-header">
-                                    <Users size={15} className="text-indigo" />
-                                    <strong>Member Roster for {team.teamName} ({team.collegeName || 'Unknown College'})</strong>
-                                    <span className="roster-id-tag">Team ID: {team.teamId || 'N/A'}</span>
-                                  </div>
-
-                                  <div className="roster-members-grid">
-                                    {allMembers.length > 0 ? (
-                                      allMembers.map((m, mIdx) => (
-                                        <div key={mIdx} className="member-card">
-                                          <div className="member-avatar">
-                                            {m.name ? m.name.charAt(0).toUpperCase() : (m.studentName ? m.studentName.charAt(0).toUpperCase() : 'M')}
-                                          </div>
-                                          <div className="member-details">
-                                            <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                              <span className="member-name">{m.name || m.studentName || `Participant ${mIdx + 1}`}</span>
-                                              {m.role && <span className="participant-role-badge">{m.role}</span>}
-                                            </div>
-                                            {m.email && <span className="member-info"><Mail size={11} /> {m.email}</span>}
-                                            {m.phone && <span className="member-info"><Phone size={11} /> {m.phone}</span>}
-                                          </div>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <div className="no-members-msg" style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
-                                        No individual member records available for this team.
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </Fragment>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile Cards View */}
-              <div className="mobile-cards-list mobile-only">
-                {filteredTeams.map((team, idx) => {
-                  const isExpanded = !!expandedItems[team.teamId || idx];
-                  const isApproved = (team.paymentStatus || '').toLowerCase().includes('app');
-                  const members = team.members || [];
-
-                  return (
-                    <div key={`mob_${team.teamId || idx}`} className="report-mobile-card">
-                      <div className="report-mobile-card-top">
-                        <div className="report-mobile-card-title-box">
-                          <h4 className="report-mobile-team-name">{team.teamName || 'Unnamed Team'}</h4>
-                          <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
-                            <span>{team.teamId || 'N/A'}</span>
-                            {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                                <span>{team.teamId || 'N/A'}</span>
+                                {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <span className={`status-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
-                          {isApproved ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-                          {team.paymentStatus || 'Pending'}
-                        </span>
-                      </div>
 
-                      <div className="report-mobile-card-rows">
-                        <div className="report-mobile-row">
-                          <span className="report-mobile-lbl">College</span>
-                          <span className="report-mobile-val font-semibold">{team.collegeName || 'Unknown College'}</span>
-                        </div>
-
-                        <div className="report-mobile-row">
-                          <span className="report-mobile-lbl">Leader</span>
-                          <div className="report-mobile-leader">
-                            <span className="font-semibold">{team.leader?.name || 'N/A'}</span>
-                            {team.leader?.phone && <span className="text-muted text-xs"><Phone size={10} /> {team.leader.phone}</span>}
-                          </div>
-                        </div>
-
-                        <div className="report-mobile-row">
-                          <span className="report-mobile-lbl">Members</span>
-                          <span className="members-count-badge">
-                            <Users size={11} /> {team.membersCount || (team.members?.length || 1)}
+                          <span className={`status-pill ${
+                            isApproved ? 'status-approved' : 
+                            isUnpaid ? 'status-unpaid' : 
+                            isRejected ? 'status-rejected' : 
+                            'status-pending'
+                          }`}>
+                            {isApproved ? <CheckCircle2 size={12} /> : 
+                             isUnpaid ? <AlertCircle size={12} /> : 
+                             isRejected ? <XCircle size={12} /> : 
+                             <Clock size={12} />}
+                            {team.paymentStatus || 'Pending'}
                           </span>
                         </div>
 
-                        <div className="report-mobile-row">
-                          <span className="report-mobile-lbl">Amount Paid</span>
-                          <strong className="text-emerald font-bold">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</strong>
+                        {/* Card Body: College, Leader, Members, Events */}
+                        <div className="team-card-body">
+                          {/* College */}
+                          <div className="team-info-row college-info-row">
+                            <span className="team-info-label">
+                              <Building2 size={13} className="text-cyan" /> College
+                            </span>
+                            <span className="team-info-val college-val" title={team.collegeName}>
+                              {team.collegeName || 'N/A'}
+                            </span>
+                          </div>
+
+                          {/* Leader */}
+                          <div className="team-info-row leader-info-row">
+                            <span className="team-info-label">
+                              <User size={13} className="text-indigo" /> Leader
+                            </span>
+                            <div className="leader-info-content">
+                              <strong className="leader-name-text">{team.leader?.name || 'Leader N/A'}</strong>
+                              <div className="leader-contact-links">
+                                {team.leader?.email && (
+                                  <a href={`mailto:${team.leader.email}`} className="contact-chip" title="Send Email">
+                                    <Mail size={10} />
+                                    <span>{team.leader.email}</span>
+                                  </a>
+                                )}
+                                {team.leader?.phone && (
+                                  <a href={`tel:${team.leader.phone}`} className="contact-chip" title="Call Leader">
+                                    <Phone size={10} />
+                                    <span>{team.leader.phone}</span>
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Members Count */}
+                          <div className="team-info-row members-count-row">
+                            <span className="team-info-label">
+                              <Users size={13} className="text-primary" /> Members
+                            </span>
+                            <span className="members-count-badge">
+                              <Users size={11} /> {team.membersCount || (allMembers.length || 1)} {allMembers.length === 1 ? 'Member' : 'Members'}
+                            </span>
+                          </div>
+
+                          {/* Registered Events */}
+                          <div className="team-events-section">
+                            <span className="team-events-label">
+                              <Tag size={12} className="text-cyan" /> Registered Events ({Array.isArray(team.registeredEvents) ? team.registeredEvents.length : 0})
+                            </span>
+                            <div className="team-events-pill-grid">
+                              {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
+                                team.registeredEvents.map((ev, evIdx) => (
+                                  <span key={evIdx} className="event-pill-card">
+                                    <span className="event-pill-title">{typeof ev === 'object' ? ev.title : ev}</span>
+                                    {typeof ev === 'object' && ev.registrationFee !== undefined && (
+                                      <strong className="fee-tag-card">₹{ev.registrationFee}</strong>
+                                    )}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-muted text-xs">No registered events</span>
+                              )}
+                            </div>
+                          </div>
                         </div>
 
-                        {team.paymentUtr && (
-                          <div className="report-mobile-row">
-                            <span className="report-mobile-lbl">UTR</span>
-                            <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
-                              <span>{team.paymentUtr}</span>
-                              <Copy size={10} />
+                        {/* Financial Strip: UTR & Amount */}
+                        <div className="team-card-financial-strip">
+                          <div className="utr-box">
+                            <span className="utr-label">UTR Reference</span>
+                            {team.paymentUtr ? (
+                              <div
+                                className="utr-copy-tag"
+                                onClick={() => handleCopy(team.paymentUtr, 'UTR')}
+                                title="Click to copy UTR"
+                              >
+                                <span>{team.paymentUtr}</span>
+                                {copiedText === team.paymentUtr ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                              </div>
+                            ) : (
+                              <span className="text-muted text-xs">N/A</span>
+                            )}
+                          </div>
+
+                          <div className="total-amount-box">
+                            <span className="amount-label">Total Paid / Fee</span>
+                            <span className="amount-value">
+                              ₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Footer: Roster Toggle Button */}
+                        <div className="team-card-footer">
+                          <button
+                            type="button"
+                            className={`btn-card-toggle-roster ${isExpanded ? 'active' : ''}`}
+                            onClick={() => toggleExpand(team.teamId || idx)}
+                          >
+                            <div className="toggle-btn-label">
+                              <Users size={13} />
+                              <span>{isExpanded ? 'Hide Member Roster' : `View Member Roster (${allMembers.length})`}</span>
+                            </div>
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
+
+                        {/* Expandable Member Roster */}
+                        {isExpanded && (
+                          <div className="team-expanded-roster-box card-accordion-roster">
+                            <div className="roster-header">
+                              <Users size={14} className="text-indigo" />
+                              <strong>Team Members ({allMembers.length})</strong>
+                            </div>
+
+                            <div className="roster-members-grid">
+                              {allMembers.length > 0 ? (
+                                allMembers.map((m, mIdx) => (
+                                  <div key={mIdx} className="member-card">
+                                    <div className="member-avatar">
+                                      {m.name ? m.name.charAt(0).toUpperCase() : (m.studentName ? m.studentName.charAt(0).toUpperCase() : 'M')}
+                                    </div>
+                                    <div className="member-details">
+                                      <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <span className="member-name">{m.name || m.studentName || `Participant ${mIdx + 1}`}</span>
+                                        {m.role && <span className="participant-role-badge">{m.role}</span>}
+                                      </div>
+                                      {m.email && <span className="member-info"><Mail size={10} /> {m.email}</span>}
+                                      {m.phone && <span className="member-info"><Phone size={10} /> {m.phone}</span>}
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="no-members-msg" style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
+                                  No individual member records available for this team.
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
-
-                        <div className="report-mobile-row-full">
-                          <span className="report-mobile-lbl">Events</span>
-                          <div className="events-cell-list" style={{ marginTop: '0.25rem' }}>
-                            {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
-                              team.registeredEvents.map((ev, evIdx) => (
-                                <span key={evIdx} className="event-pill">
-                                  {typeof ev === 'object' ? ev.title : ev}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-muted text-xs">No events</span>
-                            )}
-                          </div>
-                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* 2. Optional Table View */
+                <div className="teams-table-container">
+                  <table className="reports-data-table">
+                    <thead>
+                      <tr>
+                        <th>TEAM INFO</th>
+                        <th>COLLEGE</th>
+                        <th>LEADER CONTACT</th>
+                        <th>MEMBERS</th>
+                        <th>EVENTS & FEES</th>
+                        <th>PAYMENT & UTR</th>
+                        <th>TOTAL PAID</th>
+                        <th>DETAILS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTeams.map((team, idx) => {
+                        const isExpanded = !!expandedItems[team.teamId || idx];
+                        const rawStatus = (team.paymentStatus || '').toLowerCase();
+                        const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
+                        const isUnpaid = rawStatus === 'unpaid';
+                        const isRejected = rawStatus === 'rejected';
+                        const rawMembers = Array.isArray(team.members) ? team.members : [];
+                        const allMembers = rawMembers.length > 0
+                          ? rawMembers
+                          : (team.leader?.name ? [{ name: team.leader.name, email: team.leader.email, phone: team.leader.phone, role: 'Team Leader' }] : []);
 
-                      <div className="report-mobile-card-footer">
-                        <button 
-                          className="btn-mobile-toggle-roster"
-                          onClick={() => toggleExpand(team.teamId || idx)}
-                        >
-                          <Users size={13} />
-                          <span>{isExpanded ? 'Hide Member Roster' : `View Members (${members.length})`}</span>
-                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                      </div>
-
-                      {isExpanded && (
-                        <div className="team-expanded-roster-box" style={{ borderRadius: '8px', marginTop: '0.5rem' }}>
-                          <div className="roster-members-grid">
-                            {members.length > 0 ? (
-                              members.map((m, mIdx) => (
-                                <div key={mIdx} className="member-card">
-                                  <div className="member-avatar">
-                                    {m.name ? m.name.charAt(0).toUpperCase() : 'M'}
-                                  </div>
-                                  <div className="member-details">
-                                    <span className="member-name">{m.name || `Participant ${mIdx + 1}`}</span>
-                                    {m.phone && <span className="member-info"><Phone size={10} /> {m.phone}</span>}
+                        return (
+                          <Fragment key={team.teamId || idx}>
+                            <tr className={isExpanded ? 'row-expanded' : ''}>
+                              <td>
+                                <div className="team-cell-info">
+                                  <span className="team-name-primary">{team.teamName || 'Unnamed Team'}</span>
+                                  <div className="team-id-badge" onClick={() => handleCopy(team.teamId, 'Team ID')}>
+                                    <span>{team.teamId || 'N/A'}</span>
+                                    {copiedText === team.teamId ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
                                   </div>
                                 </div>
-                              ))
-                            ) : (
-                              <div className="no-members-msg">No individual member records available.</div>
+                              </td>
+
+                              <td>
+                                <div className="college-cell">
+                                  <Building2 size={13} className="cell-sub-icon" />
+                                  <span>{team.collegeName || 'Unknown College'}</span>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="leader-cell">
+                                  <span className="leader-name">{team.leader?.name || 'Leader N/A'}</span>
+                                  {team.leader?.email && (
+                                    <span className="leader-contact">
+                                      <Mail size={11} /> {team.leader.email}
+                                    </span>
+                                  )}
+                                  {team.leader?.phone && (
+                                    <span className="leader-contact">
+                                      <Phone size={11} /> {team.leader.phone}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td>
+                                <span className="members-count-badge">
+                                  <Users size={12} /> {team.membersCount || (allMembers.length || 1)} Members
+                                </span>
+                              </td>
+
+                              <td>
+                                <div className="events-cell-list">
+                                  {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
+                                    team.registeredEvents.map((ev, evIdx) => (
+                                      <span key={evIdx} className="event-pill">
+                                        {typeof ev === 'object' ? ev.title : ev}
+                                        {typeof ev === 'object' && ev.registrationFee !== undefined && (
+                                          <strong className="fee-tag">₹{ev.registrationFee}</strong>
+                                        )}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-muted">No events listed</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="payment-cell-info">
+                                  <span className={`status-pill ${
+                                    isApproved ? 'status-approved' : 
+                                    isUnpaid ? 'status-unpaid' : 
+                                    isRejected ? 'status-rejected' : 
+                                    'status-pending'
+                                  }`}>
+                                    {isApproved ? <CheckCircle2 size={12} /> : 
+                                     isUnpaid ? <AlertCircle size={12} /> : 
+                                     isRejected ? <XCircle size={12} /> : 
+                                     <Clock size={12} />}
+                                    {team.paymentStatus || 'Pending'}
+                                  </span>
+                                  {team.paymentUtr && (
+                                    <div className="utr-copy-tag" onClick={() => handleCopy(team.paymentUtr, 'UTR')}>
+                                      <span>UTR: {team.paymentUtr}</span>
+                                      {copiedText === team.paymentUtr ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="amount-cell">
+                                  <span className="amount-val">₹ {Number(team.totalAmountPaid ?? team.totalFee ?? 0).toLocaleString()}</span>
+                                </div>
+                              </td>
+
+                              <td>
+                                <button
+                                  className="btn-toggle-expand"
+                                  onClick={() => toggleExpand(team.teamId || idx)}
+                                  title="Toggle Full Member Roster"
+                                >
+                                  {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                              </td>
+                            </tr>
+
+                            {/* Inline Expanded Member Details Row */}
+                            {isExpanded && (
+                              <tr className="expanded-roster-row">
+                                <td colSpan={8} style={{ padding: '0.25rem 0', background: 'var(--bg-surface)' }}>
+                                  <div className="team-expanded-roster-box">
+                                    <div className="roster-header">
+                                      <Users size={15} className="text-indigo" />
+                                      <strong>Member Roster for {team.teamName} ({team.collegeName || 'Unknown College'})</strong>
+                                      <span className="roster-id-tag">Team ID: {team.teamId || 'N/A'}</span>
+                                    </div>
+
+                                    <div className="roster-members-grid">
+                                      {allMembers.length > 0 ? (
+                                        allMembers.map((m, mIdx) => (
+                                          <div key={mIdx} className="member-card">
+                                            <div className="member-avatar">
+                                              {m.name ? m.name.charAt(0).toUpperCase() : (m.studentName ? m.studentName.charAt(0).toUpperCase() : 'M')}
+                                            </div>
+                                            <div className="member-details">
+                                              <div className="member-name-row" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span className="member-name">{m.name || m.studentName || `Participant ${mIdx + 1}`}</span>
+                                                {m.role && <span className="participant-role-badge">{m.role}</span>}
+                                              </div>
+                                              {m.email && <span className="member-info"><Mail size={11} /> {m.email}</span>}
+                                              {m.phone && <span className="member-info"><Phone size={11} /> {m.phone}</span>}
+                                            </div>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="no-members-msg" style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
+                                          No individual member records available for this team.
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
                             )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
         </div>

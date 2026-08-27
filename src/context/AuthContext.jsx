@@ -35,6 +35,17 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Listen for 401 unauthorized events to gracefully clear expired sessions
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      setAuthError('Your session has expired. Please sign in again.');
+    };
+
+    window.addEventListener('semaphore:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('semaphore:unauthorized', handleUnauthorized);
+  }, []);
+
   const login = async (email, password) => {
     setAuthError(null);
     try {

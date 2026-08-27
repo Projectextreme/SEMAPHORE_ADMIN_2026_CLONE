@@ -31,9 +31,14 @@ export const LoginView = () => {
     try {
       const res = await login(email, password);
       setSuccessMsg(`Welcome back, ${res.name}! Redirecting...`);
-      const targetPath = location.state?.from?.pathname || '/dashboard';
+      
+      const rawPath = location.state?.from?.pathname || '/dashboard';
+      const safeTargetPath = (typeof rawPath === 'string' && rawPath.startsWith('/') && !rawPath.startsWith('//') && !rawPath.includes('\\') && !rawPath.includes(':')) 
+        ? rawPath 
+        : '/dashboard';
+
       setTimeout(() => {
-        navigate(targetPath, { replace: true });
+        navigate(safeTargetPath, { replace: true });
       }, 400);
     } catch (err) {
       setErrorMessage(err.message || 'Invalid email or password');

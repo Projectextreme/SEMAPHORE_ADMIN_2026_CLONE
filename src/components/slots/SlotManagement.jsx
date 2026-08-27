@@ -23,11 +23,22 @@ const initialSlotFormState = {
   eventName: '',
   round: '',
   date: '',
-  startTime: '',
-  endTime: '',
+  startTime: '10:00 AM',
+  endTime: '12:30 PM',
   venue: '',
   capacity: '',
   status: 'Scheduled'
+};
+
+// Helper to parse time string into time component and period
+const parseTime = (str, defaultPeriod = 'AM') => {
+  if (!str) return { time: '', period: defaultPeriod };
+  const s = String(str).trim();
+  const isPm = /pm/i.test(s);
+  const isAm = /am/i.test(s);
+  const period = isPm ? 'PM' : (isAm ? 'AM' : defaultPeriod);
+  const cleanTime = s.replace(/(am|pm)/gi, '').trim();
+  return { time: cleanTime, period };
 };
 
 export const SlotManagement = () => {
@@ -37,6 +48,7 @@ export const SlotManagement = () => {
   const [selectedEvent, setSelectedEvent] = useState('All');
   const [slots, setSlots] = useState([]);
   const [eventOptions, setEventOptions] = useState([]);
+  const [rawEvents, setRawEvents] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
   const [editingSlot, setEditingSlot] = useState(null);
@@ -58,28 +70,43 @@ export const SlotManagement = () => {
         apiService.getTimetable(),
         apiService.getAllEvents()
       ]);
+
+      const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.events || []);
+      setRawEvents(eventsList);
+      const titles = eventsList.map((e) => e.title || e.name).filter(Boolean);
+      setEventOptions(titles);
+
+      const eventMap = new Map();
+      eventsList.forEach(e => {
+        if (e._id) eventMap.set(String(e._id), e.title || e.name);
+        if (e.id) eventMap.set(String(e.id), e.title || e.name);
+      });
+
       if (Array.isArray(data) && data.length > 0) {
-        const mapped = data.map((item, idx) => ({
-          id: item._id || item.id || `SLOT-0${idx + 1}`,
-          _id: item._id,
-          eventName: item.event?.title || item.eventName || 'Scheduled Event',
-          round: item.round || 'Round Session',
-          date: item.date ? (item.date.includes('T') ? item.date.split('T')[0] : item.date) : '',
-          formattedDate: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '',
-          startTime: item.startTime || '',
-          endTime: item.endTime || '',
-          venue: item.location || item.venue || '',
-          capacity: item.capacity || '',
-          status: item.status || 'Scheduled'
-        }));
+        const mapped = data.map((item, idx) => {
+          const resolvedEvtName = typeof item.event === 'object' && item.event !== null 
+            ? (item.event.title || item.event.name || '')
+            : (eventMap.get(String(item.event)) || item.eventName || item.title || 'Scheduled Event');
+
+          return {
+            id: item._id || item.id || `SLOT-0${idx + 1}`,
+            _id: item._id,
+            eventName: resolvedEvtName,
+            round: item.round || item.title || 'Round Session',
+            date: item.date ? (item.date.includes('T') ? item.date.split('T')[0] : item.date) : '',
+            formattedDate: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+            startTime: item.startTime || '',
+            endTime: item.endTime || '',
+            venue: item.location || item.venue || '',
+            capacity: item.capacity || '',
+            status: item.status || 'Scheduled'
+          };
+        });
         setSlots(mapped);
       } else if (Array.isArray(data)) {
         setSlots(data);
       }
 
-      const eventsList = Array.isArray(eventsData) ? eventsData : (eventsData?.events || []);
-      const titles = eventsList.map((e) => e.title || e.name).filter(Boolean);
-      setEventOptions(titles);
       if (titles.length > 0 && !newSlot.eventName) {
         setNewSlot((prev) => ({ ...prev, eventName: titles[0] }));
       }
@@ -102,8 +129,17 @@ export const SlotManagement = () => {
     }
     setActionLoading(true);
     try {
+      const selectedEventName = newSlot.eventName || (eventOptions[0] || '');
+      const selectedEventObj = rawEvents.find(
+        (ev) => (ev.title || ev.name || '').trim().toLowerCase() === selectedEventName.trim().toLowerCase()
+      );
+      const eventId = selectedEventObj?._id || selectedEventObj?.id;
+
       const payload = {
-        eventName: newSlot.eventName || (eventOptions[0] || ''),
+        event: eventId || undefined,
+        eventId: eventId || undefined,
+        eventName: selectedEventName,
+        title: newSlot.round.trim(),
         round: newSlot.round.trim(),
         date: newSlot.date,
         startTime: newSlot.startTime,
@@ -113,6 +149,7 @@ export const SlotManagement = () => {
         capacity: newSlot.capacity ? Number(newSlot.capacity) : undefined,
         status: newSlot.status || 'Scheduled'
       };
+
       await apiService.addTimetableSlot(payload);
       setShowModal(false);
       setNewSlot(initialSlotFormState);
@@ -142,8 +179,17 @@ export const SlotManagement = () => {
     setActionLoading(true);
     try {
       const targetId = editingSlot._id || editingSlot.id;
+      const selectedEventName = editingSlot.eventName || (eventOptions[0] || '');
+      const selectedEventObj = rawEvents.find(
+        (ev) => (ev.title || ev.name || '').trim().toLowerCase() === selectedEventName.trim().toLowerCase()
+      );
+      const eventId = selectedEventObj?._id || selectedEventObj?.id;
+
       const payload = {
-        eventName: editingSlot.eventName || (eventOptions[0] || ''),
+        event: eventId || undefined,
+        eventId: eventId || undefined,
+        eventName: selectedEventName,
+        title: editingSlot.round.trim(),
         round: editingSlot.round.trim(),
         date: editingSlot.date,
         startTime: editingSlot.startTime,
@@ -153,6 +199,7 @@ export const SlotManagement = () => {
         capacity: editingSlot.capacity ? Number(editingSlot.capacity) : undefined,
         status: editingSlot.status || 'Scheduled'
       };
+
       await apiService.editTimetableSlot(targetId, payload);
       setEditingSlot(null);
       showToast(`Slot "${payload.round}" updated successfully!`);
@@ -431,27 +478,99 @@ export const SlotManagement = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Start Time</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. 10:00 AM"
-                    value={newSlot.startTime}
-                    onChange={(e) => setNewSlot({ ...newSlot, startTime: e.target.value })}
-                    required
-                  />
+                  <label className="form-label">Start Time *</label>
+                  <div className="time-picker-wrapper">
+                    <input
+                      type="text"
+                      className="form-input time-num-input"
+                      placeholder="e.g. 10:00"
+                      value={parseTime(newSlot.startTime, 'AM').time}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const current = parseTime(newSlot.startTime, 'AM');
+                        const isTypedPm = /pm/i.test(raw);
+                        const isTypedAm = /am/i.test(raw);
+                        const period = isTypedPm ? 'PM' : (isTypedAm ? 'AM' : current.period);
+                        const clean = raw.replace(/(am|pm)/gi, '').trim();
+                        setNewSlot({ ...newSlot, startTime: clean ? `${clean} ${period}` : '' });
+                      }}
+                      required
+                    />
+                    <div className="am-pm-toggle-group">
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-am ${parseTime(newSlot.startTime, 'AM').period === 'AM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(newSlot.startTime, 'AM');
+                          const t = current.time || '10:00';
+                          setNewSlot({ ...newSlot, startTime: `${t} AM` });
+                        }}
+                        title="Select AM (Morning)"
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-pm ${parseTime(newSlot.startTime, 'AM').period === 'PM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(newSlot.startTime, 'AM');
+                          const t = current.time || '10:00';
+                          setNewSlot({ ...newSlot, startTime: `${t} PM` });
+                        }}
+                        title="Select PM (Afternoon / Evening)"
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">End Time</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. 12:30 PM"
-                    value={newSlot.endTime}
-                    onChange={(e) => setNewSlot({ ...newSlot, endTime: e.target.value })}
-                    required
-                  />
+                  <label className="form-label">End Time *</label>
+                  <div className="time-picker-wrapper">
+                    <input
+                      type="text"
+                      className="form-input time-num-input"
+                      placeholder="e.g. 12:30"
+                      value={parseTime(newSlot.endTime, 'PM').time}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const current = parseTime(newSlot.endTime, 'PM');
+                        const isTypedPm = /pm/i.test(raw);
+                        const isTypedAm = /am/i.test(raw);
+                        const period = isTypedPm ? 'PM' : (isTypedAm ? 'AM' : current.period);
+                        const clean = raw.replace(/(am|pm)/gi, '').trim();
+                        setNewSlot({ ...newSlot, endTime: clean ? `${clean} ${period}` : '' });
+                      }}
+                      required
+                    />
+                    <div className="am-pm-toggle-group">
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-am ${parseTime(newSlot.endTime, 'PM').period === 'AM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(newSlot.endTime, 'PM');
+                          const t = current.time || '12:30';
+                          setNewSlot({ ...newSlot, endTime: `${t} AM` });
+                        }}
+                        title="Select AM (Morning)"
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-pm ${parseTime(newSlot.endTime, 'PM').period === 'PM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(newSlot.endTime, 'PM');
+                          const t = current.time || '12:30';
+                          setNewSlot({ ...newSlot, endTime: `${t} PM` });
+                        }}
+                        title="Select PM (Afternoon / Evening)"
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -546,27 +665,99 @@ export const SlotManagement = () => {
 
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Start Time</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. 10:00 AM"
-                    value={editingSlot.startTime || ''}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, startTime: e.target.value })}
-                    required
-                  />
+                  <label className="form-label">Start Time *</label>
+                  <div className="time-picker-wrapper">
+                    <input
+                      type="text"
+                      className="form-input time-num-input"
+                      placeholder="e.g. 10:00"
+                      value={parseTime(editingSlot.startTime, 'AM').time}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const current = parseTime(editingSlot.startTime, 'AM');
+                        const isTypedPm = /pm/i.test(raw);
+                        const isTypedAm = /am/i.test(raw);
+                        const period = isTypedPm ? 'PM' : (isTypedAm ? 'AM' : current.period);
+                        const clean = raw.replace(/(am|pm)/gi, '').trim();
+                        setEditingSlot({ ...editingSlot, startTime: clean ? `${clean} ${period}` : '' });
+                      }}
+                      required
+                    />
+                    <div className="am-pm-toggle-group">
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-am ${parseTime(editingSlot.startTime, 'AM').period === 'AM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(editingSlot.startTime, 'AM');
+                          const t = current.time || '10:00';
+                          setEditingSlot({ ...editingSlot, startTime: `${t} AM` });
+                        }}
+                        title="Select AM (Morning)"
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-pm ${parseTime(editingSlot.startTime, 'AM').period === 'PM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(editingSlot.startTime, 'AM');
+                          const t = current.time || '10:00';
+                          setEditingSlot({ ...editingSlot, startTime: `${t} PM` });
+                        }}
+                        title="Select PM (Afternoon / Evening)"
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">End Time</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. 12:30 PM"
-                    value={editingSlot.endTime || ''}
-                    onChange={(e) => setEditingSlot({ ...editingSlot, endTime: e.target.value })}
-                    required
-                  />
+                  <label className="form-label">End Time *</label>
+                  <div className="time-picker-wrapper">
+                    <input
+                      type="text"
+                      className="form-input time-num-input"
+                      placeholder="e.g. 12:30"
+                      value={parseTime(editingSlot.endTime, 'PM').time}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const current = parseTime(editingSlot.endTime, 'PM');
+                        const isTypedPm = /pm/i.test(raw);
+                        const isTypedAm = /am/i.test(raw);
+                        const period = isTypedPm ? 'PM' : (isTypedAm ? 'AM' : current.period);
+                        const clean = raw.replace(/(am|pm)/gi, '').trim();
+                        setEditingSlot({ ...editingSlot, endTime: clean ? `${clean} ${period}` : '' });
+                      }}
+                      required
+                    />
+                    <div className="am-pm-toggle-group">
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-am ${parseTime(editingSlot.endTime, 'PM').period === 'AM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(editingSlot.endTime, 'PM');
+                          const t = current.time || '12:30';
+                          setEditingSlot({ ...editingSlot, endTime: `${t} AM` });
+                        }}
+                        title="Select AM (Morning)"
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn-am-pm btn-pm ${parseTime(editingSlot.endTime, 'PM').period === 'PM' ? 'active' : ''}`}
+                        onClick={() => {
+                          const current = parseTime(editingSlot.endTime, 'PM');
+                          const t = current.time || '12:30';
+                          setEditingSlot({ ...editingSlot, endTime: `${t} PM` });
+                        }}
+                        title="Select PM (Afternoon / Evening)"
+                      >
+                        PM
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
