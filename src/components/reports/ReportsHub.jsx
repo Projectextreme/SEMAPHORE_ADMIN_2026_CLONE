@@ -204,6 +204,30 @@ export const ReportsHub = () => {
     }));
   };
 
+  // Expandable Registered Events State
+  const [expandedEvents, setExpandedEvents] = useState({});
+
+  const toggleEventsExpand = (id) => {
+    setExpandedEvents(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
+
+  const areAllEventsExpanded = filteredTeams?.length > 0 && filteredTeams.every((team, idx) => !!expandedEvents[team.teamId || idx]);
+
+  const toggleAllEvents = () => {
+    if (areAllEventsExpanded) {
+      setExpandedEvents({});
+    } else {
+      const next = {};
+      filteredTeams.forEach((team, idx) => {
+        next[team.teamId || idx] = true;
+      });
+      setExpandedEvents(next);
+    }
+  };
+
   // Filtered Teams List
   const filteredTeams = (teamsData.teams || []).filter((team) => {
     const q = searchQuery.toLowerCase().trim();
@@ -504,6 +528,18 @@ export const ReportsHub = () => {
                     <span>Table</span>
                   </button>
                 </div>
+
+                {teamViewMode === 'cards' && filteredTeams.length > 0 && (
+                  <button
+                    type="button"
+                    className={`btn-quick-expand-events ${areAllEventsExpanded ? 'active' : ''}`}
+                    onClick={toggleAllEvents}
+                    title={areAllEventsExpanded ? 'Collapse registered events across all cards' : 'Expand registered events across all cards'}
+                  >
+                    <Tag size={13} className="text-cyan" />
+                    <span>{areAllEventsExpanded ? 'Collapse All Events' : 'Expand All Events'}</span>
+                  </button>
+                )}
               </>
             )}
 
@@ -591,6 +627,7 @@ export const ReportsHub = () => {
                 <div className="teams-cards-grid">
                   {filteredTeams.map((team, idx) => {
                     const isExpanded = !!expandedItems[team.teamId || idx];
+                    const isEventsExpanded = !!expandedEvents[team.teamId || idx];
                     const rawStatus = (team.paymentStatus || '').toLowerCase();
                     const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
                     const isUnpaid = rawStatus === 'unpaid';
@@ -683,25 +720,47 @@ export const ReportsHub = () => {
                             </span>
                           </div>
 
-                          {/* Registered Events */}
+                          {/* Registered Events (Collapsible / Expandable) */}
                           <div className="team-events-section">
-                            <span className="team-events-label">
-                              <Tag size={12} className="text-cyan" /> Registered Events ({Array.isArray(team.registeredEvents) ? team.registeredEvents.length : 0})
-                            </span>
-                            <div className="team-events-pill-grid">
-                              {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
-                                team.registeredEvents.map((ev, evIdx) => (
-                                  <span key={evIdx} className="event-pill-card">
-                                    <span className="event-pill-title">{typeof ev === 'object' ? ev.title : ev}</span>
-                                    {typeof ev === 'object' && ev.registrationFee !== undefined && (
-                                      <strong className="fee-tag-card">₹{ev.registrationFee}</strong>
-                                    )}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="text-muted text-xs">No registered events</span>
-                              )}
-                            </div>
+                            <button
+                              type="button"
+                              className={`btn-card-toggle-events ${isEventsExpanded ? 'active' : ''}`}
+                              onClick={() => toggleEventsExpand(team.teamId || idx)}
+                              title={isEventsExpanded ? 'Click to collapse events' : 'Click to expand registered events'}
+                            >
+                              <div className="toggle-events-label">
+                                <Tag size={12} className="text-cyan" />
+                                <span className="events-title-text">Registered Events</span>
+                                <span className="events-count-badge">
+                                  {Array.isArray(team.registeredEvents) ? team.registeredEvents.length : 0}
+                                </span>
+                              </div>
+                              <div className="toggle-events-action">
+                                <span className="toggle-events-action-text">
+                                  {isEventsExpanded ? 'Hide' : 'Expand'}
+                                </span>
+                                {isEventsExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                              </div>
+                            </button>
+
+                            {isEventsExpanded && (
+                              <div className="team-events-expanded-container">
+                                <div className="team-events-pill-grid">
+                                  {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
+                                    team.registeredEvents.map((ev, evIdx) => (
+                                      <span key={evIdx} className="event-pill-card">
+                                        <span className="event-pill-title">{typeof ev === 'object' ? ev.title : ev}</span>
+                                        {typeof ev === 'object' && ev.registrationFee !== undefined && (
+                                          <strong className="fee-tag-card">₹{ev.registrationFee}</strong>
+                                        )}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-muted text-xs">No registered events</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
 

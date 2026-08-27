@@ -562,6 +562,35 @@
   font-weight: 700;
 }
 
+.btn-quick-expand-events {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-quick-expand-events:hover {
+  background: var(--nav-hover-bg);
+  border-color: rgba(6, 182, 212, 0.4);
+  color: var(--cyan);
+  transform: translateY(-1px);
+}
+
+.btn-quick-expand-events.active {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.45);
+  color: var(--cyan);
+}
+
 .btn-tab-export {
   display: inline-flex;
   align-items: center;
@@ -795,24 +824,90 @@
   background: var(--primary-light);
 }
 
-/* Registered Events */
+/* Registered Events (Collapsible Card Section) */
 .team-events-section {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding-top: 0.5rem;
+  gap: 0.5rem;
+  padding-top: 0.55rem;
   border-top: 1px dashed var(--border-color);
 }
 
-.team-events-label {
-  display: inline-flex;
+.btn-card-toggle-events {
+  width: 100%;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
+  justify-content: space-between;
+  padding: 0.5rem 0.8rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  color: var(--text-main);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.btn-card-toggle-events:hover {
+  background: var(--nav-hover-bg);
+  border-color: rgba(6, 182, 212, 0.35);
+  color: var(--text-heading);
+  transform: translateY(-1px);
+}
+
+.btn-card-toggle-events.active {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.4);
+  color: var(--cyan);
+}
+
+.toggle-events-label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.events-title-text {
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+.btn-card-toggle-events.active .events-title-text {
+  color: var(--cyan);
+}
+
+.events-count-badge {
+  font-size: 0.7rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  padding: 0.1rem 0.45rem;
+  border-radius: 12px;
+  background: rgba(6, 182, 212, 0.12);
+  color: var(--cyan);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.toggle-events-action {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.btn-card-toggle-events:hover .toggle-events-action,
+.btn-card-toggle-events.active .toggle-events-action {
+  color: var(--cyan);
+}
+
+.team-events-expanded-container {
+  padding: 0.6rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  animation: fadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .team-events-pill-grid {
