@@ -18,7 +18,10 @@ import {
   Filter, 
   UserCheck,
   X,
-  Copy
+  Copy,
+  Phone,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
@@ -33,6 +36,7 @@ export const UserManagement = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoleFilter, setSelectedRoleFilter] = useState('All');
+  const [viewMode, setViewMode] = useState('cards');
 
   // Modals
   const [selectedUserView, setSelectedUserView] = useState(null);
@@ -242,7 +246,7 @@ export const UserManagement = () => {
 
           <div className="user-filter-group">
             <div className="role-filter-wrapper">
-              <Filter size={14} className="filter-icon" />
+              <Filter size={14} className="filter-select-icon" />
               <select
                 className="form-select select-compact"
                 value={selectedRoleFilter}
@@ -253,6 +257,30 @@ export const UserManagement = () => {
                 <option value="coordinator">Coordinators</option>
               </select>
             </div>
+
+            <div className="view-mode-toggle">
+              <button
+                type="button"
+                className={`btn-view-toggle ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                title="Cards Grid View"
+                aria-label="Cards Grid View"
+              >
+                <LayoutGrid size={14} />
+                <span>Cards</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-view-toggle ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Table View"
+                aria-label="Table View"
+              >
+                <List size={14} />
+                <span>Table</span>
+              </button>
+            </div>
+
             <span className="endpoint-badge">{filteredUsers.length} Users Listed</span>
           </div>
         </div>
@@ -278,189 +306,321 @@ export const UserManagement = () => {
           />
         ) : (
           <>
-            {/* Desktop Table View */}
-            <div className="table-responsive desktop-only">
-              <table className="user-table">
-                <thead>
-                  <tr>
-                    <th>USER PROFILE</th>
-                    <th>ID</th>
-                    <th>COLLEGE NAME</th>
-                    <th>TEAMS ENROLLED</th>
-                    <th>ROLE</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
+            {/* Primary Responsive Cards View */}
+            {viewMode === 'cards' ? (
+              <div className="users-cards-grid">
+                {filteredUsers.map((user) => {
+                  const isCoord = isUserCoordinator(user);
+                  const initial = (user.name || 'U').charAt(0).toUpperCase();
+
+                  return (
+                    <TiltCard key={user._id} maxTilt={4} glareOpacity={0.08} className="user-card-tilt">
+                      <div className="user-card-content">
+                        {/* Card Top: Identity & Role */}
+                        <div className="user-card-header">
+                          <div 
+                            className="user-card-identity clickable-user-cell"
+                            onClick={() => navigate(`/user/${user._id}`)}
+                            title={`View full profile of ${user.name}`}
+                          >
+                            <div className="user-card-avatar">
+                              {(user.avatar || user.picture || user.photo) ? (
+                                <img 
+                                  src={user.avatar || user.picture || user.photo} 
+                                  alt={user.name || 'User'} 
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    if (e.currentTarget.parentElement) {
+                                      e.currentTarget.parentElement.innerText = initial;
+                                    }
+                                  }}
+                                />
+                              ) : initial}
+                            </div>
+                            <div className="user-card-identity-text">
+                              <h3 className="user-card-name">{user.name || 'Anonymous User'}</h3>
+                              <span className="user-card-email" title={user.email}>{user.email || 'No email registered'}</span>
+                            </div>
+                          </div>
+
+                          <span className={`role-badge ${isCoord ? 'badge-coord' : 'badge-user'}`}>
+                            <UserCheck size={11} /> {isCoord ? 'coordinator' : (user.role || 'user')}
+                          </span>
+                        </div>
+
+                        {/* Card Body Details */}
+                        <div className="user-card-body">
+                          <div className="user-card-info-row">
+                            <span className="user-info-label">
+                              <Building2 size={13} className="text-cyan" /> College
+                            </span>
+                            <span className="user-info-val college-val" title={user.collegeName || user.college?.collegeName}>
+                              {user.collegeName || user.college?.collegeName || 'N/A'}
+                            </span>
+                          </div>
+
+                          <div className="user-card-info-row">
+                            <span className="user-info-label">
+                              <ShieldCheck size={13} className="text-indigo" /> User ID
+                            </span>
+                            <div 
+                              className="user-id-pill user-id-card-pill" 
+                              title="Click to copy full ID" 
+                              onClick={() => {
+                                navigator.clipboard.writeText(user._id);
+                                showSuccess('User ID copied to clipboard!');
+                              }}
+                            >
+                              <span className="code-font">{user._id ? `${user._id.slice(0, 8)}...${user._id.slice(-4)}` : 'N/A'}</span>
+                              <Copy size={11} className="id-copy-icon" />
+                            </div>
+                          </div>
+
+                          {user.phone && (
+                            <div className="user-card-info-row">
+                              <span className="user-info-label">
+                                <Phone size={13} className="text-emerald" /> Phone
+                              </span>
+                              <a href={`tel:${user.phone}`} className="user-contact-link">
+                                {user.phone}
+                              </a>
+                            </div>
+                          )}
+
+                          <div className="user-card-info-row">
+                            <span className="user-info-label">
+                              <Users size={13} className="text-primary" /> Teams
+                            </span>
+                            <span className="teams-count-badge">
+                              {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="user-card-footer">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/user/${user._id}`)}
+                            className="btn-user-card-action btn-view-profile"
+                            title="View Complete User Profile Hub"
+                          >
+                            <Eye size={13} />
+                            <span>Profile</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEdit(user)}
+                            className="btn-user-card-action btn-edit-user"
+                            title="Edit User Details"
+                          >
+                            <Edit2 size={13} />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeleteUserObj(user)}
+                            className="btn-user-card-action btn-delete-user"
+                            title="Delete User Account"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    </TiltCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="table-responsive desktop-only">
+                  <table className="user-table">
+                    <thead>
+                      <tr>
+                        <th>USER PROFILE</th>
+                        <th>ID</th>
+                        <th>COLLEGE NAME</th>
+                        <th>TEAMS ENROLLED</th>
+                        <th>ROLE</th>
+                        <th>ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((user) => (
+                        <tr key={user._id}>
+                          <td>
+                            <div 
+                              className="user-profile-cell clickable-user-cell"
+                              onClick={() => navigate(`/user/${user._id}`)}
+                              title={`View full profile of ${user.name}`}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <div className="user-avatar" style={{ overflow: 'hidden', padding: 0 }}>
+                                {(user.avatar || user.picture || user.photo) ? (
+                                  <img 
+                                    src={user.avatar || user.picture || user.photo} 
+                                    alt={user.name || 'User'} 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.parentElement) {
+                                        e.currentTarget.parentElement.innerText = (user.name || 'U').charAt(0).toUpperCase();
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  user.name?.charAt(0).toUpperCase() || 'U'
+                                )}
+                              </div>
+                              <div className="user-cell-info">
+                                <span className="user-cell-name">{user.name}</span>
+                                <span className="user-cell-email">{user.email}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="user-id-pill" title={`Click to copy: ${user._id}`} onClick={() => {
+                              navigator.clipboard.writeText(user._id);
+                              showSuccess('User ID copied to clipboard!');
+                            }}>
+                              <span className="code-font">{user._id ? `${user._id.slice(0, 6)}...${user._id.slice(-4)}` : 'N/A'}</span>
+                              <Copy size={11} className="id-copy-icon" />
+                            </div>
+                          </td>
+                          <td>
+                            <span className="college-tag">
+                              <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="teams-count-badge">
+                              {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`role-badge ${isUserCoordinator(user) ? 'badge-coord' : 'badge-user'}`}>
+                              <UserCheck size={11} /> {isUserCoordinator(user) ? 'coordinator' : (user.role || 'user')}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              <button
+                                onClick={() => navigate(`/user/${user._id}`)}
+                                className="btn-icon btn-view"
+                                title="View Complete User Profile Hub (/user/:id)"
+                              >
+                                <Eye size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(user)}
+                                className="btn-icon btn-edit"
+                                title="Edit User Details (PUT /api/admin/users/:id)"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => setDeleteUserObj(user)}
+                                className="btn-icon btn-delete"
+                                title="Delete User (DELETE /api/admin/users/:id)"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards View */}
+                <div className="mobile-cards-list mobile-only">
                   {filteredUsers.map((user) => (
-                    <tr key={user._id}>
-                      <td>
-                        <div 
-                          className="user-profile-cell clickable-user-cell"
-                          onClick={() => navigate(`/user/${user._id}`)}
-                          title={`View full profile of ${user.name}`}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          <div className="user-avatar" style={{ overflow: 'hidden', padding: 0 }}>
-                            {(user.avatar || user.picture || user.photo) ? (
-                              <img 
-                                src={user.avatar || user.picture || user.photo} 
-                                alt={user.name || 'User'} 
-                                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  if (e.currentTarget.parentElement) {
-                                    e.currentTarget.parentElement.innerText = (user.name || 'U').charAt(0).toUpperCase();
-                                  }
-                                }}
-                              />
-                            ) : (
-                              user.name?.charAt(0).toUpperCase() || 'U'
-                            )}
+                    <div key={user._id} className="mobile-data-card">
+                      {/* Header */}
+                      <div className="mobile-card-header">
+                        <div className="user-profile-cell">
+                          <div className="user-avatar">
+                            {user.name?.charAt(0).toUpperCase() || 'U'}
                           </div>
                           <div className="user-cell-info">
                             <span className="user-cell-name">{user.name}</span>
                             <span className="user-cell-email">{user.email}</span>
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        <div className="user-id-pill" title={`Click to copy: ${user._id}`} onClick={() => {
-                          navigator.clipboard.writeText(user._id);
-                          showSuccess('User ID copied to clipboard!');
-                        }}>
-                          <span className="code-font">{user._id ? `${user._id.slice(0, 6)}...${user._id.slice(-4)}` : 'N/A'}</span>
-                          <Copy size={11} className="id-copy-icon" />
-                        </div>
-                      </td>
-                      <td>
-                        <span className="college-tag">
-                          <Building2 size={13} /> {user.collegeName || user.college?.collegeName || 'N/A'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="teams-count-badge">
-                          {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
-                        </span>
-                      </td>
-                      <td>
                         <span className={`role-badge ${isUserCoordinator(user) ? 'badge-coord' : 'badge-user'}`}>
                           <UserCheck size={11} /> {isUserCoordinator(user) ? 'coordinator' : (user.role || 'user')}
                         </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            onClick={() => navigate(`/user/${user._id}`)}
-                            className="btn-icon btn-view"
-                            title="View Complete User Profile Hub (/user/:id)"
-                          >
-                            <Eye size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(user)}
-                            className="btn-icon btn-edit"
-                            title="Edit User Details (PUT /api/admin/users/:id)"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => setDeleteUserObj(user)}
-                            className="btn-icon btn-delete"
-                            title="Delete User (DELETE /api/admin/users/:id)"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                      </div>
+
+                      {/* Body Details */}
+                      <div className="mobile-card-body">
+                        <div className="mobile-card-row">
+                          <span className="mobile-card-label">User ID:</span>
+                          <div className="mobile-id-badge">
+                            <span className="code-font">{user._id}</span>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(user._id);
+                                showSuccess('User ID copied to clipboard!');
+                              }}
+                              className="btn-copy-mini"
+                              title="Copy User ID"
+                              aria-label="Copy User ID"
+                            >
+                              <Copy size={12} />
+                            </button>
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* Mobile Cards View */}
-            <div className="mobile-cards-list mobile-only">
-              {filteredUsers.map((user) => (
-                <div key={user._id} className="mobile-data-card">
-                  {/* Header */}
-                  <div className="mobile-card-header">
-                    <div className="user-profile-cell">
-                      <div className="user-avatar">
-                        {user.name?.charAt(0).toUpperCase() || 'U'}
-                      </div>
-                      <div className="user-cell-info">
-                        <span className="user-cell-name">{user.name}</span>
-                        <span className="user-cell-email">{user.email}</span>
-                      </div>
-                    </div>
-                    <span className={`role-badge ${isUserCoordinator(user) ? 'badge-coord' : 'badge-user'}`}>
-                      <UserCheck size={11} /> {isUserCoordinator(user) ? 'coordinator' : (user.role || 'user')}
-                    </span>
-                  </div>
+                        <div className="mobile-card-row">
+                          <span className="mobile-card-label">College:</span>
+                          <span className="college-tag">
+                            <Building2 size={12} /> {user.collegeName || user.college?.collegeName || 'N/A'}
+                          </span>
+                        </div>
 
-                  {/* Body Details */}
-                  <div className="mobile-card-body">
-                    <div className="mobile-card-row">
-                      <span className="mobile-card-label">User ID:</span>
-                      <div className="mobile-id-badge">
-                        <span className="code-font">{user._id}</span>
+                        <div className="mobile-card-row">
+                          <span className="mobile-card-label">Teams Enrolled:</span>
+                          <span className="teams-count-badge">
+                            {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="mobile-card-actions">
                         <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(user._id);
-                            showSuccess('User ID copied to clipboard!');
-                          }}
-                          className="btn-copy-mini"
-                          title="Copy User ID"
-                          aria-label="Copy User ID"
+                          onClick={() => handleViewUser(user._id)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ flex: 1, justifyContent: 'center' }}
                         >
-                          <Copy size={12} />
+                          <Eye size={13} /> View
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(user)}
+                          className="btn btn-secondary btn-sm"
+                          style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                          <Edit2 size={13} /> Edit
+                        </button>
+                        <button
+                          onClick={() => setDeleteUserObj(user)}
+                          className="btn btn-danger btn-sm"
+                          style={{ flex: 1, justifyContent: 'center' }}
+                        >
+                          <Trash2 size={13} /> Delete
                         </button>
                       </div>
                     </div>
-
-                    <div className="mobile-card-row">
-                      <span className="mobile-card-label">College:</span>
-                      <span className="college-tag">
-                        <Building2 size={12} /> {user.collegeName || user.college?.collegeName || 'N/A'}
-                      </span>
-                    </div>
-
-                    <div className="mobile-card-row">
-                      <span className="mobile-card-label">Teams Enrolled:</span>
-                      <span className="teams-count-badge">
-                        {Math.min(1, user.college?.totalTeams ?? (user.team ? 1 : 0))} Team
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mobile-card-actions">
-                    <button
-                      onClick={() => handleViewUser(user._id)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ flex: 1, justifyContent: 'center' }}
-                    >
-                      <Eye size={13} /> View
-                    </button>
-                    <button
-                      onClick={() => handleOpenEdit(user)}
-                      className="btn btn-secondary btn-sm"
-                      style={{ flex: 1, justifyContent: 'center' }}
-                    >
-                      <Edit2 size={13} /> Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteUserObj(user)}
-                      className="btn btn-danger btn-sm"
-                      style={{ flex: 1, justifyContent: 'center' }}
-                    >
-                      <Trash2 size={13} /> Delete
-                    </button>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </>
         )}
       </div>

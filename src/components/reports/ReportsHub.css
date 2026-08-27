@@ -505,7 +505,7 @@
   align-items: center;
 }
 
-.filter-icon {
+.filter-select-wrapper .filter-icon {
   position: absolute;
   left: 0.85rem;
   color: var(--text-dim);

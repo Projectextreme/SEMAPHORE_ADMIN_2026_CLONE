@@ -121,23 +121,280 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .role-filter-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
 }
 
-.filter-icon {
+.filter-select-icon {
+  position: absolute;
+  left: 0.85rem;
   color: var(--text-dim);
+  pointer-events: none;
+  z-index: 2;
 }
 
-.select-compact {
+.role-filter-wrapper .select-compact {
   width: auto;
-  min-width: 160px;
-  padding: 0.55rem 0.85rem;
+  min-width: 170px;
+  padding: 0.55rem 0.85rem 0.55rem 2.2rem;
   font-size: 0.82rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  padding: 0.2rem;
+  gap: 0.2rem;
+}
+
+.btn-view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-view-toggle:hover {
+  color: var(--text-main);
+}
+
+.btn-view-toggle.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   User Cards Grid View
+   ========================================================================== */
+.users-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 1.15rem;
+  padding: 0.35rem 0;
+}
+
+.user-card-tilt {
+  height: 100%;
+  display: flex;
+  border-radius: 16px;
+}
+
+.user-card-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.15rem;
+  box-sizing: border-box;
+  box-shadow: var(--card-shadow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 0.9rem;
+}
+
+.user-card-content:hover {
+  transform: translateY(-3px);
+  border-color: var(--cyan);
+  box-shadow: 0 12px 28px rgba(6, 182, 212, 0.18);
+}
+
+.user-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.user-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.user-card-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.user-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-card-identity-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.user-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.15s ease;
+}
+
+.user-card-identity:hover .user-card-name {
+  color: var(--cyan);
+}
+
+.user-card-email {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+}
+
+.user-card-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.user-info-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.user-info-val {
+  color: var(--text-main);
+  font-weight: 600;
+  text-align: right;
+}
+
+.college-val {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-id-card-pill {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.45rem;
+}
+
+.user-contact-link {
+  color: var(--emerald, #10b981);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.76rem;
+}
+
+.user-contact-link:hover {
+  text-decoration: underline;
+}
+
+.user-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.btn-user-card-action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-user-card-action:hover {
+  transform: translateY(-1px);
+}
+
+.btn-view-profile:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.btn-edit-user:hover {
+  border-color: var(--indigo, #6366f1);
+  color: var(--indigo, #6366f1);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.btn-delete-user:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .user-profile-cell {
