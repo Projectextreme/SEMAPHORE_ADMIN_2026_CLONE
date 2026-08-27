@@ -599,38 +599,8 @@ export const apiService = {
       });
     } catch {}
 
-    // 3. Merge custom locally created coordinators
-    let customList = getCustomCoordinators();
-    if (customList.length === 0 && localStorage.getItem('semaphore_custom_coords_init') !== 'true') {
-      customList = [
-        {
-          _id: 'coord_init_1',
-          id: 'coord_init_1',
-          name: 'Jeevan Shetty',
-          email: 'jeevan.shetty@sahyadri.edu.in',
-          phone: '+91 98765 43210',
-          assignedEvent: 'Aquaverse',
-          department: 'Computer Science',
-          status: 'Active',
-          createdAt: new Date().toISOString()
-        },
-        {
-          _id: 'coord_init_2',
-          id: 'coord_init_2',
-          name: 'Hanson Vaz',
-          email: 'hansonvaz0704@gmail.com',
-          phone: '+91 91234 56789',
-          assignedEvent: 'The Meg Pitch',
-          department: 'Information Science',
-          status: 'Active',
-          createdAt: new Date().toISOString()
-        }
-      ];
-      try {
-        localStorage.setItem('semaphore_custom_coordinators', JSON.stringify(customList));
-        localStorage.setItem('semaphore_custom_coords_init', 'true');
-      } catch {}
-    }
+    // 3. Merge custom user-created coordinators
+    const customList = getCustomCoordinators();
 
     customList.forEach(c => {
       const cEmail = (c.email || '').toLowerCase().trim();

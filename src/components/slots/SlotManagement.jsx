@@ -39,6 +39,8 @@ export const SlotManagement = () => {
   const [eventOptions, setEventOptions] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
+  const [editingSlot, setEditingSlot] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [newSlot, setNewSlot] = useState(initialSlotFormState);
 
   const showToast = (msg, isError = false) => {
@@ -62,7 +64,8 @@ export const SlotManagement = () => {
           _id: item._id,
           eventName: item.event?.title || item.eventName || 'Scheduled Event',
           round: item.round || 'Round Session',
-          date: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '',
+          date: item.date ? (item.date.includes('T') ? item.date.split('T')[0] : item.date) : '',
+          formattedDate: item.date ? new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '',
           startTime: item.startTime || '',
           endTime: item.endTime || '',
           venue: item.location || item.venue || '',
@@ -97,6 +100,7 @@ export const SlotManagement = () => {
       showToast('Please fill in required fields.', true);
       return;
     }
+    setActionLoading(true);
     try {
       const payload = {
         eventName: newSlot.eventName || (eventOptions[0] || ''),
@@ -113,16 +117,58 @@ export const SlotManagement = () => {
       setShowModal(false);
       setNewSlot(initialSlotFormState);
       showToast(`Slot "${payload.round}" scheduled successfully!`);
-      fetchSlots();
+      await fetchSlots();
     } catch (err) {
       console.error('Error adding slot:', err);
       showToast(err.message || 'Failed to add timetable slot.', true);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleOpenEdit = (slot) => {
+    setEditingSlot({
+      ...slot,
+      date: slot.date || ''
+    });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingSlot || !editingSlot.round?.trim() || !editingSlot.venue?.trim()) {
+      showToast('Please fill in required fields.', true);
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const targetId = editingSlot._id || editingSlot.id;
+      const payload = {
+        eventName: editingSlot.eventName || (eventOptions[0] || ''),
+        round: editingSlot.round.trim(),
+        date: editingSlot.date,
+        startTime: editingSlot.startTime,
+        endTime: editingSlot.endTime,
+        location: editingSlot.venue.trim(),
+        venue: editingSlot.venue.trim(),
+        capacity: editingSlot.capacity ? Number(editingSlot.capacity) : undefined,
+        status: editingSlot.status || 'Scheduled'
+      };
+      await apiService.editTimetableSlot(targetId, payload);
+      setEditingSlot(null);
+      showToast(`Slot "${payload.round}" updated successfully!`);
+      await fetchSlots();
+    } catch (err) {
+      console.error('Error editing slot:', err);
+      showToast(err.message || 'Failed to update timetable slot.', true);
+    } finally {
+      setActionLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
     const slot = slots.find(s => s.id === id || s._id === id);
     const targetId = slot?._id || id;
+    setActionLoading(true);
     try {
       await apiService.deleteTimetableSlot(targetId);
       setSlots((prev) => prev.filter((s) => s.id !== id && s._id !== id));
@@ -130,6 +176,8 @@ export const SlotManagement = () => {
     } catch (err) {
       console.error('Error deleting slot:', err);
       showToast(err.message || 'Failed to delete slot.', true);
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -263,7 +311,7 @@ export const SlotManagement = () => {
                       <Clock size={13} />
                       <span>{slot.startTime && slot.endTime ? `${slot.startTime} – ${slot.endTime}` : (slot.startTime || slot.endTime || 'Time TBA')}</span>
                     </div>
-                    {slot.date && <span className="slot-date-tag">{slot.date}</span>}
+                    {(slot.formattedDate || slot.date) && <span className="slot-date-tag">{slot.formattedDate || slot.date}</span>}
                     <span className="status-badge status-approved">{slot.status || 'Scheduled'}</span>
                   </div>
 
@@ -289,13 +337,26 @@ export const SlotManagement = () => {
 
                   <div className="slot-card-footer">
                     <span className="code-font slot-id">{slot.id}</span>
-                    <button
-                      onClick={() => handleDelete(slot.id)}
-                      className="btn-icon btn-delete"
-                      title="Remove Slot"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    <div className="slot-actions-cluster">
+                      <button
+                        onClick={() => handleOpenEdit(slot)}
+                        className="btn-icon btn-edit"
+                        title="Edit Slot Details"
+                        aria-label="Edit Slot"
+                        disabled={actionLoading}
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(slot.id)}
+                        className="btn-icon btn-delete"
+                        title="Remove Slot"
+                        aria-label="Remove Slot"
+                        disabled={actionLoading}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </TiltCard>
@@ -407,11 +468,126 @@ export const SlotManagement = () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={actionLoading}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  Confirm Schedule
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Scheduling...' : 'Confirm Schedule'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Slot Modal */}
+      {editingSlot && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3><Edit2 size={19} /> Edit Schedule Slot</h3>
+              <button className="modal-close" onClick={() => setEditingSlot(null)}>&times;</button>
+            </div>
+            <p className="modal-subtitle">Modify competition timing, round details, or venue</p>
+
+            <form onSubmit={handleEditSubmit} className="modal-form">
+              <div className="form-group">
+                <label className="form-label">Competition Event</label>
+                <input
+                  type="text"
+                  list="slot-events-list-edit"
+                  className="form-input"
+                  placeholder="e.g. Code Sprint, RoboWars..."
+                  value={editingSlot.eventName || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, eventName: e.target.value })}
+                  required
+                />
+                <datalist id="slot-events-list-edit">
+                  {dynamicEventNames.map((evt) => (
+                    <option key={evt} value={evt} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Round / Session Title *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Semi-Finals Hack Round"
+                  value={editingSlot.round || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, round: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Date</label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={editingSlot.date || ''}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, date: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Team Capacity</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 20 Teams"
+                    value={editingSlot.capacity || ''}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, capacity: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Start Time</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 10:00 AM"
+                    value={editingSlot.startTime || ''}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, startTime: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">End Time</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. 12:30 PM"
+                    value={editingSlot.endTime || ''}
+                    onChange={(e) => setEditingSlot({ ...editingSlot, endTime: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Venue Location *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Lab 301, Main Auditorium"
+                  value={editingSlot.venue || ''}
+                  onChange={(e) => setEditingSlot({ ...editingSlot, venue: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingSlot(null)} disabled={actionLoading}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={actionLoading}>
+                  {actionLoading ? 'Updating...' : 'Save Changes'}
                 </button>
               </div>
             </form>

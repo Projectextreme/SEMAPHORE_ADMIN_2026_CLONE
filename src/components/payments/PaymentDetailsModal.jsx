@@ -431,26 +431,30 @@ export const PaymentDetailsModal = ({
               <div className="modal-left-actions">
                 {onOpenActionModal && (
                   <>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-success"
-                      onClick={() => {
-                        onClose();
-                        onOpenActionModal(payment, 'approved');
-                      }}
-                    >
-                      <CheckCircle2 size={14} /> Approve
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => {
-                        onClose();
-                        onOpenActionModal(payment, 'rejected');
-                      }}
-                    >
-                      <XCircle size={14} /> Reject
-                    </button>
+                    {rawStatus !== 'approved' && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-success"
+                        onClick={() => {
+                          onClose();
+                          onOpenActionModal(payment, 'approved');
+                        }}
+                      >
+                        <CheckCircle2 size={14} /> Approve
+                      </button>
+                    )}
+                    {rawStatus !== 'rejected' && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => {
+                          onClose();
+                          onOpenActionModal(payment, 'rejected');
+                        }}
+                      >
+                        <XCircle size={14} /> Reject
+                      </button>
+                    )}
                   </>
                 )}
                 <button

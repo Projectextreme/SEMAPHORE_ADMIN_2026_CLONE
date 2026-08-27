@@ -160,6 +160,43 @@
   color: var(--text-dim);
 }
 
+.slot-actions-cluster {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.slot-actions-cluster .btn-icon {
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.slot-actions-cluster .btn-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slot-actions-cluster .btn-edit:hover:not(:disabled) {
+  background: var(--primary-light);
+  color: var(--primary);
+  border-color: var(--primary-border);
+}
+
+.slot-actions-cluster .btn-delete:hover:not(:disabled) {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
 @media (max-width: 768px) {
   .slots-container {
     padding: 1rem;

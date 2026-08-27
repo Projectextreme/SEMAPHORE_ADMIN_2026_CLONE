@@ -146,8 +146,8 @@ export const DashboardOverview = () => {
         pendingAmount: calcPendingAmt,
         approvedPayments: effectiveApproved.length,
         approvedAmount: calcApprovedAmt,
-        totalUsers: usersList.length || 10,
-        totalTeams: regsList.length || paymentsList.length || 20
+        totalUsers: usersList.length,
+        totalTeams: regsList.length || paymentsList.length || 0
       });
     } catch (_err) {
       console.warn('Dashboard stats fallback mode:', _err);
@@ -535,8 +535,12 @@ export const DashboardOverview = () => {
                           className="user-name-line clickable-user-link"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const targetUserId = p.user?._id || p.user?.id || p.userId || '66c89f1e1a2b3c4d5e6f7a80';
-                            navigate(`/user/${targetUserId}`);
+                            const targetUserId = p.user?._id || p.user?.id || p.userId;
+                            if (targetUserId) {
+                              navigate(`/user/${targetUserId}`);
+                            } else {
+                              navigate('/users');
+                            }
                           }}
                           title={`Click to view full profile of ${p.user?.name || p.leaderName || 'User'}`}
                         >
@@ -606,25 +610,29 @@ export const DashboardOverview = () => {
                   {/* Card Actions Bar */}
                   <div className="payment-card-footer">
                     <div className="action-btn-group">
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'approved' ? 'btn-success-active' : 'btn-outline-success'}`}
-                        onClick={() => handleOpenPaymentActionModal(p, 'approved')}
-                        disabled={actionLoading}
-                        title="Approve this payment"
-                      >
-                        <CheckCircle2 size={13} /> Approve
-                      </button>
+                      {rawStatus !== 'approved' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-success"
+                          onClick={() => handleOpenPaymentActionModal(p, 'approved')}
+                          disabled={actionLoading}
+                          title="Approve this payment"
+                        >
+                          <CheckCircle2 size={13} /> Approve
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'rejected' ? 'btn-danger-active' : 'btn-outline-danger'}`}
-                        onClick={() => handleOpenPaymentActionModal(p, 'rejected')}
-                        disabled={actionLoading}
-                        title="Reject this payment"
-                      >
-                        <XCircle size={13} /> Reject
-                      </button>
+                      {rawStatus !== 'rejected' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-danger"
+                          onClick={() => handleOpenPaymentActionModal(p, 'rejected')}
+                          disabled={actionLoading}
+                          title="Reject this payment"
+                        >
+                          <XCircle size={13} /> Reject
+                        </button>
+                      )}
                     </div>
 
                     <button
@@ -709,49 +717,51 @@ export const DashboardOverview = () => {
               return (
                 <div key={uId} className="sketch-user-row">
                   {/* 1. Avatar (with real profile photo support) */}
-                  <div className="sketch-avatar avatar-cyan" style={{ overflow: 'hidden', padding: 0 }}>
+                  <div className="sketch-avatar avatar-cyan">
                     {avatarUrl ? (
                       <img 
                         src={avatarUrl} 
                         alt={usr.name || 'User'} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                           if (e.currentTarget.parentElement) {
-                            e.currentTarget.parentElement.innerHTML = `<span style="font-size: 13px; font-weight: 700; color: var(--primary);">${(usr.name || 'U').charAt(0).toUpperCase()}</span>`;
+                            e.currentTarget.parentElement.innerHTML = `<span class="avatar-letter">${(usr.name || 'U').charAt(0).toUpperCase()}</span>`;
                           }
                         }}
                       />
                     ) : (
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary)' }}>
+                      <span className="avatar-letter">
                         {(usr.name || 'U').charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
 
                   {/* 2. Name & Email Box */}
-                  <div className="sketch-chip chip-name" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '0.4rem 0.85rem' }}>
-                    <strong className="chip-text">{usr.name || 'Student User'}</strong>
+                  <div className="sketch-chip chip-name">
+                    <strong className="chip-text" title={usr.name || 'Student User'}>
+                      {usr.name || 'Student User'}
+                    </strong>
                     {usr.email && (
-                      <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Mail size={11} className="text-cyan" /> {usr.email}
+                      <span className="chip-email" title={usr.email}>
+                        <Mail size={11} className="text-cyan chip-icon-inline" /> {usr.email}
                       </span>
                     )}
                   </div>
 
                   {/* 3. College Box */}
-                  <div className="sketch-chip chip-college">
+                  <div className="sketch-chip chip-college" title={usr.collegeName || (usr.college?.collegeName) || 'College Not Specified'}>
                     <Building2 size={13} className="chip-icon" />
                     <span className="chip-text">{usr.collegeName || (usr.college?.collegeName) || 'College Not Specified'}</span>
                   </div>
 
                   {/* 4. Delete User Button */}
                   <button
+                    type="button"
                     onClick={() => setDeletingUser(usr)}
                     className="btn btn-sm btn-delete-user"
                     title={`Delete user account for ${usr.name}`}
                   >
-                    <Trash2 size={13} /> Delete user
+                    <Trash2 size={13} /> <span>Delete user</span>
                   </button>
 
                   {/* 5. Right Meta: Registered / Created Time */}

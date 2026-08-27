@@ -307,7 +307,7 @@ export const UserManagement = () => {
                       </td>
                       <td>
                         <span className="teams-count-badge">
-                          {user.college?.totalTeams || 1} Team(s)
+                          {user.college?.totalTeams ?? (user.team ? 1 : 0)} Team(s)
                         </span>
                       </td>
                       <td>
@@ -396,7 +396,7 @@ export const UserManagement = () => {
                     <div className="mobile-card-row">
                       <span className="mobile-card-label">Teams Enrolled:</span>
                       <span className="teams-count-badge">
-                        {user.college?.totalTeams || 1} Team(s)
+                        {user.college?.totalTeams ?? (user.team ? 1 : 0)} Team(s)
                       </span>
                     </div>
                   </div>
@@ -467,7 +467,7 @@ export const UserManagement = () => {
               </div>
               <div className="detail-row">
                 <span className="detail-label">Registered Teams</span>
-                <span className="teams-count-badge">{selectedUserView.college?.totalTeams || 1} team(s)</span>
+                <span className="teams-count-badge">{selectedUserView.college?.totalTeams ?? (selectedUserView.team ? 1 : 0)} team(s)</span>
               </div>
               <div className="detail-row">
                 <span className="detail-label">Created At</span>

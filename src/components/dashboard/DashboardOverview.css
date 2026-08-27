@@ -470,8 +470,8 @@
 }
 
 .sketch-avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--badge-bg);
   border: 1.5px solid var(--border-color);
@@ -481,12 +481,31 @@
   justify-content: center;
   font-weight: 800;
   flex-shrink: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.sketch-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.sketch-avatar .avatar-letter {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 .sketch-avatar.avatar-cyan {
   color: var(--cyan);
   background: var(--cyan-light);
   border-color: var(--cyan-border);
+}
+
+.sketch-avatar.avatar-cyan .avatar-letter {
+  color: var(--cyan);
 }
 
 .sketch-chip {
@@ -730,16 +749,96 @@
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 0.75rem 1rem;
-  display: flex;
+  padding: 0.75rem 1.15rem;
+  display: grid;
+  grid-template-columns: 40px minmax(200px, 1.4fr) minmax(180px, 1.1fr) auto auto;
   align-items: center;
-  gap: 0.85rem;
-  flex-wrap: wrap;
-  transition: border-color 0.15s ease;
+  gap: 1rem;
+  transition: all 0.2s ease;
+}
+
+.sketch-user-row > * {
+  min-width: 0;
 }
 
 .sketch-user-row:hover {
   border-color: var(--cyan-border);
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.08);
+}
+
+.sketch-user-row .sketch-chip {
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.45rem 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  color: var(--text-main);
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sketch-user-row .chip-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.45rem 0.85rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.sketch-user-row .chip-name .chip-text {
+  font-weight: 700;
+  color: var(--text-heading);
+  font-size: 0.84rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sketch-user-row .chip-name .chip-email {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sketch-user-row .chip-name .chip-icon-inline {
+  flex-shrink: 0;
+}
+
+.sketch-user-row .chip-college {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.sketch-user-row .chip-college .chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sketch-user-row .chip-icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
 }
 
 .btn-delete-user {
@@ -747,6 +846,16 @@
   color: var(--danger);
   border: 1px solid var(--danger-border);
   font-weight: 700;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
   transition: all 0.15s ease;
 }
 
@@ -754,20 +863,23 @@
   background: var(--danger);
   color: #ffffff;
   transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .sketch-user-time {
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 0.35rem;
   font-size: 0.76rem;
   color: var(--text-muted);
   font-weight: 600;
+  white-space: nowrap;
+  justify-self: end;
 }
 
 .time-icon {
   color: var(--text-dim);
+  flex-shrink: 0;
 }
 
 /* ========================================================================= */
@@ -1066,12 +1178,29 @@
   }
 
   .sketch-user-row {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 0.5rem;
+    gap: 0.65rem;
+    padding: 0.85rem;
   }
 
-  .sketch-user-time {
+  .sketch-user-row .sketch-avatar {
+    align-self: flex-start;
+  }
+
+  .sketch-user-row .chip-name,
+  .sketch-user-row .chip-college {
+    width: 100%;
+  }
+
+  .sketch-user-row .btn-delete-user {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sketch-user-row .sketch-user-time {
+    justify-self: start;
     margin-left: 0;
   }
 

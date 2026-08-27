@@ -190,20 +190,18 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       else roles.participants += 1;
     });
 
-    if (roles.participants === 0 && rawUsers.length > 0) {
-      roles.participants = Math.max(1, rawUsers.length - roles.admins - roles.coordinators);
+    if (roles.participants === 0 && rawUsers.length > 0 && roles.admins === 0 && roles.coordinators === 0) {
+      roles.participants = rawUsers.length;
     }
-    if (roles.participants === 0) roles.participants = 8;
-    if (roles.coordinators === 0) roles.coordinators = 1;
-    if (roles.admins === 0) roles.admins = 1;
 
     // Area Trend Data (7-step progression curve)
-    const totalCount = effectiveTeams.length || 20;
+    const totalCount = effectiveTeams.length;
     const dayLabels = ['Day -6', 'Day -5', 'Day -4', 'Day -3', 'Day -2', 'Yesterday', 'Today'];
-    const distributionSteps = [0.08, 0.14, 0.22, 0.38, 0.58, 0.82, 1.0];
+    const distributionSteps = totalCount > 0 ? [0.08, 0.14, 0.22, 0.38, 0.58, 0.82, 1.0] : [0, 0, 0, 0, 0, 0, 0];
+    const avgEventFee = rawEvents.length > 0 ? (Number(rawEvents[0]?.registrationFee) || 200) : 200;
     const trendPoints = dayLabels.map((day, idx) => {
       const cumulativeTeams = Math.round(totalCount * distributionSteps[idx]);
-      const dailyVolume = cumulativeTeams * 200;
+      const dailyVolume = cumulativeTeams * avgEventFee;
       return {
         label: day,
         teams: cumulativeTeams,
@@ -217,11 +215,11 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
       pendingRev,
       clearanceRate,
       approvedCount: approvedList.length,
-      pendingCount: pendingList.length || 20,
+      pendingCount: pendingList.length,
       rejectedCount: rejectedList.length,
-      totalTeams: effectiveTeams.length || 20,
-      totalUsers: rawUsers.length || 10,
-      totalEvents: rawEvents.length || 6,
+      totalTeams: effectiveTeams.length,
+      totalUsers: rawUsers.length,
+      totalEvents: rawEvents.length,
       eventBarData,
       collegeBarData,
       roles,
@@ -406,7 +404,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
             <div className="kpi-info">
               <span className="kpi-label">Participating Colleges</span>
               <h3 className="kpi-value text-indigo">
-                <CountUp value={metrics.collegeBarData.length || 5} suffix=" Institutions" />
+                <CountUp value={metrics.collegeBarData.length} suffix=" Institutions" />
               </h3>
               <span className="kpi-subtext">2 Teams / College Quota Cap</span>
             </div>

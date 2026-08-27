@@ -336,20 +336,24 @@ export const UserProfileView = () => {
 
                     {/* Payment Action Operations (Approve / Reject / View Details) */}
                     <div className="pay-card-actions">
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'approved' ? 'btn-success-active' : 'btn-outline-success'}`}
-                        onClick={() => handleOpenActionModal(p, 'approved')}
-                      >
-                        <CheckCircle2 size={13} /> Approve
-                      </button>
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${rawStatus === 'rejected' ? 'btn-danger-active' : 'btn-outline-danger'}`}
-                        onClick={() => handleOpenActionModal(p, 'rejected')}
-                      >
-                        <XCircle size={13} /> Reject
-                      </button>
+                      {rawStatus !== 'approved' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-success"
+                          onClick={() => handleOpenActionModal(p, 'approved')}
+                        >
+                          <CheckCircle2 size={13} /> Approve
+                        </button>
+                      )}
+                      {rawStatus !== 'rejected' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-danger"
+                          onClick={() => handleOpenActionModal(p, 'rejected')}
+                        >
+                          <XCircle size={13} /> Reject
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn btn-xs btn-outline-secondary"
@@ -441,7 +445,7 @@ export const UserProfileView = () => {
                           {!isConfirmed && !isRejected && <Clock size={12} />}
                           {isConfirmed ? 'CONFIRMED REGISTRATION' : isRejected ? 'REGISTRATION REJECTED' : 'PAYMENT PENDING VERIFICATION'}
                         </span>
-                        <span className="event-fee-badge">Fee: ₹{evt.registrationFee || evt.actualPrice || 500}</span>
+                        <span className="event-fee-badge">Fee: ₹{evt.registrationFee ?? evt.actualPrice ?? evt.fee ?? 0}</span>
                       </div>
 
                       <div className="event-header-line">

@@ -93,12 +93,12 @@ export const ReportsHub = () => {
         const rev = approved.reduce((sum, r) => sum + (r.amountNumber || r.amountNum || 200), 0);
 
         setSummaryData({
-          totalUsers: uList.length || 10,
-          totalColleges: new Set(rList.map(r => r.collegeName).filter(Boolean)).size || 1,
-          totalTeams: rList.length || pList.length || 20,
+          totalUsers: uList.length,
+          totalColleges: new Set(rList.map(r => r.collegeName).filter(Boolean)).size,
+          totalTeams: rList.length || pList.length || 0,
           totalEvents: eList.length,
-          totalRegistrations: rList.length || pList.length || 20,
-          totalPayments: rList.length || pList.length || 20,
+          totalRegistrations: rList.length || pList.length || 0,
+          totalPayments: pList.length || rList.length || 0,
           approvedPaymentsCount: approved.length,
           pendingPaymentsCount: pending.length,
           totalRevenue: rev

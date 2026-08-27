@@ -864,20 +864,24 @@ export const RegistrationList = () => {
               <div className="modal-status-actions" style={{ marginTop: '1rem' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Status:</span>
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
-                  <button 
-                    onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
-                    className="btn btn-success btn-sm"
-                    disabled={actionLoading || inspectingReg.paymentStatus === 'Approved'}
-                  >
-                    <CheckCircle2 size={13} /> Mark Approved
-                  </button>
-                  <button 
-                    onClick={() => handleApprovePayment(inspectingReg, 'Rejected')}
-                    className="btn btn-danger btn-sm"
-                    disabled={actionLoading || inspectingReg.paymentStatus === 'Rejected'}
-                  >
-                    <XCircle size={13} /> Reject Payment
-                  </button>
+                  {inspectingReg.paymentStatus?.toLowerCase() !== 'approved' && (
+                    <button 
+                      onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
+                      className="btn btn-success btn-sm"
+                      disabled={actionLoading}
+                    >
+                      <CheckCircle2 size={13} /> Mark Approved
+                    </button>
+                  )}
+                  {inspectingReg.paymentStatus?.toLowerCase() !== 'rejected' && (
+                    <button 
+                      onClick={() => handleApprovePayment(inspectingReg, 'Rejected')}
+                      className="btn btn-danger btn-sm"
+                      disabled={actionLoading}
+                    >
+                      <XCircle size={13} /> Reject Payment
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
