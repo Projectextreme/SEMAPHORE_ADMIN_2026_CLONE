@@ -64,6 +64,484 @@
 .text-success { color: var(--success); }
 .text-indigo { color: var(--primary); }
 
+/* ==========================================================================
+   Global College Quota Policy Control Card
+   ========================================================================== */
+.global-quota-policy-card {
+  padding: 1.35rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.global-quota-policy-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--cyan) 0%, var(--primary) 50%, var(--warning) 100%);
+}
+
+.global-policy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.policy-header-title-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 280px;
+}
+
+.policy-icon-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+.policy-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.policy-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin: 0;
+}
+
+.policy-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.policy-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0.35rem 0 0 0;
+  line-height: 1.45;
+  max-width: 600px;
+}
+
+.global-quota-stepper-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.stepper-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stepper-controls {
+  display: flex;
+  align-items: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.btn-stepper {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-stepper:hover:not(:disabled) {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.btn-stepper:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepper-input {
+  width: 54px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--cyan);
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.preset-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-preset-pill {
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-preset-pill:hover:not(:disabled) {
+  color: var(--text-main);
+  border-color: var(--primary);
+}
+
+.btn-preset-pill.active {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+/* Specific College Overrides Strip */
+.custom-overrides-strip {
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.overrides-strip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.overrides-strip-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.overrides-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.overrides-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.override-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 0.3rem 0.6rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.override-college-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-heading);
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.override-limit-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+}
+
+.override-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.btn-override-edit,
+.btn-override-del {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 0.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.btn-override-edit:hover {
+  color: var(--primary);
+  background: var(--nav-hover-bg);
+}
+
+.btn-override-del:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ==========================================================================
+   Colleges Responsive Cards Grid View
+   ========================================================================== */
+.colleges-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 1.15rem;
+  padding: 0.25rem 0;
+}
+
+.college-card-tilt {
+  height: 100%;
+  display: flex;
+  border-radius: 16px;
+}
+
+.college-card-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.15rem;
+  box-sizing: border-box;
+  box-shadow: var(--card-shadow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 0.9rem;
+}
+
+.college-card-content:hover {
+  transform: translateY(-3px);
+  border-color: var(--cyan);
+  box-shadow: 0 12px 28px rgba(6, 182, 212, 0.18);
+}
+
+.college-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.quota-pill-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.override-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.override-badge-pill-sm {
+  display: inline-block;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.default-badge-pill-sm {
+  display: inline-block;
+  background: var(--badge-bg);
+  color: var(--text-dim);
+  border: 1px solid var(--border-subtle);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.allowed-quota-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.quota-limit-text {
+  font-size: 0.84rem;
+  color: var(--text-main);
+}
+
+.college-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.75rem 0.85rem;
+}
+
+.college-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.college-info-label {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.quota-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.quota-progress-label strong {
+  color: var(--text-main);
+}
+
+.college-date-val {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.college-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.btn-college-action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-college-action:hover {
+  transform: translateY(-1px);
+}
+
+.btn-quota-action:hover {
+  border-color: var(--warning);
+  color: var(--warning);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.btn-edit-action:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.btn-delete-action:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
 /* Toolbar Card */
 .college-toolbar-card {
   padding: 1.25rem;
@@ -88,9 +566,26 @@
 }
 
 .filter-wrapper {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+}
+
+.filter-icon-select {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--text-dim);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.filter-wrapper .select-compact {
+  padding-left: 2.2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 9px;
+  color: var(--text-main);
+  cursor: pointer;
 }
 
 /* Table Styles */
@@ -123,12 +618,17 @@
 .college-title-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .college-name-text {
   font-weight: 700;
   color: var(--text-heading);
   font-size: 0.88rem;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .college-subtext {

@@ -873,6 +873,38 @@ export const apiService = {
     });
   },
 
+  // 6.1 Allowed Colleges & Global Max Teams Config (Live backend)
+  getAllowedCollegesData: async () => {
+    return await apiRequest('/api/allowed-colleges', { method: 'GET' });
+  },
+
+  updateGlobalCollegeConfig: async (configData) => {
+    return await apiRequest('/api/allowed-colleges/config', {
+      method: 'PUT',
+      body: JSON.stringify(configData)
+    });
+  },
+
+  addAllowedCollege: async (collegeData) => {
+    return await apiRequest('/api/allowed-colleges', {
+      method: 'POST',
+      body: JSON.stringify(collegeData)
+    });
+  },
+
+  updateAllowedCollege: async (id, collegeData) => {
+    return await apiRequest(`/api/allowed-colleges/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(collegeData)
+    });
+  },
+
+  deleteAllowedCollege: async (id) => {
+    return await apiRequest(`/api/allowed-colleges/${id}`, {
+      method: 'DELETE'
+    });
+  },
+
   // 7. Event Registrations & Payment Approvals (Live backend)
   getRegistrations: async () => {
     let rawList = [];
