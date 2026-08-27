@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import {
@@ -22,13 +23,237 @@ import {
   X,
   Download,
   FileSpreadsheet,
-  BookOpen
+  BookOpen,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 import { apiService } from '../../services/apiService';
 import { TiltCard } from '../common/TiltCard';
 import { Modal } from '../common/Modal';
 import './EventManagement.css';
+
+// Interactive Searchable Coordinator Picker Component
+const CoordinatorPicker = ({ value, onChange, candidates = [] }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const wrapperRef = useRef(null);
+
+  // Parse current selected list into array of tokens/names/IDs
+  const selectedList = useMemo(() => {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.map(v => typeof v === 'object' && v !== null ? (v.name || v.email || v._id || v.id) : String(v).trim()).filter(Boolean);
+    }
+    if (typeof value === 'string') {
+      return value.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [value]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter candidates matching search query
+  const filteredCandidates = useMemo(() => {
+    const q = searchTerm.toLowerCase().trim();
+    if (!q) return candidates;
+    return candidates.filter(c => 
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.role || '').toLowerCase().includes(q) ||
+      (c._id || c.id || '').toLowerCase().includes(q) ||
+      (c.department || '').toLowerCase().includes(q)
+    );
+  }, [candidates, searchTerm]);
+
+  // Check if candidate is selected
+  const isSelected = (candidate) => {
+    const cid = String(candidate._id || candidate.id || '').toLowerCase().trim();
+    const cname = (candidate.name || '').toLowerCase().trim();
+    const cemail = (candidate.email || '').toLowerCase().trim();
+    return selectedList.some(s => {
+      const sLower = s.toLowerCase().trim();
+      return (cid && sLower === cid) || (cname && sLower === cname) || (cemail && sLower === cemail);
+    });
+  };
+
+  const handleToggleCandidate = (candidate) => {
+    const identifier = candidate.name || candidate.email || candidate._id;
+    let nextList;
+    if (isSelected(candidate)) {
+      const cid = String(candidate._id || candidate.id || '').toLowerCase().trim();
+      const cname = (candidate.name || '').toLowerCase().trim();
+      const cemail = (candidate.email || '').toLowerCase().trim();
+      nextList = selectedList.filter(s => {
+        const sLower = s.toLowerCase().trim();
+        return sLower !== cid && sLower !== cname && sLower !== cemail;
+      });
+    } else {
+      nextList = [...selectedList, identifier];
+    }
+    onChange(nextList.join(', '));
+    setSearchTerm('');
+  };
+
+  const handleRemoveItem = (itemToRemove, e) => {
+    e.stopPropagation();
+    const nextList = selectedList.filter(s => s !== itemToRemove);
+    onChange(nextList.join(', '));
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && searchTerm.trim()) {
+      e.preventDefault();
+      const trimmed = searchTerm.trim();
+      if (!selectedList.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+        const nextList = [...selectedList, trimmed];
+        onChange(nextList.join(', '));
+      }
+      setSearchTerm('');
+    } else if (e.key === 'Backspace' && !searchTerm && selectedList.length > 0) {
+      const nextList = selectedList.slice(0, -1);
+      onChange(nextList.join(', '));
+    }
+  };
+
+  return (
+    <div className="coordinator-picker-wrapper" ref={wrapperRef}>
+      {/* Selected Coordinators Tags / Input Box */}
+      <div 
+        className={`coordinator-picker-trigger ${isOpen ? 'focused' : ''}`}
+        onClick={() => setIsOpen(true)}
+      >
+        <div className="coordinator-selected-tags">
+          {selectedList.map((item, idx) => {
+            const match = candidates.find(c => 
+              String(c._id || c.id) === item || 
+              (c.name && c.name.toLowerCase() === item.toLowerCase()) || 
+              (c.email && c.email.toLowerCase() === item.toLowerCase())
+            );
+            const displayName = match?.name || item;
+            const displayRole = match?.role || 'Coordinator';
+
+            return (
+              <span key={idx} className="coordinator-chip">
+                <UserCheck size={11} className="chip-icon" />
+                <span className="chip-name">{displayName}</span>
+                <span className={`chip-role-tag role-${displayRole.toLowerCase()}`}>{displayRole}</span>
+                <button 
+                  type="button" 
+                  className="chip-remove-btn"
+                  onClick={(e) => handleRemoveItem(item, e)}
+                  title={`Remove ${displayName}`}
+                >
+                  <X size={11} />
+                </button>
+              </span>
+            );
+          })}
+
+          <input
+            type="text"
+            className="coordinator-search-input"
+            placeholder={selectedList.length === 0 ? "Search user name, email, or select from list..." : "Add more..."}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+            onKeyDown={handleKeyDown}
+          />
+        </div>
+
+        <div className="coordinator-picker-actions">
+          {selectedList.length > 0 && (
+            <button
+              type="button"
+              className="btn-clear-coords"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange('');
+              }}
+              title="Clear all selected coordinators"
+            >
+              <X size={13} />
+            </button>
+          )}
+          <div 
+            className="coordinator-dropdown-arrow" 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(!isOpen);
+            }}
+            title={isOpen ? 'Close list' : 'Open coordinator list'}
+          >
+            {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </div>
+        </div>
+      </div>
+
+      {/* Dropdown Candidate Selection Menu */}
+      {isOpen && (
+        <div className="coordinator-dropdown-menu">
+          <div className="coordinator-dropdown-header">
+            <span className="dropdown-header-title">
+              Available Directory Candidates ({filteredCandidates.length})
+            </span>
+            <span className="dropdown-hint">Click candidate to assign or press Enter</span>
+          </div>
+
+          <div className="coordinator-candidates-list">
+            {filteredCandidates.length === 0 ? (
+              <div className="coordinator-no-results">
+                <AlertCircle size={16} className="text-dim" />
+                <span>No exact matches for "{searchTerm}". Press <strong>Enter</strong> to assign "{searchTerm}" as custom coordinator.</span>
+              </div>
+            ) : (
+              filteredCandidates.map((c) => {
+                const selected = isSelected(c);
+                return (
+                  <div
+                    key={c._id || c.id || c.email || c.name}
+                    className={`coordinator-candidate-item ${selected ? 'selected' : ''}`}
+                    onClick={() => handleToggleCandidate(c)}
+                  >
+                    <div className="candidate-avatar">
+                      {(c.name || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="candidate-info">
+                      <div className="candidate-name-row">
+                        <strong className="candidate-name">{c.name}</strong>
+                        <span className={`candidate-role-badge badge-${(c.role || 'user').toLowerCase()}`}>
+                          {c.role || 'User'}
+                        </span>
+                      </div>
+                      <div className="candidate-sub-row">
+                        {c.email && <span className="candidate-email">{c.email}</span>}
+                        {c.department && <span className="candidate-dept">• {c.department}</span>}
+                        {c.collegeName && <span className="candidate-college">• {c.collegeName}</span>}
+                      </div>
+                    </div>
+                    <div className="candidate-checkbox">
+                      {selected ? <Check size={14} className="text-cyan" /> : <div className="checkbox-empty" />}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const initialEventState = {
   title: '',
@@ -50,9 +275,10 @@ const initialEventState = {
 };
 
 export const EventManagement = () => {
+  const { admin: currentAdmin } = useAuth();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   const [events, setEvents] = useState([]);
-  const [availableUsers, setAvailableUsers] = useState([]);
+  const [availableCoordinators, setAvailableCoordinators] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -83,19 +309,114 @@ export const EventManagement = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const [eventsData, usersData] = await Promise.allSettled([
+      const [eventsRes, usersRes, coordsRes, adminsRes] = await Promise.allSettled([
         apiService.getAllEvents(),
-        apiService.getAllUsers()
+        apiService.getAllUsers(),
+        apiService.getCoordinators(),
+        apiService.getAllAdmins()
       ]);
 
-      if (eventsData.status === 'fulfilled') {
-        const eventsList = Array.isArray(eventsData.value) ? eventsData.value : (eventsData.value?.events || []);
+      let eventsList = [];
+      if (eventsRes.status === 'fulfilled') {
+        eventsList = Array.isArray(eventsRes.value) ? eventsRes.value : (eventsRes.value?.events || []);
         setEvents(eventsList);
       }
-      if (usersData.status === 'fulfilled') {
-        const uList = Array.isArray(usersData.value) ? usersData.value : (usersData.value?.users || []);
-        setAvailableUsers(uList);
+
+      const candidateMap = new Map();
+
+      // Current logged in admin
+      if (currentAdmin) {
+        const key = String(currentAdmin._id || currentAdmin.id || currentAdmin.email);
+        candidateMap.set(key, {
+          _id: currentAdmin._id || currentAdmin.id || key,
+          id: currentAdmin._id || currentAdmin.id || key,
+          name: currentAdmin.name || 'Admin',
+          email: currentAdmin.email || '',
+          role: 'Admin',
+          phone: currentAdmin.phone || ''
+        });
       }
+
+      // 1. Registered Coordinators
+      if (coordsRes.status === 'fulfilled') {
+        const cList = Array.isArray(coordsRes.value) ? coordsRes.value : (coordsRes.value?.coordinators || []);
+        cList.forEach(c => {
+          if (c && (c.name || c.email || c._id)) {
+            const key = String(c._id || c.id || c.email || c.name);
+            candidateMap.set(key, {
+              _id: c._id || c.id || key,
+              id: c._id || c.id || key,
+              name: c.name || c.userName || 'Coordinator',
+              email: c.email || '',
+              role: 'Coordinator',
+              phone: c.phone || '',
+              department: c.department || ''
+            });
+          }
+        });
+      }
+
+      // 2. Admins
+      if (adminsRes.status === 'fulfilled') {
+        const aList = Array.isArray(adminsRes.value) ? adminsRes.value : (adminsRes.value?.admins || []);
+        aList.forEach(a => {
+          if (a && (a.name || a.email || a._id)) {
+            const key = String(a._id || a.id || a.email || a.name);
+            if (!candidateMap.has(key)) {
+              candidateMap.set(key, {
+                _id: a._id || a.id || key,
+                id: a._id || a.id || key,
+                name: a.name || 'Admin',
+                email: a.email || '',
+                role: 'Admin',
+                phone: a.phone || ''
+              });
+            }
+          }
+        });
+      }
+
+      // 3. Registered Platform Users
+      if (usersRes.status === 'fulfilled') {
+        const uList = Array.isArray(usersRes.value) ? usersRes.value : (usersRes.value?.users || []);
+        uList.forEach(u => {
+          if (u && (u.name || u.email || u._id)) {
+            const key = String(u._id || u.id || u.email || u.name);
+            if (!candidateMap.has(key)) {
+              candidateMap.set(key, {
+                _id: u._id || u.id || key,
+                id: u._id || u.id || key,
+                name: u.name || 'User',
+                email: u.email || '',
+                role: (u.role === 'coordinator') ? 'Coordinator' : ((u.role === 'admin' || u.role === 'superadmin') ? 'Admin' : 'User'),
+                phone: u.phone || '',
+                collegeName: u.collegeName || u.college?.collegeName || ''
+              });
+            }
+          }
+        });
+      }
+
+      // 4. Scan existing event coordinators
+      eventsList.forEach(evt => {
+        const coords = Array.isArray(evt.coordinators) ? evt.coordinators : (evt.coordinators ? [evt.coordinators] : []);
+        coords.forEach(c => {
+          if (typeof c === 'object' && c !== null && (c.name || c.email || c._id)) {
+            const key = String(c._id || c.id || c.email || c.name);
+            if (!candidateMap.has(key)) {
+              candidateMap.set(key, {
+                _id: c._id || c.id || key,
+                id: c._id || c.id || key,
+                name: c.name || c.userName || 'Coordinator',
+                email: c.email || '',
+                role: 'Coordinator'
+              });
+            }
+          }
+        });
+      });
+
+      setAvailableCoordinators(Array.from(candidateMap.values()));
     } catch (err) {
       console.error('Error fetching events:', err);
       showAlert('error', 'Failed to load events list.');
@@ -122,20 +443,19 @@ export const EventManagement = () => {
     }
   };
 
-  // Resolve coordinators input into valid MongoDB ObjectIds
+  // Resolve coordinators input into valid MongoDB ObjectIds or Strings
   const resolveCoordinatorIds = (input) => {
     if (!input) return [];
-    const tokens = typeof input === 'string'
-      ? input.split(',').map((s) => s.trim()).filter(Boolean)
-      : (Array.isArray(input) ? input : []);
+    const tokens = Array.isArray(input)
+      ? input.map(tok => typeof tok === 'object' && tok !== null ? (tok._id || tok.id || tok.name || tok.email) : String(tok).trim()).filter(Boolean)
+      : (typeof input === 'string' ? input.split(',').map(s => s.trim()).filter(Boolean) : []);
 
     const resolvedIds = [];
-    tokens.forEach((tok) => {
-      const tokStr = typeof tok === 'object' && tok !== null ? (tok._id || tok.id) : String(tok).trim();
+    tokens.forEach((tokStr) => {
       if (/^[0-9a-fA-F]{24}$/.test(tokStr)) {
         resolvedIds.push(tokStr);
       } else {
-        const matched = availableUsers.find(
+        const matched = availableCoordinators.find(
           (u) =>
             (u.name && u.name.toLowerCase() === tokStr.toLowerCase()) ||
             (u.email && u.email.toLowerCase() === tokStr.toLowerCase()) ||
@@ -143,6 +463,8 @@ export const EventManagement = () => {
         );
         if (matched && (matched._id || matched.id)) {
           resolvedIds.push(matched._id || matched.id);
+        } else {
+          resolvedIds.push(tokStr);
         }
       }
     });
@@ -496,7 +818,11 @@ export const EventManagement = () => {
                         title="Edit Event"
                         onClick={() => {
                           const coordStr = Array.isArray(evt.coordinators)
-                            ? evt.coordinators.map(c => typeof c === 'object' ? (c.name || c.email || c._id) : c).join(', ')
+                            ? evt.coordinators.map(c => {
+                                if (typeof c === 'object' && c !== null) return c.name || c.email || c._id;
+                                const matched = availableCoordinators.find(ac => String(ac._id || ac.id) === String(c));
+                                return matched ? matched.name : c;
+                              }).filter(Boolean).join(', ')
                             : (evt.coordinators || '');
 
                           setEditingEvent({
@@ -678,23 +1004,13 @@ export const EventManagement = () => {
 
             <div className="form-group">
               <label className="form-label">Coordinators (Optional)</label>
-              <input
-                type="text"
-                list="create-coordinators-list"
-                className="form-input"
-                placeholder="Search user name or email..."
+              <CoordinatorPicker
                 value={newEvent.coordinators}
-                onChange={(e) => setNewEvent({ ...newEvent, coordinators: e.target.value })}
+                onChange={(val) => setNewEvent({ ...newEvent, coordinators: val })}
+                candidates={availableCoordinators}
               />
-              <datalist id="create-coordinators-list">
-                {availableUsers.map((u) => (
-                  <option key={u._id || u.id} value={u.name || u.email}>
-                    {u.name} ({u.email || u.role || 'User'})
-                  </option>
-                ))}
-              </datalist>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
-                Assign registered platform users or admins as coordinators
+                Assign registered festival coordinators, platform users, or administrators
               </span>
             </div>
 
@@ -832,23 +1148,13 @@ export const EventManagement = () => {
 
             <div className="form-group">
               <label className="form-label">Coordinators (Optional)</label>
-              <input
-                type="text"
-                list="edit-coordinators-list"
-                className="form-input"
-                placeholder="Search user name or email..."
+              <CoordinatorPicker
                 value={editingEvent.coordinators || ''}
-                onChange={(e) => setEditingEvent({ ...editingEvent, coordinators: e.target.value })}
+                onChange={(val) => setEditingEvent({ ...editingEvent, coordinators: val })}
+                candidates={availableCoordinators}
               />
-              <datalist id="edit-coordinators-list">
-                {availableUsers.map((u) => (
-                  <option key={u._id || u.id} value={u.name || u.email}>
-                    {u.name} ({u.email || u.role || 'User'})
-                  </option>
-                ))}
-              </datalist>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginTop: '0.25rem', display: 'block' }}>
-                Assign registered platform users or admins as coordinators
+                Assign registered festival coordinators, platform users, or administrators
               </span>
             </div>
 

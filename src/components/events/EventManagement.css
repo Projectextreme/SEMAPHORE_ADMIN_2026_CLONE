@@ -245,3 +245,331 @@
     justify-content: space-between;
   }
 }
+
+/* ==========================================================================
+   Coordinator Search & Select Picker
+   ========================================================================== */
+.coordinator-picker-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.coordinator-picker-trigger {
+  min-height: 42px;
+  background: var(--bg-input, rgba(15, 23, 42, 0.6));
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: text;
+  transition: all 0.18s ease;
+  box-sizing: border-box;
+}
+
+.coordinator-picker-trigger:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.coordinator-picker-trigger.focused {
+  border-color: var(--cyan, #06b6d4);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.15);
+  background: var(--bg-card);
+}
+
+.coordinator-selected-tags {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.coordinator-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(6, 182, 212, 0.14);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: var(--text-heading);
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  animation: fadeIn 0.18s ease forwards;
+}
+
+.chip-icon {
+  color: var(--cyan, #06b6d4);
+}
+
+.chip-role-tag {
+  font-size: 0.62rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.chip-role-tag.role-coordinator {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.chip-role-tag.role-admin {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+.chip-role-tag.role-user {
+  background: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+}
+
+.chip-remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.chip-remove-btn:hover {
+  color: var(--danger, #ef4444);
+}
+
+.coordinator-search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-main);
+  font-size: 0.84rem;
+  font-family: inherit;
+  flex: 1;
+  min-width: 140px;
+  padding: 0.25rem 0;
+}
+
+.coordinator-search-input::placeholder {
+  color: var(--text-dim, #64748b);
+}
+
+.coordinator-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.btn-clear-coords {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-coords:hover {
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.coordinator-dropdown-arrow {
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.coordinator-dropdown-arrow:hover {
+  color: var(--text-main);
+  background: var(--badge-bg);
+}
+
+/* Dropdown Menu Popup */
+.coordinator-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #0f172a !important;
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.18));
+  border-radius: 12px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(6, 182, 212, 0.25);
+  z-index: 1000005;
+  max-height: 270px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.coordinator-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.85rem;
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dropdown-header-title {
+  font-weight: 700;
+  color: var(--cyan, #06b6d4);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dropdown-hint {
+  color: var(--text-dim, #64748b);
+  font-size: 0.68rem;
+}
+
+.coordinator-candidates-list {
+  overflow-y: auto;
+  max-height: 220px;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.coordinator-candidate-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.coordinator-candidate-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(6, 182, 212, 0.25);
+}
+
+.coordinator-candidate-item.selected {
+  background: rgba(6, 182, 212, 0.12);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.candidate-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--cyan, #06b6d4);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.candidate-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.candidate-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.candidate-name {
+  font-size: 0.84rem;
+  color: var(--text-heading, #ffffff);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidate-role-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.08rem 0.35rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.badge-coordinator {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-admin {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.badge-user {
+  background: rgba(6, 182, 212, 0.12);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.25);
+}
+
+.candidate-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #94a3b8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.candidate-checkbox {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.checkbox-empty {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-strong, rgba(255, 255, 255, 0.2));
+  border-radius: 4px;
+}
+
+.coordinator-no-results {
+  padding: 1rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
