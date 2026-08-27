@@ -521,8 +521,8 @@ export const RegistrationList = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`status-badge status-${rawStatus}`}>
-                          {reg.paymentStatus || 'Pending'}
+                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting UPI receipt upload' : `Payment status: ${reg.paymentStatus}`}>
+                          {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
                         </span>
                       </td>
                       <td>
@@ -839,7 +839,7 @@ export const RegistrationList = () => {
               </div>
 
               {/* Cloudinary Receipt Proof Preview */}
-              {(inspectingReg.proofUrl || inspectingReg.imageUrl) && (
+              {(inspectingReg.proofUrl || inspectingReg.imageUrl) ? (
                 <div style={{ marginTop: '1rem' }}>
                   <h4 className="inspect-section-title"><Receipt size={14} /> Attached Cloudinary Receipt</h4>
                   <div className="proof-image-wrapper" style={{ marginTop: '0.35rem' }}>
@@ -867,6 +867,15 @@ export const RegistrationList = () => {
                       </a>
                     </div>
                   </div>
+                </div>
+              ) : (
+                <div className="no-receipt-notice" style={{ marginTop: '0.85rem', padding: '0.75rem 0.95rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '9px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', color: 'var(--warning)', fontWeight: 700, fontSize: '0.82rem' }}>
+                    <AlertCircle size={14} /> No UPI Receipt Uploaded
+                  </div>
+                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    This participant registered on the portal but has not uploaded a UPI screenshot or UTR number yet (hence no entry in Payment Approvals). You can mark it <strong>Approved</strong> below if payment was received in cash or offline at the desk.
+                  </p>
                 </div>
               )}
 
