@@ -475,11 +475,15 @@ export const DashboardOverview = () => {
             />
           ) : (
             payments.slice(0, 3).map((p) => {
-              const paymentId = p._id || p.paymentid;
+              const paymentId = p._id || p.paymentid || p.id;
               const rawStatus = (p.status || 'pending').toLowerCase();
-              const amountDisplay = typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹0');
-              const proofImg = p.imageUrl || p.imageurl || p.proofUrl;
+              const amountDisplay = typeof p.amount === 'number' ? `₹${p.amount}` : (p.amount || '₹2000');
+              const proofImg = p.imageUrl || p.imageurl || p.proofUrl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.image;
               const userAvatar = p.user?.avatar || p.avatar;
+              const userName = p.user?.name || p.user?.username || p.user?.fullName || p.userName || p.leaderName || p.name || 'Student Participant';
+              const collegeName = p.user?.collegeName || p.user?.college || p.collegeName || p.college || p.team?.collegeName || p.team?.college || p.registration?.collegeName || p.registration?.college || p.user?.institution || p.institution || '';
+              const teamName = p.user?.team?.name || p.user?.teamName || p.teamName || p.team?.name || (typeof p.team === 'string' ? p.team : null) || p.registration?.teamName || p.registration?.team?.name || '';
+              const isCopied = copiedUtr === p.utr;
 
               return (
                 <div 
@@ -514,7 +518,7 @@ export const DashboardOverview = () => {
                       <div className="payment-meta-item utr-box">
                         <span className="meta-label">UTR Ref:</span>
                         <code className="utr-code" title={p.utr}>{p.utr || 'N/A'}</code>
-                        {p.utr && (
+                        {p.utr && p.utr !== 'N/A' && (
                           <button
                             type="button"
                             className="btn-icon-subtle"
@@ -524,7 +528,7 @@ export const DashboardOverview = () => {
                             }}
                             title="Copy UTR to Clipboard"
                           >
-                            <Copy size={13} />
+                            {isCopied ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                           </button>
                         )}
                       </div>
@@ -542,26 +546,33 @@ export const DashboardOverview = () => {
                               navigate('/users');
                             }
                           }}
-                          title={`Click to view full profile of ${p.user?.name || p.leaderName || 'User'}`}
+                          title={`Click to view full profile of ${userName}`}
                         >
                           {userAvatar ? (
-                            <img src={userAvatar} alt={p.user?.name || 'User'} className="user-avatar-sm" />
+                            <img src={userAvatar} alt={userName} className="user-avatar-sm" />
                           ) : (
                             <div className="user-avatar-placeholder">
                               <User size={12} />
                             </div>
                           )}
-                          <span className="user-name">{p.user?.name || p.leaderName || 'Student Participant'}</span>
+                          <span className="user-name">{userName}</span>
                         </div>
-                        {p.user?.collegeName || p.collegeName ? (
-                          <div className="college-name-line" title={p.user?.collegeName || p.collegeName}>
+
+                        {collegeName ? (
+                          <div className="college-name-line" title={collegeName}>
                             <Building2 size={12} className="text-muted" />
-                            <span className="college-name">{p.user?.collegeName || p.collegeName}</span>
+                            <span className="college-name">{collegeName}</span>
                           </div>
-                        ) : null}
-                        {p.user?.team?.name || p.teamName ? (
+                        ) : (
+                          <div className="college-name-line college-unspecified" title="College name not provided">
+                            <Building2 size={12} className="text-muted opacity-60" />
+                            <span className="college-name text-muted italic">College Unspecified</span>
+                          </div>
+                        )}
+
+                        {teamName ? (
                           <div className="team-name-line">
-                            <span className="team-badge">Team: {p.user?.team?.name || p.teamName}</span>
+                            <span className="team-badge">Team: {teamName}</span>
                           </div>
                         ) : null}
                       </div>
@@ -598,7 +609,7 @@ export const DashboardOverview = () => {
                         <ShieldCheck size={13} />
                         <span className="audit-admin-name">
                           {rawStatus === 'approved' ? 'Approved by' : 'Rejected by'}:{' '}
-                          <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Admin'}</strong>
+                          <strong>{p.approvedBy?.name || p.approvedBy?.email || 'Super Admin'}</strong>
                         </span>
                       </div>
                       {p.message && (
@@ -616,9 +627,9 @@ export const DashboardOverview = () => {
                           className="btn btn-xs btn-outline-success"
                           onClick={() => handleOpenPaymentActionModal(p, 'approved')}
                           disabled={actionLoading}
-                          title="Approve this payment"
+                          title={rawStatus === 'rejected' ? 'Re-Approve this payment' : 'Approve this payment'}
                         >
-                          <CheckCircle2 size={13} /> Approve
+                          <CheckCircle2 size={13} /> {rawStatus === 'rejected' ? 'Re-Approve' : 'Approve'}
                         </button>
                       )}
 
@@ -630,7 +641,7 @@ export const DashboardOverview = () => {
                           disabled={actionLoading}
                           title="Reject this payment"
                         >
-                          <XCircle size={13} /> Reject
+                          <XCircle size={13} /> {rawStatus === 'approved' ? 'Revoke' : 'Reject'}
                         </button>
                       )}
                     </div>

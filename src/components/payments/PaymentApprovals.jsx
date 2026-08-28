@@ -73,9 +73,9 @@ export const PaymentApprovals = () => {
           _id: p._id || p.paymentid,
           paymentid: p.paymentid || p._id,
           utr: p.utr || 'N/A',
-          teamName: p.user?.team?.name || p.teamName || '',
-          collegeName: p.user?.collegeName || p.collegeName || '',
-          userName: p.user?.name || p.leaderName || 'Participant',
+          teamName: p.user?.team?.name || p.user?.teamName || p.teamName || p.team?.name || (typeof p.team === 'string' ? p.team : '') || p.registration?.teamName || p.registration?.team?.name || '',
+          collegeName: p.user?.collegeName || p.user?.college || p.collegeName || p.college || p.team?.collegeName || p.team?.college || p.registration?.collegeName || p.registration?.college || p.user?.institution || p.institution || '',
+          userName: p.user?.name || p.user?.username || p.user?.fullName || p.userName || p.leaderName || p.name || 'Participant',
           userEmail: p.user?.email || p.email || '',
           userAvatar: p.user?.avatar || p.avatar || null,
           amountNum: validAmt,
@@ -441,10 +441,15 @@ export const PaymentApprovals = () => {
                   <div className="payment-card-main-content">
                     {/* Left: Meta details */}
                     <div className="payment-details-column">
-                      {p.collegeName && (
+                      {p.collegeName ? (
                         <div className="payment-meta-item" title={p.collegeName}>
                           <Building2 size={13} className="meta-icon" />
                           <span className="meta-val college-text">{p.collegeName}</span>
+                        </div>
+                      ) : (
+                        <div className="payment-meta-item college-unspecified" title="College name not specified">
+                          <Building2 size={13} className="meta-icon opacity-60" />
+                          <span className="meta-val college-text text-muted italic">College Unspecified</span>
                         </div>
                       )}
 

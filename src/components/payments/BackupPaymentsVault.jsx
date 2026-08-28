@@ -43,7 +43,18 @@ export const BackupPaymentsVault = () => {
     try {
       const data = await apiService.getBackupPayments();
       const list = data?.payments || (Array.isArray(data) ? data : []);
-      setBackupPayments(list);
+      const formatted = list.map(p => {
+        const collegeName = p.user?.collegeName || p.user?.college || p.collegeName || p.college || p.team?.collegeName || p.team?.college || p.registration?.collegeName || p.registration?.college || p.user?.institution || p.institution || '';
+        const teamName = p.user?.team?.name || p.user?.teamName || p.teamName || p.team?.name || (typeof p.team === 'string' ? p.team : '') || p.registration?.teamName || p.registration?.team?.name || '';
+        const userName = p.user?.name || p.user?.username || p.user?.fullName || p.userName || p.leaderName || p.name || 'Participant';
+        return {
+          ...p,
+          collegeName: collegeName || p.collegeName || '',
+          teamName: teamName || p.teamName || '',
+          userName: userName || p.userName || 'Participant'
+        };
+      });
+      setBackupPayments(formatted);
     } catch (err) {
       console.warn('Error loading backup payments:', err);
       showError('Failed to load backup payment records');
