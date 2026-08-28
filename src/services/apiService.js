@@ -1735,14 +1735,18 @@ export const apiService = {
       if (Array.isArray(res)) return res;
       if (Array.isArray(res?.data)) return res.data;
       if (Array.isArray(res?.rules)) return res.rules;
-      return res?.data ? [res.data] : [];
+      if (res?.data && (res.data.id || res.data._id || res.data.rules)) return [res.data];
+      if (res?.id || res?._id || res?.rules) return [res];
+      return [];
     } catch {
       try {
         const res = await apiRequest('/api/teamrules/all', { method: 'GET' });
         if (Array.isArray(res)) return res;
         if (Array.isArray(res?.data)) return res.data;
         if (Array.isArray(res?.rules)) return res.rules;
-        return res?.data ? [res.data] : [];
+        if (res?.data && (res.data.id || res.data._id || res.data.rules)) return [res.data];
+        if (res?.id || res?._id || res?.rules) return [res];
+        return [];
       } catch {
         const single = await apiService.getTeamRules();
         return single ? [single] : [];
