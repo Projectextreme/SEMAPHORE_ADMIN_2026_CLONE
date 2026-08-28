@@ -1,0 +1,33 @@
+name: Sync with upstream
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream https://github.com/semaphore2026/SEMAPHORE_ADMIN_2026.git
+          git fetch upstream main
+
+      - name: Sync main with upstream
+        run: |
+          git checkout main
+          git merge upstream/main --no-edit
+
+      - name: Push synced changes
+        run: |
+          git push origin main
