@@ -271,17 +271,12 @@ export const TeamRulesManagement = () => {
 
   const loadRuleSetIntoForm = (ruleObj) => {
     if (!ruleObj) return;
-    const ruleId = ruleObj._id || ruleObj.id || null;
+    const ruleId = ruleObj.id || ruleObj._id || null;
     setSelectedRuleSetId(ruleId);
     
-    // Check if local cache has newer rules for this set
-    let rulesToUse = Array.isArray(ruleObj.rules) && ruleObj.rules.length > 0 ? [...ruleObj.rules] : [...DEFAULT_SEMAPHORE_RULES];
-    try {
-      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
-      if (cached && (cached._id === ruleId || cached.id === ruleId) && Array.isArray(cached.rules) && cached.rules.length >= rulesToUse.length) {
-        rulesToUse = [...cached.rules];
-      }
-    } catch {}
+    const rulesToUse = Array.isArray(ruleObj.rules) && ruleObj.rules.length > 0 
+      ? [...ruleObj.rules] 
+      : [...DEFAULT_SEMAPHORE_RULES];
 
     setFormData({
       id: ruleId,

@@ -1734,17 +1734,22 @@ export const apiService = {
       }
     }
 
-    // Merge with local storage cache if available
+    if (fetchedData && typeof fetchedData === 'object') {
+      const normalized = {
+        ...fetchedData,
+        id: fetchedData.id || fetchedData._id,
+        _id: fetchedData._id || fetchedData.id,
+        rules: Array.isArray(fetchedData.rules) ? fetchedData.rules : []
+      };
+      try {
+        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(normalized));
+      } catch {}
+      return normalized;
+    }
+
+    // Fallback to local cache if offline
     try {
       const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
-      if (fetchedData && typeof fetchedData === 'object') {
-        const normalized = {
-          ...fetchedData,
-          rules: Array.isArray(fetchedData.rules) ? fetchedData.rules : (cached?.rules || [])
-        };
-        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(normalized));
-        return normalized;
-      }
       if (cached) return cached;
     } catch {}
 
@@ -1774,40 +1779,23 @@ export const apiService = {
       }
     }
 
-    // Blend with local custom sets and cached modifications
+    if (serverSets.length > 0) {
+      return serverSets.map(s => ({
+        ...s,
+        id: s.id || s._id,
+        _id: s._id || s.id
+      }));
+    }
+
+    // Blend with local custom sets if server returned empty
     try {
       const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
       const cachedActive = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+      if (Array.isArray(customSets) && customSets.length > 0) return customSets;
+      if (cachedActive) return [cachedActive];
+    } catch {}
 
-      const unifiedMap = new Map();
-
-      // 1. Add server sets
-      serverSets.forEach(s => {
-        const sId = s._id || s.id || s.category || 'default_set';
-        unifiedMap.set(String(sId), s);
-      });
-
-      // 2. Add custom local sets
-      customSets.forEach(cs => {
-        const csId = cs._id || cs.id || cs.category;
-        if (csId) unifiedMap.set(String(csId), { ...(unifiedMap.get(String(csId)) || {}), ...cs });
-      });
-
-      // 3. Apply cached active set override if matching
-      if (cachedActive) {
-        const activeId = cachedActive._id || cachedActive.id || cachedActive.category || 'default_set';
-        if (unifiedMap.has(String(activeId))) {
-          unifiedMap.set(String(activeId), { ...unifiedMap.get(String(activeId)), ...cachedActive });
-        } else if (unifiedMap.size === 0) {
-          unifiedMap.set(String(activeId), cachedActive);
-        }
-      }
-
-      const merged = Array.from(unifiedMap.values());
-      return merged.length > 0 ? merged : serverSets;
-    } catch {
-      return serverSets;
-    }
+    return [];
   },
 
   createTeamRules: async (ruleData) => {
@@ -1820,15 +1808,7 @@ export const apiService = {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Save to local custom sets
-    try {
-      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
-      const updated = [newRecord, ...customSets.filter(s => (s._id || s.id) !== tempId)];
-      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updated));
-      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(newRecord));
-    } catch {}
-
-    // 2. Attempt server creation
+    // 1. Attempt server creation via POST /api/team-rules, fallback POST /api/teamrules
     try {
       const res = await apiRequest('/api/team-rules', {
         method: 'POST',
@@ -1836,8 +1816,10 @@ export const apiService = {
       });
       const data = res?.data || res;
       if (data && typeof data === 'object') {
-        const merged = { ...newRecord, ...data };
-        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+        const merged = { ...newRecord, ...data, id: data.id || data._id || tempId, _id: data._id || data.id || tempId };
+        try {
+          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+        } catch {}
         return merged;
       }
     } catch {
@@ -1848,14 +1830,24 @@ export const apiService = {
         });
         const data = res?.data || res;
         if (data && typeof data === 'object') {
-          const merged = { ...newRecord, ...data };
-          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+          const merged = { ...newRecord, ...data, id: data.id || data._id || tempId, _id: data._id || data.id || tempId };
+          try {
+            localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+          } catch {}
           return merged;
         }
       } catch (err) {
-        console.warn('Server create team-rules endpoint failed, saved to local storage:', err.message);
+        console.warn('Server create team-rules endpoint failed, saved locally:', err.message);
       }
     }
+
+    // Save locally as fallback
+    try {
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const updated = [newRecord, ...customSets.filter(s => (s._id || s.id) !== tempId)];
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updated));
+      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(newRecord));
+    } catch {}
 
     return newRecord;
   },
@@ -1869,20 +1861,7 @@ export const apiService = {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Always persist to localStorage cache immediately so refresh never loses data
-    try {
-      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(updatedRecord));
-      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
-      const exists = customSets.some(s => (s._id || s.id) === targetId);
-      const updatedCustom = exists
-        ? customSets.map(s => ((s._id || s.id) === targetId ? { ...s, ...updatedRecord } : s))
-        : [updatedRecord, ...customSets];
-      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updatedCustom));
-    } catch (e) {
-      console.warn('Local storage update failed:', e);
-    }
-
-    // 2. Multi-strategy backend sync
+    // Multi-strategy backend sync: PUT /api/team-rules/:id -> PUT /api/teamrules/:id -> PUT /api/team-rules -> PUT /api/teamrules
     const endpoints = [
       ...(id ? [`/api/team-rules/${id}`, `/api/teamrules/${id}`] : []),
       '/api/team-rules',
@@ -1897,14 +1876,16 @@ export const apiService = {
         });
         const data = res?.data || res?.rules || res;
         if (data && typeof data === 'object') {
-          const combined = { ...updatedRecord, ...data };
-          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+          const combined = { ...updatedRecord, ...data, id: data.id || data._id || targetId, _id: data._id || data.id || targetId };
+          try {
+            localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+          } catch {}
           return combined;
         }
       } catch {}
     }
 
-    // If PUT fails on root, try POST as fallback
+    // Fallback: POST /api/team-rules
     try {
       const res = await apiRequest('/api/team-rules', {
         method: 'POST',
@@ -1912,10 +1893,23 @@ export const apiService = {
       });
       const data = res?.data || res;
       if (data && typeof data === 'object') {
-        const combined = { ...updatedRecord, ...data };
-        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+        const combined = { ...updatedRecord, ...data, id: data.id || data._id || targetId, _id: data._id || data.id || targetId };
+        try {
+          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+        } catch {}
         return combined;
       }
+    } catch {}
+
+    // Save locally as fallback
+    try {
+      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(updatedRecord));
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const exists = customSets.some(s => (s._id || s.id) === targetId);
+      const updatedCustom = exists
+        ? customSets.map(s => ((s._id || s.id) === targetId ? { ...s, ...updatedRecord } : s))
+        : [updatedRecord, ...customSets];
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updatedCustom));
     } catch {}
 
     return updatedRecord;
@@ -1924,7 +1918,20 @@ export const apiService = {
   deleteTeamRules: async (id) => {
     const idStr = String(id || '');
 
-    // 1. Remove from local storage
+    // 1. Try server DELETE /api/team-rules/:id, fallback /api/teamrules/:id
+    try {
+      const res = await apiRequest(`/api/team-rules/${id}`, { method: 'DELETE' });
+      return res;
+    } catch {
+      try {
+        const res = await apiRequest(`/api/teamrules/${id}`, { method: 'DELETE' });
+        return res;
+      } catch (err) {
+        console.warn('Server delete ruleset returned error, removed locally:', err.message);
+      }
+    }
+
+    // Remove from local storage
     try {
       const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
       const filtered = customSets.filter(s => String(s._id || s.id) !== idStr);
@@ -1936,17 +1943,7 @@ export const apiService = {
       }
     } catch {}
 
-    // 2. Try server DELETE
-    try {
-      return await apiRequest(`/api/team-rules/${id}`, { method: 'DELETE' });
-    } catch {
-      try {
-        return await apiRequest(`/api/teamrules/${id}`, { method: 'DELETE' });
-      } catch (err) {
-        console.warn('Server delete ruleset returned error, removed locally:', err.message);
-        return { success: true, message: 'Deleted locally' };
-      }
-    }
+    return { success: true, message: 'Deleted' };
   }
 };
 
