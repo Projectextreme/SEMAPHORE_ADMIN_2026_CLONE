@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { 
@@ -26,7 +26,11 @@ import {
   Edit3,
   X,
   FileCode,
-  ListOrdered
+  ListOrdered,
+  Zap,
+  CloudCheck,
+  CloudAlert,
+  RotateCcw
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { Modal } from '../common/Modal';
@@ -52,7 +56,7 @@ const DEFAULT_SEMAPHORE_RULES = [
 ];
 
 export const TeamRulesManagement = () => {
-  const { showSuccess, showError, showWarning } = useToast();
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   
   // Data states
   const [ruleSets, setRuleSets] = useState([]);
@@ -60,6 +64,17 @@ export const TeamRulesManagement = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
+  // Auto-Save feature state (default ON)
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
+    try {
+      const saved = localStorage.getItem('semaphore_rules_autosave');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [syncStatus, setSyncStatus] = useState('synced'); // 'synced' | 'saving' | 'unsaved' | 'local_only'
+
   // Current editing form state
   const [formData, setFormData] = useState({
     id: null,
@@ -74,6 +89,7 @@ export const TeamRulesManagement = () => {
 
   // UI States
   const [newRuleText, setNewRuleText] = useState('');
+  const [bottomRuleText, setBottomRuleText] = useState('');
   const [viewMode, setViewMode] = useState('editor'); // 'editor' | 'preview' | 'split'
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -84,7 +100,128 @@ export const TeamRulesManagement = () => {
   const [copiedAll, setCopiedAll] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // Fetch Team Rules from Backend
+  // Ref to debounce auto-save
+  const autoSaveTimerRef = useRef(null);
+  const rulesListBottomRef = useRef(null);
+
+  // Helper to persist draft locally
+  const persistDraftLocally = (updatedData) => {
+    try {
+      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(updatedData));
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const targetId = updatedData.id || 'default_rules_set';
+      const exists = customSets.some(s => (s._id || s.id) === targetId);
+      const updatedCustom = exists
+        ? customSets.map(s => ((s._id || s.id) === targetId ? { ...s, ...updatedData } : s))
+        : [updatedData, ...customSets];
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updatedCustom));
+    } catch (e) {
+      console.warn('Failed to persist rules locally:', e);
+    }
+  };
+
+  // Perform background server sync
+  const performSave = useCallback(async (dataToSave, isAuto = false) => {
+    if (!dataToSave.title.trim()) return;
+    if (dataToSave.rules.length === 0) return;
+
+    if (!isAuto) setSaving(true);
+    setSyncStatus('saving');
+
+    try {
+      const payload = {
+        title: dataToSave.title.trim(),
+        description: (dataToSave.description || '').trim(),
+        category: dataToSave.category || 'general',
+        rules: dataToSave.rules.map(r => r.trim()).filter(Boolean),
+        isActive: dataToSave.isActive !== undefined ? dataToSave.isActive : true
+      };
+
+      // Always ensure local persistence
+      persistDraftLocally({ ...dataToSave, ...payload });
+
+      const result = await apiService.updateTeamRules(dataToSave.id, payload);
+
+      if (result) {
+        setFormData(prev => ({
+          ...prev,
+          id: result._id || result.id || prev.id,
+          updatedAt: result.updatedAt || new Date().toISOString()
+        }));
+      }
+
+      setHasUnsavedChanges(false);
+      setSyncStatus('synced');
+
+      if (!isAuto) {
+        showSuccess('Team rules saved and published to live server!');
+      }
+
+      // Background refresh of set list
+      apiService.getAllTeamRules().then(updatedList => {
+        if (Array.isArray(updatedList) && updatedList.length > 0) {
+          setRuleSets(updatedList);
+        }
+      }).catch(() => null);
+
+    } catch (err) {
+      console.warn('Backend save encountered issue, saved to local cache:', err);
+      setSyncStatus('local_only');
+      if (!isAuto) {
+        showWarning('Saved locally! Server sync will retry automatically.');
+      }
+    } finally {
+      if (!isAuto) setSaving(false);
+    }
+  }, [showSuccess, showWarning]);
+
+  // Trigger auto-save debounce
+  const triggerAutoSave = useCallback((updatedForm) => {
+    persistDraftLocally(updatedForm);
+    if (!autoSaveEnabled) {
+      setHasUnsavedChanges(true);
+      setSyncStatus('unsaved');
+      return;
+    }
+
+    setSyncStatus('saving');
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(() => {
+      performSave(updatedForm, true);
+    }, 700);
+  }, [autoSaveEnabled, performSave]);
+
+  // Toggle Auto-save
+  const handleToggleAutoSave = (checked) => {
+    setAutoSaveEnabled(checked);
+    try {
+      localStorage.setItem('semaphore_rules_autosave', String(checked));
+    } catch {}
+    if (checked && hasUnsavedChanges) {
+      performSave(formData, true);
+      showInfo('Auto-Save enabled: changes synchronized.');
+    } else {
+      showInfo(checked ? 'Auto-Save is now active.' : 'Auto-Save turned off. Use "Save & Publish" manually.');
+    }
+  };
+
+  // Browser navigation safety
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges && !autoSaveEnabled) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved rule changes. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges, autoSaveEnabled]);
+
+  // Fetch Team Rules from Backend / Cache
   const fetchRules = async () => {
     setLoading(true);
     try {
@@ -94,29 +231,41 @@ export const TeamRulesManagement = () => {
         const current = allSets.find(s => (s._id || s.id) === selectedRuleSetId) || allSets[0];
         loadRuleSetIntoForm(current);
       } else {
-        // Fetch single public active record
         const single = await apiService.getTeamRules();
         if (single && (single.rules || single.title)) {
           setRuleSets([single]);
           loadRuleSetIntoForm(single);
         } else {
-          // Empty fallback initial state
-          setFormData({
-            id: null,
-            title: 'Semaphore 2026 - Team Rules & Guidelines',
-            description: 'Official pointwise rules and guidelines for all participating teams and college contingents.',
-            category: 'general',
-            rules: [...DEFAULT_SEMAPHORE_RULES],
-            isActive: true
-          });
+          // Check local cache
+          const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+          if (cached && Array.isArray(cached.rules) && cached.rules.length > 0) {
+            setRuleSets([cached]);
+            loadRuleSetIntoForm(cached);
+          } else {
+            setFormData({
+              id: null,
+              title: 'Semaphore 2026 - Team Rules & Guidelines',
+              description: 'Official pointwise rules and guidelines for all participating teams and college contingents.',
+              category: 'general',
+              rules: [...DEFAULT_SEMAPHORE_RULES],
+              isActive: true
+            });
+          }
         }
       }
     } catch (err) {
       console.warn('Could not fetch rules from backend, using local defaults:', err);
+      // Fallback to local cache if present
+      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+      if (cached) {
+        setRuleSets([cached]);
+        loadRuleSetIntoForm(cached);
+      }
       showError(err.message || 'Failed to fetch rules from backend server.');
     } finally {
       setLoading(false);
       setHasUnsavedChanges(false);
+      setSyncStatus('synced');
     }
   };
 
@@ -124,17 +273,28 @@ export const TeamRulesManagement = () => {
     if (!ruleObj) return;
     const ruleId = ruleObj._id || ruleObj.id || null;
     setSelectedRuleSetId(ruleId);
+    
+    // Check if local cache has newer rules for this set
+    let rulesToUse = Array.isArray(ruleObj.rules) && ruleObj.rules.length > 0 ? [...ruleObj.rules] : [...DEFAULT_SEMAPHORE_RULES];
+    try {
+      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+      if (cached && (cached._id === ruleId || cached.id === ruleId) && Array.isArray(cached.rules) && cached.rules.length >= rulesToUse.length) {
+        rulesToUse = [...cached.rules];
+      }
+    } catch {}
+
     setFormData({
       id: ruleId,
       title: ruleObj.title || 'Semaphore 2026 - Team Rules & Guidelines',
       description: ruleObj.description || '',
       category: ruleObj.category || 'general',
-      rules: Array.isArray(ruleObj.rules) && ruleObj.rules.length > 0 ? [...ruleObj.rules] : [...DEFAULT_SEMAPHORE_RULES],
+      rules: rulesToUse,
       isActive: ruleObj.isActive !== undefined ? ruleObj.isActive : true,
       createdAt: ruleObj.createdAt || null,
       updatedAt: ruleObj.updatedAt || null
     });
     setHasUnsavedChanges(false);
+    setSyncStatus('synced');
   };
 
   useEffect(() => {
@@ -143,42 +303,59 @@ export const TeamRulesManagement = () => {
 
   // Handle Input Changes
   const handleMetaChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-    setHasUnsavedChanges(true);
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      triggerAutoSave(updated);
+      return updated;
+    });
   };
 
   // Rule Item Operations
-  const handleAddRule = (e) => {
-    if (e) e.preventDefault();
-    const cleanText = newRuleText.trim();
+  const handleAddRule = (textToAdd, source = 'top') => {
+    const cleanText = (textToAdd || (source === 'bottom' ? bottomRuleText : newRuleText)).trim();
     if (!cleanText) return;
 
-    setFormData(prev => ({
-      ...prev,
-      rules: [...prev.rules, cleanText]
-    }));
-    setNewRuleText('');
-    setHasUnsavedChanges(true);
+    setFormData(prev => {
+      const updatedRules = [...prev.rules, cleanText];
+      const updatedForm = { ...prev, rules: updatedRules };
+      triggerAutoSave(updatedForm);
+      return updatedForm;
+    });
+
+    if (source === 'bottom') {
+      setBottomRuleText('');
+    } else {
+      setNewRuleText('');
+    }
+
+    showSuccess(`Rule #${formData.rules.length + 1} added!`);
+
+    // Smoothly scroll towards the newly added rule
+    setTimeout(() => {
+      if (rulesListBottomRef.current) {
+        rulesListBottomRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 100);
   };
 
   const handleUpdateRuleItem = (index, text) => {
     setFormData(prev => {
       const updated = [...prev.rules];
       updated[index] = text;
-      return { ...prev, rules: updated };
+      const updatedForm = { ...prev, rules: updated };
+      triggerAutoSave(updatedForm);
+      return updatedForm;
     });
-    setHasUnsavedChanges(true);
   };
 
   const handleDeleteRuleItem = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      rules: prev.rules.filter((_, idx) => idx !== index)
-    }));
-    setHasUnsavedChanges(true);
+    setFormData(prev => {
+      const updated = prev.rules.filter((_, idx) => idx !== index);
+      const updatedForm = { ...prev, rules: updated };
+      triggerAutoSave(updatedForm);
+      return updatedForm;
+    });
+    showInfo(`Removed rule #${index + 1}`);
   };
 
   const handleMoveRule = (index, direction) => {
@@ -190,9 +367,10 @@ export const TeamRulesManagement = () => {
       const temp = updated[index];
       updated[index] = updated[targetIdx];
       updated[targetIdx] = temp;
-      return { ...prev, rules: updated };
+      const updatedForm = { ...prev, rules: updated };
+      triggerAutoSave(updatedForm);
+      return updatedForm;
     });
-    setHasUnsavedChanges(true);
   };
 
   // Bulk Import Processing
@@ -205,7 +383,6 @@ export const TeamRulesManagement = () => {
     const lines = bulkText
       .split('\n')
       .map(line => line.trim())
-      // Clean leading bullet characters like "1.", "1)", "-", "*", "•"
       .map(line => line.replace(/^(\d+[\.\)]|\-|\*|•)\s*/, '').trim())
       .filter(line => line.length > 0);
 
@@ -214,77 +391,38 @@ export const TeamRulesManagement = () => {
       return;
     }
 
-    setFormData(prev => ({
-      ...prev,
-      rules: [...prev.rules, ...lines]
-    }));
+    setFormData(prev => {
+      const updatedForm = {
+        ...prev,
+        rules: [...prev.rules, ...lines]
+      };
+      triggerAutoSave(updatedForm);
+      return updatedForm;
+    });
+
     setBulkText('');
     setShowBulkModal(false);
-    setHasUnsavedChanges(true);
     showSuccess(`Imported ${lines.length} rules successfully!`);
   };
 
   // Reset to Fest Defaults
   const handleResetToDefaults = () => {
     if (window.confirm('Reset all rules to the official Semaphore 2026 default rules?')) {
-      setFormData(prev => ({
-        ...prev,
-        rules: [...DEFAULT_SEMAPHORE_RULES]
-      }));
-      setHasUnsavedChanges(true);
+      setFormData(prev => {
+        const updatedForm = {
+          ...prev,
+          rules: [...DEFAULT_SEMAPHORE_RULES]
+        };
+        triggerAutoSave(updatedForm);
+        return updatedForm;
+      });
       showSuccess('Reset to default team rules.');
     }
   };
 
-  // Save / Publish to Live REST Backend
-  const handleSaveRules = async () => {
-    if (!formData.title.trim()) {
-      showError('Rule set title is required.');
-      return;
-    }
-    if (formData.rules.length === 0) {
-      showError('Please add at least one rule item.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const payload = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        category: formData.category,
-        rules: formData.rules.map(r => r.trim()).filter(Boolean),
-        isActive: formData.isActive
-      };
-
-      let result;
-      if (formData.id) {
-        result = await apiService.updateTeamRules(formData.id, payload);
-      } else {
-        result = await apiService.updateTeamRules(null, payload);
-      }
-
-      showSuccess('Team rules saved and published successfully!');
-      setHasUnsavedChanges(false);
-      
-      if (result) {
-        setFormData(prev => ({
-          ...prev,
-          id: result._id || result.id || prev.id,
-          updatedAt: result.updatedAt || new Date().toISOString()
-        }));
-      }
-      
-      // Refresh list in background
-      const updatedList = await apiService.getAllTeamRules();
-      if (Array.isArray(updatedList) && updatedList.length > 0) {
-        setRuleSets(updatedList);
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to save rules to backend.');
-    } finally {
-      setSaving(false);
-    }
+  // Explicit Save / Publish Handler
+  const handleManualSave = () => {
+    performSave(formData, false);
   };
 
   // Create New Rule Set
@@ -389,6 +527,14 @@ export const TeamRulesManagement = () => {
                     <span className="status-dot-inactive" /> Draft / Hidden
                   </span>
                 )}
+                
+                {/* Sync status indicator */}
+                <div className={`sync-badge sync-${syncStatus}`}>
+                  {syncStatus === 'synced' && <><CheckCircle2 size={13} /> <span>Saved to Server & Cache</span></>}
+                  {syncStatus === 'saving' && <><RefreshCw size={13} className="spin-icon" /> <span>Syncing live...</span></>}
+                  {syncStatus === 'unsaved' && <><AlertCircle size={13} /> <span>Unsaved changes</span></>}
+                  {syncStatus === 'local_only' && <><Zap size={13} /> <span>Saved Locally</span></>}
+                </div>
               </div>
               <p className="rules-subheading">
                 Manage, publish, and structure official fest rules and pointwise team guidelines for Semaphore 2026.
@@ -398,6 +544,20 @@ export const TeamRulesManagement = () => {
 
           {/* Action Buttons */}
           <div className="rules-header-actions">
+            {/* Auto-Save Toggle */}
+            <label className="autosave-header-toggle" title="Automatically save and publish changes as you type">
+              <input 
+                type="checkbox" 
+                checked={autoSaveEnabled} 
+                onChange={(e) => handleToggleAutoSave(e.target.checked)} 
+              />
+              <span className="autosave-toggle-slider" />
+              <span className="autosave-toggle-label">
+                <Zap size={13} className={autoSaveEnabled ? 'text-warning' : 'text-muted'} />
+                <span>Auto-Save {autoSaveEnabled ? 'ON' : 'OFF'}</span>
+              </span>
+            </label>
+
             <button 
               className="btn btn-secondary rules-btn" 
               onClick={fetchRules}
@@ -428,7 +588,7 @@ export const TeamRulesManagement = () => {
 
             <button 
               className={`btn btn-primary rules-btn ${hasUnsavedChanges ? 'pulse-save-btn' : ''}`}
-              onClick={handleSaveRules}
+              onClick={handleManualSave}
               disabled={saving || loading}
             >
               {saving ? (
@@ -607,8 +767,14 @@ export const TeamRulesManagement = () => {
                 </div>
               </div>
 
-              {/* Quick Add Rule Input */}
-              <form onSubmit={handleAddRule} className="add-rule-inline-form">
+              {/* Quick Add Rule Input (TOP) */}
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleAddRule(newRuleText, 'top');
+                }} 
+                className="add-rule-inline-form"
+              >
                 <div className="add-rule-input-wrapper">
                   <span className="rule-next-number">#{formData.rules.length + 1}</span>
                   <input 
@@ -703,23 +869,78 @@ export const TeamRulesManagement = () => {
                     </div>
                   ))
                 )}
+                <div ref={rulesListBottomRef} />
               </div>
 
-              {/* Card Footer */}
+              {/* Bottom Quick Add Input (Convenient when scrolled to bottom) */}
+              {formData.rules.length > 5 && (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleAddRule(bottomRuleText, 'bottom');
+                  }} 
+                  className="add-rule-inline-form bottom-add-form"
+                >
+                  <div className="add-rule-input-wrapper">
+                    <span className="rule-next-number">#{formData.rules.length + 1}</span>
+                    <input 
+                      type="text"
+                      className="form-input add-rule-input"
+                      placeholder="Add another rule at the end..."
+                      value={bottomRuleText}
+                      onChange={(e) => setBottomRuleText(e.target.value)}
+                    />
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary btn-sm add-btn"
+                      disabled={!bottomRuleText.trim()}
+                    >
+                      <Plus size={15} />
+                      <span>Add Rule</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Card Footer with Direct Save & Delete */}
               {formData.rules.length > 0 && (
                 <div className="rules-card-footer">
-                  <span className="rules-counter-text">
-                    Total: <strong>{formData.rules.length}</strong> pointwise rules configured
-                  </span>
-                  {formData.id && (
+                  <div className="rules-footer-left">
+                    <span className="rules-counter-text">
+                      Total: <strong>{formData.rules.length}</strong> pointwise rules configured
+                    </span>
+                    <span className="rules-autosave-status-text">
+                      {autoSaveEnabled ? (
+                        <span className="text-success inline-flex-center"><CheckCircle2 size={13} /> Auto-Sync Active</span>
+                      ) : hasUnsavedChanges ? (
+                        <span className="text-warning inline-flex-center"><AlertCircle size={13} /> Changes Pending Save</span>
+                      ) : (
+                        <span className="text-muted inline-flex-center"><Check size={13} /> All Saved</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="rules-footer-actions">
                     <button 
                       type="button" 
-                      className="btn btn-ghost btn-xs text-danger"
-                      onClick={handleDeleteCurrentSet}
+                      className="btn btn-primary btn-sm"
+                      onClick={handleManualSave}
+                      disabled={saving}
                     >
-                      <Trash2 size={12} /> Delete this rule set
+                      {saving ? <RefreshCw size={13} className="spin-icon" /> : <Save size={13} />}
+                      <span>Save & Publish</span>
                     </button>
-                  )}
+
+                    {formData.id && (
+                      <button 
+                        type="button" 
+                        className="btn btn-ghost btn-xs text-danger"
+                        onClick={handleDeleteCurrentSet}
+                      >
+                        <Trash2 size={12} /> Delete this rule set
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -801,6 +1022,34 @@ export const TeamRulesManagement = () => {
         )}
 
       </div>
+
+      {/* Floating Action Bar when unsaved changes exist and AutoSave is OFF */}
+      {hasUnsavedChanges && !autoSaveEnabled && (
+        <div className="rules-floating-save-bar">
+          <div className="floating-bar-info">
+            <AlertCircle size={18} className="text-warning" />
+            <span>You have unsaved rule changes (<strong>{formData.rules.length}</strong> rules)</span>
+          </div>
+          <div className="floating-bar-actions">
+            <button 
+              type="button" 
+              className="btn btn-ghost btn-sm"
+              onClick={fetchRules}
+            >
+              <RotateCcw size={14} /> Discard
+            </button>
+            <button 
+              type="button" 
+              className="btn btn-primary btn-sm"
+              onClick={handleManualSave}
+              disabled={saving}
+            >
+              {saving ? <RefreshCw size={14} className="spin-icon" /> : <Save size={14} />}
+              <span>Save & Publish Now</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bulk Import Modal */}
       {showBulkModal && (

@@ -584,11 +584,199 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
   margin-top: 1.25rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
+}
+
+.rules-footer-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.rules-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.rules-autosave-status-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.inline-flex-center {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bottom-add-form {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+/* Sync Status Badge in Header */
+.sync-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  transition: all 0.25s ease;
+}
+
+.sync-synced {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.sync-saving {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+.sync-unsaved {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.sync-local_only {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+/* Autosave Header Toggle */
+.autosave-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  background: var(--bg-main, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-color);
+  padding: 0.45rem 0.8rem;
+  border-radius: 10px;
+  gap: 0.6rem;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.autosave-header-toggle:hover {
+  background: var(--bg-card);
+  border-color: var(--primary-border, var(--primary));
+}
+
+.autosave-header-toggle input {
+  display: none;
+}
+
+.autosave-toggle-slider {
+  width: 32px;
+  height: 18px;
+  background: var(--border-color, #cbd5e1);
+  border-radius: 20px;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.autosave-toggle-slider::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.autosave-header-toggle input:checked + .autosave-toggle-slider {
+  background: var(--success, #10b981);
+}
+
+.autosave-header-toggle input:checked + .autosave-toggle-slider::before {
+  transform: translateX(14px);
+}
+
+.autosave-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Sticky Floating Save Bar */
+.rules-floating-save-bar {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.85rem 1.5rem;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 100px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  animation: slideUpFloat 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  max-width: 90vw;
+  color: #f8fafc;
+}
+
+[data-theme='light'] .rules-floating-save-bar {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 36px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(99, 102, 241, 0.15);
+  color: #0f172a;
+}
+
+@keyframes slideUpFloat {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.floating-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.floating-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 /* Preview Pane */

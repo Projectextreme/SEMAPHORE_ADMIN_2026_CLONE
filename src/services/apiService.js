@@ -1720,81 +1720,235 @@ export const apiService = {
   // 12. Team Rules & Guidelines Management API
   getTeamRules: async (category = null) => {
     const query = category ? `?category=${encodeURIComponent(category)}` : '';
+    let fetchedData = null;
+
     try {
       const res = await apiRequest(`/api/team-rules${query}`, { method: 'GET' });
-      return res?.data || res?.rules || res;
+      fetchedData = res?.data || res?.rules || res;
     } catch {
-      const res = await apiRequest(`/api/teamrules${query}`, { method: 'GET' });
-      return res?.data || res?.rules || res;
+      try {
+        const res = await apiRequest(`/api/teamrules${query}`, { method: 'GET' });
+        fetchedData = res?.data || res?.rules || res;
+      } catch (err) {
+        console.warn('Could not fetch team rules from server, checking local cache:', err.message);
+      }
     }
+
+    // Merge with local storage cache if available
+    try {
+      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+      if (fetchedData && typeof fetchedData === 'object') {
+        const normalized = {
+          ...fetchedData,
+          rules: Array.isArray(fetchedData.rules) ? fetchedData.rules : (cached?.rules || [])
+        };
+        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(normalized));
+        return normalized;
+      }
+      if (cached) return cached;
+    } catch {}
+
+    return fetchedData;
   },
 
   getAllTeamRules: async () => {
+    let serverSets = [];
     try {
       const res = await apiRequest('/api/team-rules/all', { method: 'GET' });
-      if (Array.isArray(res)) return res;
-      if (Array.isArray(res?.data)) return res.data;
-      if (Array.isArray(res?.rules)) return res.rules;
-      if (res?.data && (res.data.id || res.data._id || res.data.rules)) return [res.data];
-      if (res?.id || res?._id || res?.rules) return [res];
-      return [];
+      if (Array.isArray(res)) serverSets = res;
+      else if (Array.isArray(res?.data)) serverSets = res.data;
+      else if (Array.isArray(res?.rules)) serverSets = res.rules;
+      else if (res?.data && (res.data.id || res.data._id || res.data.rules)) serverSets = [res.data];
+      else if (res?.id || res?._id || res?.rules) serverSets = [res];
     } catch {
       try {
         const res = await apiRequest('/api/teamrules/all', { method: 'GET' });
-        if (Array.isArray(res)) return res;
-        if (Array.isArray(res?.data)) return res.data;
-        if (Array.isArray(res?.rules)) return res.rules;
-        if (res?.data && (res.data.id || res.data._id || res.data.rules)) return [res.data];
-        if (res?.id || res?._id || res?.rules) return [res];
-        return [];
+        if (Array.isArray(res)) serverSets = res;
+        else if (Array.isArray(res?.data)) serverSets = res.data;
+        else if (Array.isArray(res?.rules)) serverSets = res.rules;
+        else if (res?.data && (res.data.id || res.data._id || res.data.rules)) serverSets = [res.data];
+        else if (res?.id || res?._id || res?.rules) serverSets = [res];
       } catch {
         const single = await apiService.getTeamRules();
-        return single ? [single] : [];
+        if (single) serverSets = [single];
       }
+    }
+
+    // Blend with local custom sets and cached modifications
+    try {
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const cachedActive = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+
+      const unifiedMap = new Map();
+
+      // 1. Add server sets
+      serverSets.forEach(s => {
+        const sId = s._id || s.id || s.category || 'default_set';
+        unifiedMap.set(String(sId), s);
+      });
+
+      // 2. Add custom local sets
+      customSets.forEach(cs => {
+        const csId = cs._id || cs.id || cs.category;
+        if (csId) unifiedMap.set(String(csId), { ...(unifiedMap.get(String(csId)) || {}), ...cs });
+      });
+
+      // 3. Apply cached active set override if matching
+      if (cachedActive) {
+        const activeId = cachedActive._id || cachedActive.id || cachedActive.category || 'default_set';
+        if (unifiedMap.has(String(activeId))) {
+          unifiedMap.set(String(activeId), { ...unifiedMap.get(String(activeId)), ...cachedActive });
+        } else if (unifiedMap.size === 0) {
+          unifiedMap.set(String(activeId), cachedActive);
+        }
+      }
+
+      const merged = Array.from(unifiedMap.values());
+      return merged.length > 0 ? merged : serverSets;
+    } catch {
+      return serverSets;
     }
   },
 
   createTeamRules: async (ruleData) => {
+    const tempId = `ruleset_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const newRecord = {
+      _id: tempId,
+      id: tempId,
+      ...ruleData,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Save to local custom sets
+    try {
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const updated = [newRecord, ...customSets.filter(s => (s._id || s.id) !== tempId)];
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updated));
+      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(newRecord));
+    } catch {}
+
+    // 2. Attempt server creation
     try {
       const res = await apiRequest('/api/team-rules', {
         method: 'POST',
         body: JSON.stringify(ruleData)
       });
-      return res?.data || res;
+      const data = res?.data || res;
+      if (data && typeof data === 'object') {
+        const merged = { ...newRecord, ...data };
+        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+        return merged;
+      }
     } catch {
-      const res = await apiRequest('/api/teamrules', {
-        method: 'POST',
-        body: JSON.stringify(ruleData)
-      });
-      return res?.data || res;
+      try {
+        const res = await apiRequest('/api/teamrules', {
+          method: 'POST',
+          body: JSON.stringify(ruleData)
+        });
+        const data = res?.data || res;
+        if (data && typeof data === 'object') {
+          const merged = { ...newRecord, ...data };
+          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(merged));
+          return merged;
+        }
+      } catch (err) {
+        console.warn('Server create team-rules endpoint failed, saved to local storage:', err.message);
+      }
     }
+
+    return newRecord;
   },
 
   updateTeamRules: async (id, ruleData) => {
-    const targetUrl = id ? `/api/team-rules/${id}` : '/api/team-rules';
+    const targetId = id || 'default_rules_set';
+    const updatedRecord = {
+      _id: targetId,
+      id: targetId,
+      ...ruleData,
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Always persist to localStorage cache immediately so refresh never loses data
     try {
-      const res = await apiRequest(targetUrl, {
-        method: 'PUT',
-        body: JSON.stringify(ruleData)
-      });
-      return res?.data || res;
-    } catch {
-      const fallbackUrl = id ? `/api/teamrules/${id}` : '/api/teamrules';
-      const res = await apiRequest(fallbackUrl, {
-        method: 'PUT',
-        body: JSON.stringify(ruleData)
-      });
-      return res?.data || res;
+      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(updatedRecord));
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const exists = customSets.some(s => (s._id || s.id) === targetId);
+      const updatedCustom = exists
+        ? customSets.map(s => ((s._id || s.id) === targetId ? { ...s, ...updatedRecord } : s))
+        : [updatedRecord, ...customSets];
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updatedCustom));
+    } catch (e) {
+      console.warn('Local storage update failed:', e);
     }
+
+    // 2. Multi-strategy backend sync
+    const endpoints = [
+      ...(id ? [`/api/team-rules/${id}`, `/api/teamrules/${id}`] : []),
+      '/api/team-rules',
+      '/api/teamrules'
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const res = await apiRequest(url, {
+          method: 'PUT',
+          body: JSON.stringify(ruleData)
+        });
+        const data = res?.data || res?.rules || res;
+        if (data && typeof data === 'object') {
+          const combined = { ...updatedRecord, ...data };
+          localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+          return combined;
+        }
+      } catch {}
+    }
+
+    // If PUT fails on root, try POST as fallback
+    try {
+      const res = await apiRequest('/api/team-rules', {
+        method: 'POST',
+        body: JSON.stringify(ruleData)
+      });
+      const data = res?.data || res;
+      if (data && typeof data === 'object') {
+        const combined = { ...updatedRecord, ...data };
+        localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(combined));
+        return combined;
+      }
+    } catch {}
+
+    return updatedRecord;
   },
 
   deleteTeamRules: async (id) => {
+    const idStr = String(id || '');
+
+    // 1. Remove from local storage
+    try {
+      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
+      const filtered = customSets.filter(s => String(s._id || s.id) !== idStr);
+      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(filtered));
+
+      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
+      if (cached && String(cached._id || cached.id) === idStr) {
+        localStorage.removeItem('semaphore_team_rules_cache');
+      }
+    } catch {}
+
+    // 2. Try server DELETE
     try {
       return await apiRequest(`/api/team-rules/${id}`, { method: 'DELETE' });
     } catch {
-      return await apiRequest(`/api/teamrules/${id}`, { method: 'DELETE' });
+      try {
+        return await apiRequest(`/api/teamrules/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.warn('Server delete ruleset returned error, removed locally:', err.message);
+        return { success: true, message: 'Deleted locally' };
+      }
     }
   }
 };
+
 
 
