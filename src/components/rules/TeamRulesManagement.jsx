@@ -154,7 +154,7 @@ export const TeamRulesManagement = () => {
       setSyncStatus('synced');
 
       if (!isAuto) {
-        showSuccess('Team rules saved and published to live server!');
+        showSuccess('Team rules saved and published to live database!');
       }
 
       // Background refresh of set list
@@ -165,15 +165,18 @@ export const TeamRulesManagement = () => {
       }).catch(() => null);
 
     } catch (err) {
-      console.warn('Backend save encountered issue, saved to local cache:', err);
-      setSyncStatus('local_only');
+      console.error('Backend save failed:', err);
+      setSyncStatus('unsaved');
+      setHasUnsavedChanges(true);
       if (!isAuto) {
-        showWarning('Saved locally! Server sync will retry automatically.');
+        showError(err.message || 'Failed to save rules to backend database.');
+      } else {
+        showWarning(`Auto-save failed: ${err.message || 'Server error'}`);
       }
     } finally {
       if (!isAuto) setSaving(false);
     }
-  }, [showSuccess, showWarning]);
+  }, [showSuccess, showError, showWarning]);
 
   // Trigger auto-save debounce
   const triggerAutoSave = useCallback((updatedForm) => {
