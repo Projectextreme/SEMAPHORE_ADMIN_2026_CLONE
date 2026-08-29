@@ -14,6 +14,7 @@ import {
   Phone,
   Mail,
   Copy,
+  Check,
   ShieldCheck,
   Eye,
   RefreshCw,
@@ -47,6 +48,7 @@ export const PaymentDetailsModal = ({
   const [deletingPayment, setDeletingPayment] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [proofImgFailed, setProofImgFailed] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(null);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -80,10 +82,20 @@ export const PaymentDetailsModal = ({
     };
   }, [isOpen, paymentId, showError]);
 
+  const handleCopyText = (text, label = 'Text', key = null) => {
+    if (!text || text === 'N/A') return;
+    navigator.clipboard.writeText(text);
+    showSuccess(`${label} '${text}' copied to clipboard`);
+    if (key) {
+      setCopiedKey(key);
+      setTimeout(() => {
+        setCopiedKey((prev) => (prev === key ? null : prev));
+      }, 2000);
+    }
+  };
+
   const handleCopyUtr = (utr) => {
-    if (!utr || utr === 'N/A') return;
-    navigator.clipboard.writeText(utr);
-    showSuccess(`UTR '${utr}' copied to clipboard`);
+    handleCopyText(utr, 'UTR', 'utr');
   };
 
   const handleConfirmDeletePayment = async () => {
@@ -205,7 +217,7 @@ export const PaymentDetailsModal = ({
                         onClick={() => handleCopyUtr(payment.utr)}
                         title="Copy UTR to Clipboard"
                       >
-                        <Copy size={13} />
+                        {copiedKey === 'utr' ? <Check size={13} className="text-emerald" /> : <Copy size={13} />}
                       </button>
                     )}
                   </div>
@@ -243,11 +255,29 @@ export const PaymentDetailsModal = ({
                     <p className="user-email-text" title={user?.email}>
                       <Mail size={12} />
                       <span>{user?.email || 'No email specified'}</span>
+                      {user?.email && (
+                        <button
+                          type="button"
+                          className="btn-copy-tiny"
+                          onClick={() => handleCopyText(user.email, 'Email', 'user-email')}
+                          title="Copy email address"
+                        >
+                          {copiedKey === 'user-email' ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                        </button>
+                      )}
                     </p>
                     {user?.phone && (
                       <p className="user-phone-text">
                         <Phone size={12} />
                         <span>{user.phone}</span>
+                        <button
+                          type="button"
+                          className="btn-copy-tiny"
+                          onClick={() => handleCopyText(user.phone, 'Phone number', 'user-phone')}
+                          title="Copy phone number"
+                        >
+                          {copiedKey === 'user-phone' ? <Check size={11} className="text-emerald" /> : <Copy size={11} />}
+                        </button>
                       </p>
                     )}
                   </div>
@@ -394,19 +424,69 @@ export const PaymentDetailsModal = ({
                               </div>
                             ) : participants.length > 0 ? (
                               <div className="participants-grid">
-                                {participants.map((part, pIdx) => (
-                                  <div key={pIdx} className="participant-badge-card">
-                                    <div className="participant-avatar-tiny">
-                                      <User size={12} />
+                                {participants.map((part, pIdx) => {
+                                  const pName = typeof part === 'object'
+                                    ? (part.name || part.userName || part.studentName || part.participantName || `Participant ${pIdx + 1}`)
+                                    : (typeof part === 'string' ? part : `Participant ${pIdx + 1}`);
+
+                                  const directPhone = typeof part === 'object'
+                                    ? (part.phone || part.phoneNumber || part.mobile || part.contact || part.contactNumber || part.phoneNo || part.mobileNo || part.user?.phone || part.user?.mobile)
+                                    : null;
+
+                                  // Smart fallback for leader / single participant
+                                  const pPhone = directPhone || (
+                                    (participants.length === 1 || (user?.name && pName.toLowerCase() === user.name.toLowerCase()) || (pIdx === 0 && !directPhone))
+                                      ? user?.phone
+                                      : null
+                                  );
+
+                                  const pEmail = typeof part === 'object'
+                                    ? (part.email || part.studentEmail || part.userEmail || part.user?.email || null)
+                                    : null;
+
+                                  const pRole = typeof part === 'object' ? part.role : null;
+                                  const phoneKey = `part-phone-${evtId}-${pIdx}`;
+
+                                  return (
+                                    <div key={pIdx} className="participant-badge-card">
+                                      <div className="participant-avatar-tiny">
+                                        <User size={12} />
+                                      </div>
+                                      <div className="participant-info">
+                                        <h6 className="participant-name">
+                                          <span>{pName}</span>
+                                          {pRole && <span className="participant-role-pill">{pRole}</span>}
+                                        </h6>
+                                        {pPhone && (
+                                          <div className="participant-phone-row">
+                                            <button
+                                              type="button"
+                                              className="participant-phone-sub"
+                                              onClick={() => handleCopyText(pPhone, 'Participant phone', phoneKey)}
+                                              title="Click to copy participant phone number"
+                                            >
+                                              <Phone size={10} className="phone-icon" />
+                                              <span className="phone-text">{pPhone}</span>
+                                              <span className="phone-copy-icon">
+                                                {copiedKey === phoneKey ? (
+                                                  <Check size={10} className="text-emerald" />
+                                                ) : (
+                                                  <Copy size={10} />
+                                                )}
+                                              </span>
+                                            </button>
+                                          </div>
+                                        )}
+                                        {pEmail && (
+                                          <div className="participant-email-sub" title={pEmail}>
+                                            <Mail size={10} />
+                                            <span>{pEmail}</span>
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="participant-info">
-                                      <h6 className="participant-name">
-                                        {part.name}
-                                        {part.role && <span className="participant-role-pill">{part.role}</span>}
-                                      </h6>
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             ) : (
                               <div className="no-participants-box">

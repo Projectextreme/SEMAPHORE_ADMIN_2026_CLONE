@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.semaphore2k26.in';
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'https://api.semaphore2k26.in').replace(/\/+$/, '');
 
 
 export const getAuthToken = () => {
