@@ -215,14 +215,88 @@
   border-radius: 4px;
 }
 
-.participant-phone-sub,
+.btn-copy-tiny {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-left: 0.15rem;
+}
+
+.btn-copy-tiny:hover {
+  color: var(--cyan);
+  background: var(--cyan-light, rgba(6, 182, 212, 0.1));
+}
+
+.participant-phone-row {
+  display: flex;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.participant-phone-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 6px;
+  color: var(--cyan);
+  font-size: 0.74rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: fit-content;
+  text-decoration: none;
+  user-select: text;
+}
+
+.participant-phone-sub:hover {
+  background: rgba(6, 182, 212, 0.16);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  transform: translateY(-1px);
+}
+
+.participant-phone-sub .phone-icon {
+  flex-shrink: 0;
+}
+
+.participant-phone-sub .phone-text {
+  letter-spacing: 0.02em;
+}
+
+.participant-phone-sub .phone-copy-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-left: 0.2rem;
+  transition: color 0.15s ease;
+}
+
+.participant-phone-sub:hover .phone-copy-icon {
+  color: var(--cyan);
+}
+
 .participant-email-sub {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  margin-top: 1px;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .backup-readonly-hint {

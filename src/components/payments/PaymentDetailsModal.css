@@ -628,25 +628,50 @@
   padding: 0.5rem 0;
 }
 
+.btn-copy-tiny {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  margin-left: 0.15rem;
+}
+
+.btn-copy-tiny:hover {
+  color: var(--cyan);
+  background: var(--cyan-light, rgba(6, 182, 212, 0.1));
+}
+
 .participants-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 0.6rem;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 0.65rem;
 }
 
 .participant-badge-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 8px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.participant-badge-card:hover {
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .participant-avatar-tiny {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--cyan-light);
   color: var(--cyan);
@@ -655,15 +680,20 @@
   justify-content: center;
   flex-shrink: 0;
   font-weight: 700;
+  margin-top: 1px;
 }
 
 .participant-info {
   min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .participant-name {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 600;
   color: var(--text-heading);
   display: flex;
@@ -679,6 +709,71 @@
   border-radius: 4px;
   background: var(--purple-light);
   color: var(--purple);
+}
+
+.participant-phone-row {
+  display: flex;
+  align-items: center;
+  margin-top: 0.15rem;
+}
+
+.participant-phone-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: 6px;
+  color: var(--cyan);
+  font-size: 0.74rem;
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: fit-content;
+  text-decoration: none;
+  user-select: text;
+}
+
+.participant-phone-sub:hover {
+  background: rgba(6, 182, 212, 0.16);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  transform: translateY(-1px);
+}
+
+.participant-phone-sub .phone-icon {
+  flex-shrink: 0;
+}
+
+.participant-phone-sub .phone-text {
+  letter-spacing: 0.02em;
+}
+
+.participant-phone-sub .phone-copy-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  margin-left: 0.2rem;
+  transition: color 0.15s ease;
+}
+
+.participant-phone-sub:hover .phone-copy-icon {
+  color: var(--cyan);
+}
+
+.participant-email-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .no-participants-box {
