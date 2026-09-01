@@ -22,6 +22,7 @@ import { CollegeManagement } from './components/colleges/CollegeManagement';
 import { ReportsHub } from './components/reports/ReportsHub';
 import { VisualAnalyticsHub } from './components/analytics/VisualAnalyticsHub';
 import { TeamRulesManagement } from './components/rules/TeamRulesManagement';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './App.css';
 
 
@@ -45,7 +46,9 @@ function AdminLayout() {
         />
         <main className="admin-main-content">
           <div key={location.pathname} className="view-transition-container">
-            <Outlet />
+            <ErrorBoundary>
+              <Outlet />
+            </ErrorBoundary>
           </div>
         </main>
       </div>

@@ -6,6 +6,7 @@ import {
   Building2, 
   CheckCircle, 
   AlertTriangle, 
+  AlertCircle,
   Users, 
   CheckCircle2, 
   Filter, 
@@ -28,6 +29,8 @@ import {
   Tag
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
+import { resolveImageUrl } from '../../services/apiConfig';
+import { DEFAULT_RECEIPT_PLACEHOLDER } from '../common/constants';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
 import { Modal } from '../common/Modal';
@@ -470,7 +473,7 @@ export const RegistrationList = () => {
                               title="Click to view receipt proof"
                             >
                               <img
-                                src={receiptImg}
+                                src={resolveImageUrl(receiptImg) || DEFAULT_RECEIPT_PLACEHOLDER}
                                 alt="Receipt"
                                 className="table-receipt-thumb"
                                 onError={(e) => {
@@ -738,11 +741,11 @@ export const RegistrationList = () => {
               <div className="user-detail-card">
                 <div className="detail-row">
                   <span className="detail-label">Team Name</span>
-                  <span className="font-bold">{inspectingReg.teamName}</span>
+                  <span className="font-bold">{inspectingReg.teamName || 'Solo Participant'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Team Leader</span>
-                  <span className="font-bold">{inspectingReg.leaderName}</span>
+                  <span className="font-bold">{inspectingReg.leaderName || 'N/A'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Email Address</span>
@@ -754,16 +757,25 @@ export const RegistrationList = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Institution</span>
-                  <span>{inspectingReg.collegeName}</span>
+                  <span>{inspectingReg.collegeName || 'N/A'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Enrolled Event</span>
-                  <span className="event-tag">{inspectingReg.event || inspectingReg.eventName}</span>
+                  <span className="event-tag">{inspectingReg.event || inspectingReg.eventName || 'General Event'}</span>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Registration Date</span>
                   <span className="date-text">
-                    {inspectingReg.registeredAt ? new Date(inspectingReg.registeredAt).toLocaleString() : 'N/A'}
+                    {(() => {
+                      const dt = inspectingReg.registeredAt || inspectingReg.createdAt || inspectingReg.date;
+                      if (!dt) return 'N/A';
+                      try {
+                        const d = new Date(dt);
+                        return isNaN(d.getTime()) ? String(dt) : d.toLocaleString();
+                      } catch {
+                        return String(dt);
+                      }
+                    })()}
                   </span>
                 </div>
               </div>
@@ -771,32 +783,42 @@ export const RegistrationList = () => {
               {/* Team Members List */}
               <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
               <div className="members-roster-box">
-                {inspectingReg.participants && Array.isArray(inspectingReg.participants) && inspectingReg.participants.length > 0 ? (
-                  inspectingReg.participants.map((p, idx) => {
-                    const pName = typeof p === 'object' ? (p.name || p.userName || 'Member') : p;
-                    const pPhone = typeof p === 'object' ? p.phone : null;
-                    const pEmail = typeof p === 'object' ? p.email : null;
-                    return (
-                      <div key={idx} className="member-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-                          <span className="member-num">{idx + 1}</span>
-                          <strong className="member-name">{pName}</strong>
-                        </div>
-                        {(pPhone || pEmail) && (
-                          <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '1.75rem' }}>
-                            {pPhone && <span><Phone size={10} style={{ verticalAlign: 'middle' }} /> {pPhone}</span>}
-                            {pEmail && <span><Mail size={10} style={{ verticalAlign: 'middle' }} /> {pEmail}</span>}
+                {(() => {
+                  const membersList = (Array.isArray(inspectingReg.participants) && inspectingReg.participants.length > 0)
+                    ? inspectingReg.participants
+                    : (Array.isArray(inspectingReg.members) && inspectingReg.members.length > 0)
+                      ? inspectingReg.members
+                      : null;
+
+                  if (membersList && membersList.length > 0) {
+                    return membersList.map((p, idx) => {
+                      const pName = typeof p === 'object' ? (p.name || p.userName || p.fullName || `Member ${idx + 1}`) : String(p || `Member ${idx + 1}`);
+                      const pPhone = typeof p === 'object' ? p.phone : null;
+                      const pEmail = typeof p === 'object' ? p.email : null;
+                      return (
+                        <div key={idx} className="member-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.2rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                            <span className="member-num">{idx + 1}</span>
+                            <strong className="member-name">{pName}</strong>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="member-item">
-                    <span className="member-num">1</span>
-                    <span className="member-name">{inspectingReg.leaderName || 'Solo Participant'}</span>
-                  </div>
-                )}
+                          {(pPhone || pEmail) && (
+                            <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: '1.75rem' }}>
+                              {pPhone && <span><Phone size={10} style={{ verticalAlign: 'middle' }} /> {pPhone}</span>}
+                              {pEmail && <span><Mail size={10} style={{ verticalAlign: 'middle' }} /> {pEmail}</span>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  }
+
+                  return (
+                    <div className="member-item">
+                      <span className="member-num">1</span>
+                      <span className="member-name">{inspectingReg.leaderName || 'Solo Participant'}</span>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -813,7 +835,9 @@ export const RegistrationList = () => {
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">Amount Billed</span>
-                  <strong className="font-bold text-success" style={{ fontSize: '1.05rem' }}>{inspectingReg.amount || '₹ 0'}</strong>
+                  <strong className="font-bold text-success" style={{ fontSize: '1.05rem' }}>
+                    {typeof inspectingReg.amount === 'number' ? `₹ ${inspectingReg.amount}` : (inspectingReg.amount || '₹ 0')}
+                  </strong>
                 </div>
                 <div className="detail-row">
                   <span className="detail-label">UPI Reference (UTR)</span>
@@ -833,22 +857,34 @@ export const RegistrationList = () => {
                 {inspectingReg.paymentTimestamp && (
                   <div className="detail-row">
                     <span className="detail-label">Payment Timestamp</span>
-                    <span className="date-text">{new Date(inspectingReg.paymentTimestamp).toLocaleString()}</span>
+                    <span className="date-text">
+                      {(() => {
+                        try {
+                          const d = new Date(inspectingReg.paymentTimestamp);
+                          return isNaN(d.getTime()) ? String(inspectingReg.paymentTimestamp) : d.toLocaleString();
+                        } catch {
+                          return String(inspectingReg.paymentTimestamp);
+                        }
+                      })()}
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Cloudinary Receipt Proof Preview */}
+              {/* Cloudinary / Attached Receipt Proof Preview */}
               {(inspectingReg.proofUrl || inspectingReg.imageUrl) ? (
                 <div style={{ marginTop: '1rem' }}>
-                  <h4 className="inspect-section-title"><Receipt size={14} /> Attached Cloudinary Receipt</h4>
+                  <h4 className="inspect-section-title"><Receipt size={14} /> Attached Payment Receipt</h4>
                   <div className="proof-image-wrapper" style={{ marginTop: '0.35rem' }}>
                     <img 
-                      src={inspectingReg.proofUrl || inspectingReg.imageUrl} 
+                      src={resolveImageUrl(inspectingReg.proofUrl || inspectingReg.imageUrl) || DEFAULT_RECEIPT_PLACEHOLDER} 
                       alt="Payment Receipt Proof" 
                       className="receipt-proof-img"
-                      style={{ maxHeight: '200px' }}
-                      onClick={() => window.open(inspectingReg.proofUrl || inspectingReg.imageUrl, '_blank')}
+                      style={{ maxHeight: '200px', cursor: 'pointer' }}
+                      onClick={() => {
+                        const targetUrl = resolveImageUrl(inspectingReg.proofUrl || inspectingReg.imageUrl);
+                        if (targetUrl) window.open(targetUrl, '_blank');
+                      }}
                       title="Click to view full image in new tab"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
@@ -858,10 +894,14 @@ export const RegistrationList = () => {
                     <div className="proof-meta-strip">
                       <span className="proof-meta-badge">Verified Receipt</span>
                       <a 
-                        href={inspectingReg.proofUrl || inspectingReg.imageUrl} 
+                        href={resolveImageUrl(inspectingReg.proofUrl || inspectingReg.imageUrl) || '#'} 
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="link-external"
+                        onClick={(e) => {
+                          const targetUrl = resolveImageUrl(inspectingReg.proofUrl || inspectingReg.imageUrl);
+                          if (!targetUrl) e.preventDefault();
+                        }}
                       >
                         Open Full Image ↗
                       </a>
