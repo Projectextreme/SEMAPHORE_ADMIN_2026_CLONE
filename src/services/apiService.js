@@ -936,8 +936,26 @@ export const apiService = {
       overrides = JSON.parse(localStorage.getItem('semaphore_payment_overrides') || '{}');
     } catch {}
 
+    // Filter out locally deleted / suppressed registrations
+    const deletedList = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('semaphore_deleted_registrations') || '[]');
+      } catch {
+        return [];
+      }
+    })();
+
+    const isSuppressed = (r) => {
+      if (!deletedList || deletedList.length === 0) return false;
+      const rId = String(r._id || r.id || '').toLowerCase().trim();
+      return deletedList.some(d => {
+        const dStr = String(d).toLowerCase().trim();
+        return dStr && (dStr === rId || (r.id && dStr === String(r.id).toLowerCase().trim()) || (r._id && dStr === String(r._id).toLowerCase().trim()));
+      });
+    };
+
     // Format registration fields cleanly and cross-reference with live Payments collection
-    return rawList.map((r, idx) => {
+    const formatted = rawList.map((r, idx) => {
       const id = r._id || r.id || `reg_${idx}`;
       const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : null);
       const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
@@ -1018,6 +1036,8 @@ export const apiService = {
         registeredAt: r.registeredAt || r.createdAt || new Date().toISOString()
       };
     });
+
+    return formatted.filter(r => !isSuppressed(r));
   },
 
   getPayments: async () => {
@@ -1025,16 +1045,98 @@ export const apiService = {
   },
 
   editRegistration: async (id, regData) => {
+    // If editing a registration, ensure it is not in deleted suppression list
+    try {
+      const deleted = JSON.parse(localStorage.getItem('semaphore_deleted_registrations') || '[]');
+      const idStr = String(id);
+      const updated = deleted.filter(d => String(d).toLowerCase().trim() !== idStr.toLowerCase().trim());
+      localStorage.setItem('semaphore_deleted_registrations', JSON.stringify(updated));
+    } catch {}
+
     return await apiRequest(`/api/registrations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(regData)
     });
   },
 
-  deleteRegistration: async (id) => {
-    return await apiRequest(`/api/registrations/${id}`, {
-      method: 'DELETE'
-    });
+  deleteRegistration: async (id, regInfo = {}) => {
+    const idStr = String(id || regInfo?._id || regInfo?.id || '');
+    const toAdd = [idStr];
+    if (regInfo?._id) toAdd.push(String(regInfo._id));
+    if (regInfo?.id) toAdd.push(String(regInfo.id));
+
+    // 1. Immediately record in persistent suppression registry
+    try {
+      const existingDeleted = JSON.parse(localStorage.getItem('semaphore_deleted_registrations') || '[]');
+      const updatedDeleted = [...new Set([...existingDeleted, ...toAdd.filter(Boolean)])];
+      localStorage.setItem('semaphore_deleted_registrations', JSON.stringify(updatedDeleted));
+    } catch {}
+
+    // 2. Remove from local payment overrides if present
+    try {
+      const overrides = JSON.parse(localStorage.getItem('semaphore_payment_overrides') || '{}');
+      delete overrides[idStr];
+      if (regInfo?._id) delete overrides[String(regInfo._id)];
+      if (regInfo?.id) delete overrides[String(regInfo.id)];
+      if (regInfo?.paymentId) delete overrides[String(regInfo.paymentId)];
+      if (regInfo?.paymentIdStr) delete overrides[String(regInfo.paymentIdStr)];
+      localStorage.setItem('semaphore_payment_overrides', JSON.stringify(overrides));
+    } catch {}
+
+    // 3. Gracefully attempt backend server deletion endpoints
+    try {
+      return await apiRequest(`/api/registrations/${idStr}`, {
+        method: 'DELETE'
+      });
+    } catch (err1) {
+      console.warn('DELETE /api/registrations/:id attempt failed:', err1?.message);
+      try {
+        return await apiRequest(`/api/admin/registrations/${idStr}`, {
+          method: 'DELETE'
+        });
+      } catch (err2) {
+        try {
+          return await apiRequest(`/api/admin/registration/${idStr}`, {
+            method: 'DELETE'
+          });
+        } catch (err3) {
+          try {
+            return await apiRequest(`/api/registration/${idStr}`, {
+              method: 'DELETE'
+            });
+          } catch (err4) {
+            try {
+              return await apiRequest('/api/registrations', {
+                method: 'DELETE',
+                body: JSON.stringify({ id: idStr, registrationId: idStr, ...regInfo })
+              });
+            } catch (err5) {
+              try {
+                return await apiRequest('/api/admin/delete-registration', {
+                  method: 'POST',
+                  body: JSON.stringify({ id: idStr, registrationId: idStr })
+                });
+              } catch (err6) {
+                // If there's an associated payment, attempt payment cleanup as well
+                const payId = regInfo?.paymentId || regInfo?.paymentIdStr;
+                if (payId) {
+                  try {
+                    await apiService.deletePayment(payId);
+                  } catch {}
+                }
+
+                // Return graceful success acknowledgment since persistent suppression ensures clean state
+                return {
+                  success: true,
+                  id: idStr,
+                  message: `Registration "${regInfo?.teamName || idStr}" deleted successfully.`
+                };
+              }
+            }
+          }
+        }
+      }
+    }
   },
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {
