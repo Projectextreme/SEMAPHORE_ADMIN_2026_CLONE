@@ -131,12 +131,14 @@ export const RegistrationList = () => {
     const id = deletingReg._id || deletingReg.id;
     setActionLoading(true);
     try {
-      await apiService.deleteRegistration(id);
-      setRegistrations((prev) => prev.filter((r) => (r._id || r.id) !== id));
-      showToast(`Registration for "${deletingReg.teamName}" deleted successfully.`);
+      const res = await apiService.deleteRegistration(id, deletingReg);
+      setRegistrations((prev) => 
+        prev.filter((r) => (r._id || r.id) !== id && String(r._id) !== String(id) && String(r.id) !== String(id))
+      );
+      showToast(res?.message || `Registration for "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
     } catch (err) {
-      showToast('Failed to delete registration.', true);
+      showToast(err?.message || 'Failed to delete registration.', true);
     } finally {
       setActionLoading(false);
     }
