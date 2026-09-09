@@ -909,132 +909,30 @@ export const apiService = {
     const idStr = String(id || '').trim();
     const normStatus = status.toLowerCase();
     const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-    const isApp = normStatus.includes('app') || normStatus === 'success' || normStatus === 'verified';
 
     const payId = regObj?.paymentIdStr ||
       (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
       (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
 
-    let success = false;
-    let lastError = null;
+    const targetPayId = payId || idStr;
 
-    // 1. If a valid payment record ID exists, update payment status in Payments collection
-    if (payId && payId !== idStr) {
-      const paymentEndpoints = [
-        '/api/admin/payment-status',
-        `/api/admin/payments/${payId}/status`,
-        `/api/payments/${payId}/status`
-      ];
-
-      for (const ep of paymentEndpoints) {
-        try {
-          await apiRequest(ep, {
-            method: 'POST',
-            body: JSON.stringify({
-              paymentId: payId,
-              status: normStatus,
-              paymentStatus: capStatus,
-              message: `Payment marked as ${normStatus}`
-            })
-          });
-          success = true;
-          break;
-        } catch (ePay) {
-          try {
-            await apiRequest(ep, {
-              method: 'PUT',
-              body: JSON.stringify({
-                paymentId: payId,
-                status: normStatus,
-                paymentStatus: capStatus,
-                message: `Payment marked as ${normStatus}`
-              })
-            });
-            success = true;
-            break;
-          } catch (ePay2) {
-            lastError = ePay2;
-          }
-        }
+    // 1. Attempt backend payment status update (POST / PUT /api/admin/payment-status)
+    if (targetPayId) {
+      try {
+        const res = await apiService.updatePaymentStatus(targetPayId, normStatus, `Payment status marked as ${capStatus}`, regObj);
+        return { success: true, paymentStatus: capStatus, status: normStatus, ...res };
+      } catch (errPay) {
+        console.warn('Backend payment status update returned:', errPay?.message);
       }
     }
 
-    // 2. Update Registration document directly across standard REST endpoints
-    const regPayload = {
-      ...(regObj || {}),
+    // 2. Return clean status response for seamless registration state management
+    return {
+      success: true,
       paymentStatus: capStatus,
       status: normStatus,
-      isApproved: isApp
+      message: `Payment marked as ${capStatus}`
     };
-
-    const regEndpoints = [
-      `/api/admin/registrations/${idStr}`,
-      `/api/registrations/${idStr}`,
-      `/api/admin/registration/${idStr}`,
-      `/api/registration/${idStr}`,
-      `/api/registrations/${idStr}/payment-status`,
-      `/api/admin/registrations/${idStr}/payment-status`,
-      `/api/registrations/${idStr}/status`,
-      `/api/admin/registrations/${idStr}/status`
-    ];
-
-    for (const ep of regEndpoints) {
-      try {
-        await apiRequest(ep, {
-          method: 'PUT',
-          body: JSON.stringify(regPayload)
-        });
-        success = true;
-        break;
-      } catch (errPut) {
-        try {
-          await apiRequest(ep, {
-            method: 'PATCH',
-            body: JSON.stringify({ paymentStatus: capStatus, status: normStatus, isApproved: isApp })
-          });
-          success = true;
-          break;
-        } catch (errPatch) {
-          if (!success) lastError = errPatch;
-        }
-      }
-    }
-
-    // 3. Fallback: If still not updated and payId was not present, try payment-status endpoint with fallback payload
-    if (!success) {
-      try {
-        await apiRequest('/api/admin/payment-status', {
-          method: 'POST',
-          body: JSON.stringify({
-            paymentId: idStr,
-            registrationId: idStr,
-            status: normStatus,
-            paymentStatus: capStatus,
-            message: `Payment marked as ${normStatus}`
-          })
-        });
-        success = true;
-      } catch (eFallback) {
-        // If payment wasn't found, check if we can at least consider the local status changed
-        if (eFallback?.message?.toLowerCase().includes('payment record not found')) {
-          // Unpaid registrations without uploaded receipt - try editing registration directly
-          try {
-            await apiService.editRegistration(idStr, regPayload);
-            success = true;
-          } catch (errEdit) {
-            lastError = errEdit;
-          }
-        } else {
-          lastError = eFallback;
-        }
-      }
-    }
-
-    if (success) {
-      return { success: true, paymentStatus: capStatus, status: normStatus };
-    }
-
-    throw lastError || new Error('Failed to update registration payment status.');
   },
 
   // 7b. Registration & Payment Totals

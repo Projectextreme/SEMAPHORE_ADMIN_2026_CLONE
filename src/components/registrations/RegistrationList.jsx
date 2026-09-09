@@ -612,79 +612,106 @@ export const RegistrationList = () => {
 
                     {/* Card Footer Actions */}
                     <div className="reg-card-footer">
-                      {!isApproved ? (
+                      <div className="reg-footer-status-btns">
+                        {rawStatus === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn-reg-action btn-reg-approve"
+                              title="Quick Approve Registration"
+                              disabled={actionLoading}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-reg-action btn-reg-reject"
+                              title="Reject Registration Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {rawStatus === 'approved' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-reg-action btn-reg-pending"
+                              title="Revert Payment Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={13} />
+                              <span>Set Pending</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-reg-action btn-reg-reject"
+                              title="Reject Registration Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {rawStatus === 'rejected' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn-reg-action btn-reg-approve"
+                              title="Quick Approve Registration"
+                              disabled={actionLoading}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-reg-action btn-reg-pending"
+                              title="Revert Payment Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={13} />
+                              <span>Set Pending</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="reg-footer-tool-btns">
                         <button
-                          onClick={() => handleApprovePayment(reg, 'Approved')}
-                          className="btn-reg-action btn-reg-approve"
-                          title="Quick Approve Registration"
+                          onClick={() => setInspectingReg(reg)}
+                          className="btn-reg-action btn-reg-view"
+                          title="View Full Registration Details & Roster"
+                        >
+                          <Eye size={13} />
+                          <span>Inspect</span>
+                        </button>
+
+                        <button
+                          onClick={() => setEditingReg(reg)}
+                          className="btn-reg-action btn-reg-edit"
+                          title="Edit Registration Details"
+                        >
+                          <Edit2 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => setDeletingReg(reg)}
+                          className="btn-reg-action btn-reg-delete"
+                          title="Delete Team"
                           disabled={actionLoading}
                         >
-                          <Check size={13} />
-                          <span>Approve</span>
+                          <Trash2 size={13} />
+                          <span>Delete</span>
                         </button>
-                      ) : (
-                        <button
-                          onClick={() => handleApprovePayment(reg, 'Pending')}
-                          className="btn-reg-action btn-reg-pending"
-                          title="Revert Payment Status to Pending"
-                          disabled={actionLoading}
-                        >
-                          <RotateCcw size={13} />
-                          <span>Set Pending</span>
-                        </button>
-                      )}
-
-                      {rawStatus !== 'rejected' && (
-                        <button
-                          onClick={() => handleApprovePayment(reg, 'Rejected')}
-                          className="btn-reg-action btn-reg-reject"
-                          title="Reject Registration Payment"
-                          disabled={actionLoading}
-                        >
-                          <XCircle size={13} />
-                          <span>Reject</span>
-                        </button>
-                      )}
-
-                      {rawStatus === 'rejected' && !isApproved && (
-                        <button
-                          onClick={() => handleApprovePayment(reg, 'Pending')}
-                          className="btn-reg-action btn-reg-pending"
-                          title="Revert Payment Status to Pending"
-                          disabled={actionLoading}
-                        >
-                          <RotateCcw size={13} />
-                          <span>Set Pending</span>
-                        </button>
-                      )}
-
-                      <button
-                        onClick={() => setInspectingReg(reg)}
-                        className="btn-reg-action btn-reg-view"
-                        title="View Full Registration Details & Roster"
-                      >
-                        <Eye size={13} />
-                        <span>Inspect</span>
-                      </button>
-
-                      <button
-                        onClick={() => setEditingReg(reg)}
-                        className="btn-reg-action btn-reg-edit"
-                        title="Edit Registration Details"
-                      >
-                        <Edit2 size={13} />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeletingReg(reg)}
-                        className="btn-reg-action btn-reg-delete"
-                        title="Delete Team"
-                        disabled={actionLoading}
-                      >
-                        <Trash2 size={13} />
-                        <span>Delete</span>
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </TiltCard>

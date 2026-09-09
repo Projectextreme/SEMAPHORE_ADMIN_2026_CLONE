@@ -911,26 +911,37 @@
 
 .reg-card-footer {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 0.45rem;
   padding-top: 0.75rem;
   border-top: 1px dashed var(--border-color);
+  width: 100%;
+}
+
+.reg-footer-status-btns,
+.reg-footer-tool-btns {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
 }
 
 .btn-reg-action {
   flex: 1;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.3rem;
-  padding: 0.45rem 0.45rem;
+  padding: 0.45rem 0.35rem;
   border-radius: 8px;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   font-weight: 700;
   border: 1px solid var(--border-color);
   background: var(--bg-card);
   color: var(--text-main);
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.18s ease;
 }
 
