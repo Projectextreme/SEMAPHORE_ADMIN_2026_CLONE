@@ -675,17 +675,49 @@ export const apiService = {
     // Format registration fields cleanly and cross-reference with live Payments collection
     return rawList.map((r, idx) => {
       const id = r._id || r.id || `reg_${idx}`;
-      const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : null);
+      const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : (typeof r.userid === 'object' ? r.userid : null));
       const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
-      const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : null);
+      const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : (typeof r.eventid === 'object' ? r.eventid : null));
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
       const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');
+
+      // Correctly extract team object from userObj.teamid, userObj.teamId, r.teamid, r.teamId, r.team
+      const teamObj = (userObj?.teamid && typeof userObj.teamid === 'object')
+        ? userObj.teamid
+        : ((userObj?.teamId && typeof userObj.teamId === 'object')
+          ? userObj.teamId
+          : ((userObj?.team && typeof userObj.team === 'object')
+            ? userObj.team
+            : ((r.teamid && typeof r.teamid === 'object')
+              ? r.teamid
+              : ((r.teamId && typeof r.teamId === 'object')
+                ? r.teamId
+                : ((r.team && typeof r.team === 'object') ? r.team : null)))));
 
       const resolvedLeader = r.leaderName || r.name || userObj?.name || (typeof r.leader === 'string' ? r.leader : '') || '';
       const resolvedEmail = (r.email || r.leaderEmail || userObj?.email || '').toLowerCase().trim();
       const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '';
       const resolvedCollege = r.collegeName || userObj?.collegeName || (typeof r.college === 'object' ? r.college?.collegeName : '') || '';
-      const resolvedTeam = r.teamName || (typeof r.team === 'object' ? r.team?.name : '') || (resolvedLeader ? `Team-${resolvedLeader}` : '');
+      
+      const officialTeamName = teamObj?.name || teamObj?.teamName || r.teamName || '';
+      const teamCode = teamObj?.teamid || teamObj?.teamId || teamObj?.teamCode || '';
+
+      const participants = Array.isArray(r.participants) && r.participants.length > 0
+        ? r.participants
+        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
+
+      // Resolve a prominent, human-readable team display name
+      let resolvedTeam = officialTeamName;
+      if (!resolvedTeam) {
+        if (participants.length > 1 && participants[0]?.name) {
+          resolvedTeam = `Team ${participants[0].name}`;
+        } else if (resolvedLeader) {
+          resolvedTeam = `Team - ${resolvedLeader}`;
+        } else {
+          resolvedTeam = 'Event Team';
+        }
+      }
+
       const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
 
       // Cross-reference with Payments collection
@@ -716,10 +748,6 @@ export const apiService = {
       const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
       const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
 
-      const participants = Array.isArray(r.participants) && r.participants.length > 0
-        ? r.participants
-        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
-
       return {
         ...r,
         _id: id,
@@ -733,6 +761,10 @@ export const apiService = {
         phone: resolvedPhone,
         collegeName: resolvedCollege,
         teamName: resolvedTeam,
+        officialTeamName: officialTeamName,
+        hasOfficialTeam: !!officialTeamName,
+        teamCode: teamCode,
+        teamObj: teamObj,
         event: resolvedEvent,
         eventName: resolvedEvent,
         amount: `₹ ${amountNumber.toLocaleString()}`,
