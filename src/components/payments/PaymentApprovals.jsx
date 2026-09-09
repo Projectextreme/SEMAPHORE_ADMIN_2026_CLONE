@@ -164,9 +164,14 @@ export const PaymentApprovals = () => {
   const handleDeleteConfirmPayment = async () => {
     if (!deletingPayment) return;
     const paymentId = deletingPayment._id || deletingPayment.paymentid || deletingPayment.id;
+    const paymentIdStr = String(paymentId || '');
     setActionLoading(true);
     try {
       const res = await apiService.deletePayment(paymentId);
+      // Optimistically remove from state immediately
+      setPayments((prev) =>
+        prev.filter((p) => (p.id || p._id || p.paymentid) !== paymentId && String(p.id || p._id || p.paymentid) !== paymentIdStr)
+      );
       showToast(res?.message || 'Payment record deleted and safely archived to Backup Vault.');
       setDeletingPayment(null);
       await loadPayments();

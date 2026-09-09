@@ -675,17 +675,49 @@ export const apiService = {
     // Format registration fields cleanly and cross-reference with live Payments collection
     return rawList.map((r, idx) => {
       const id = r._id || r.id || `reg_${idx}`;
-      const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : null);
+      const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : (typeof r.userid === 'object' ? r.userid : null));
       const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
-      const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : null);
+      const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : (typeof r.eventid === 'object' ? r.eventid : null));
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
       const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');
+
+      // Correctly extract team object from userObj.teamid, userObj.teamId, r.teamid, r.teamId, r.team
+      const teamObj = (userObj?.teamid && typeof userObj.teamid === 'object')
+        ? userObj.teamid
+        : ((userObj?.teamId && typeof userObj.teamId === 'object')
+          ? userObj.teamId
+          : ((userObj?.team && typeof userObj.team === 'object')
+            ? userObj.team
+            : ((r.teamid && typeof r.teamid === 'object')
+              ? r.teamid
+              : ((r.teamId && typeof r.teamId === 'object')
+                ? r.teamId
+                : ((r.team && typeof r.team === 'object') ? r.team : null)))));
 
       const resolvedLeader = r.leaderName || r.name || userObj?.name || (typeof r.leader === 'string' ? r.leader : '') || '';
       const resolvedEmail = (r.email || r.leaderEmail || userObj?.email || '').toLowerCase().trim();
       const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '';
       const resolvedCollege = r.collegeName || userObj?.collegeName || (typeof r.college === 'object' ? r.college?.collegeName : '') || '';
-      const resolvedTeam = r.teamName || (typeof r.team === 'object' ? r.team?.name : '') || (resolvedLeader ? `Team-${resolvedLeader}` : '');
+      
+      const officialTeamName = teamObj?.name || teamObj?.teamName || r.teamName || '';
+      const teamCode = teamObj?.teamid || teamObj?.teamId || teamObj?.teamCode || '';
+
+      const participants = Array.isArray(r.participants) && r.participants.length > 0
+        ? r.participants
+        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
+
+      // Resolve a prominent, human-readable team display name
+      let resolvedTeam = officialTeamName;
+      if (!resolvedTeam) {
+        if (participants.length > 1 && participants[0]?.name) {
+          resolvedTeam = `Team ${participants[0].name}`;
+        } else if (resolvedLeader) {
+          resolvedTeam = `Team - ${resolvedLeader}`;
+        } else {
+          resolvedTeam = 'Event Team';
+        }
+      }
+
       const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
 
       // Cross-reference with Payments collection
@@ -716,10 +748,6 @@ export const apiService = {
       const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
       const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
 
-      const participants = Array.isArray(r.participants) && r.participants.length > 0
-        ? r.participants
-        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
-
       return {
         ...r,
         _id: id,
@@ -733,6 +761,10 @@ export const apiService = {
         phone: resolvedPhone,
         collegeName: resolvedCollege,
         teamName: resolvedTeam,
+        officialTeamName: officialTeamName,
+        hasOfficialTeam: !!officialTeamName,
+        teamCode: teamCode,
+        teamObj: teamObj,
         event: resolvedEvent,
         eventName: resolvedEvent,
         amount: `₹ ${amountNumber.toLocaleString()}`,
@@ -753,125 +785,256 @@ export const apiService = {
   },
 
   editRegistration: async (id, regData) => {
-    return await apiRequest(`/api/registrations/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(regData)
-    });
+    const cleanId = String(id || '').trim();
+    const endpoints = [
+      `/api/admin/registrations/${cleanId}`,
+      `/api/registrations/${cleanId}`,
+      `/api/admin/registration/${cleanId}`,
+      `/api/registration/${cleanId}`
+    ];
+    let lastError = null;
+    for (const ep of endpoints) {
+      try {
+        return await apiRequest(ep, {
+          method: 'PUT',
+          body: JSON.stringify(regData)
+        });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    for (const ep of endpoints) {
+      try {
+        return await apiRequest(ep, {
+          method: 'PATCH',
+          body: JSON.stringify(regData)
+        });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('Failed to save registration changes.');
   },
 
   deleteRegistration: async (id, regObj = null) => {
-    const idStr = String(id || '');
-    const teamId = regObj?.userId?.teamid?._id || regObj?.userId?.teamid?.id || regObj?.teamId || regObj?.teamid || (typeof regObj?.team === 'object' ? (regObj.team._id || regObj.team.id) : null);
-    const targetTeamId = teamId || idStr;
+    const idStr = String(id || '').trim();
+    if (!idStr) throw new Error('Registration ID is required for deletion');
+
+    const teamId = regObj?.teamId || regObj?.teamid ||
+      (typeof regObj?.teamObj === 'object' ? (regObj.teamObj?._id || regObj.teamObj?.id) : null) ||
+      (typeof regObj?.team === 'object' ? (regObj.team?._id || regObj.team?.id) : null) ||
+      regObj?.userId?.teamid?._id || regObj?.userId?.teamid?.id || regObj?.userId?.teamId?._id || regObj?.userId?.teamId?.id ||
+      (typeof regObj?.userId?.team === 'object' ? (regObj.userId.team?._id || regObj.userId.team?.id) : null);
+
     const payId = regObj?.paymentIdStr ||
-      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null));
-    
+      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
+      (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
+
+    let successCount = 0;
+    let finalMessage = '';
     let lastError = null;
 
-    // 1. Primary Backend Endpoint: DELETE /api/admin/teams/:id
-    try {
-      return await apiRequest(`/api/admin/teams/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e1) {
-      lastError = e1;
-    }
+    // 1. Delete from Registrations primary collection endpoints
+    const regEndpoints = [
+      `/api/admin/registrations/${idStr}`,
+      `/api/registrations/${idStr}`,
+      `/api/admin/registration/${idStr}`,
+      `/api/registration/${idStr}`,
+      `/api/registrations/delete/${idStr}`,
+      `/api/admin/registrations/delete/${idStr}`
+    ];
 
-    // 2. Backend Alias: DELETE /api/admin/team/:id
-    try {
-      return await apiRequest(`/api/admin/team/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e2) {
-      lastError = e2;
-    }
-
-    // 3. User Endpoint: DELETE /api/teams/:id
-    try {
-      return await apiRequest(`/api/teams/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e3) {
-      lastError = e3;
-    }
-
-    // 4. If payment exists, also trigger payment removal
-    if (payId) {
+    for (const ep of regEndpoints) {
       try {
-        return await apiRequest(`/api/admin/payments/${payId}`, {
-          method: 'DELETE'
-        });
-      } catch (ePay) {
-        lastError = ePay;
+        const res = await apiRequest(ep, { method: 'DELETE' });
+        successCount++;
+        if (res?.message) finalMessage = res.message;
+        break; // Successfully removed registration document
+      } catch (err) {
+        lastError = err;
       }
     }
 
-    // 5. Fallback: DELETE /api/registrations/:id
-    try {
-      return await apiRequest(`/api/registrations/${idStr}`, {
-        method: 'DELETE'
-      });
-    } catch (eReg) {
-      lastError = eReg;
+    // 2. Also clean up associated Team document if exists or if registration endpoints missed
+    const targetTeamId = teamId || (successCount === 0 ? idStr : null);
+    if (targetTeamId) {
+      const teamEndpoints = [
+        `/api/admin/teams/${targetTeamId}`,
+        `/api/admin/team/${targetTeamId}`,
+        `/api/teams/${targetTeamId}`,
+        `/api/team/${targetTeamId}`
+      ];
+      for (const ep of teamEndpoints) {
+        try {
+          const res = await apiRequest(ep, { method: 'DELETE' });
+          successCount++;
+          if (!finalMessage && res?.message) finalMessage = res.message;
+          break;
+        } catch (err) {
+          if (successCount === 0) lastError = err;
+        }
+      }
     }
 
-    throw lastError;
+    // 3. Also purge associated Payment document if exists
+    if (payId && payId !== idStr) {
+      const payEndpoints = [
+        `/api/admin/payments/${payId}`,
+        `/api/payments/${payId}`,
+        `/api/admin/payment/${payId}`,
+        `/api/payment/${payId}`
+      ];
+      for (const ep of payEndpoints) {
+        try {
+          const res = await apiRequest(ep, { method: 'DELETE' });
+          successCount++;
+          break;
+        } catch {
+          // Silent non-blocking payment cleanup
+        }
+      }
+    }
+
+    if (successCount > 0) {
+      return {
+        success: true,
+        message: finalMessage || 'Team registration deleted successfully.'
+      };
+    }
+
+    throw lastError || new Error('Failed to delete registration from database.');
   },
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {
+    const idStr = String(id || '').trim();
     const normStatus = status.toLowerCase();
     const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
     const isApp = normStatus.includes('app') || normStatus === 'success' || normStatus === 'verified';
 
     const payId = regObj?.paymentIdStr ||
-      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null));
+      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
+      (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
 
+    let success = false;
     let lastError = null;
 
-    // 1. Try PUT /api/registrations/:id/payment-status
-    try {
-      await apiRequest(`/api/registrations/${id}/payment-status`, {
-        method: 'PUT',
-        body: JSON.stringify({ paymentStatus: capStatus, status: normStatus, isApproved: isApp })
-      });
-      return { success: true, paymentStatus: capStatus, status: normStatus };
-    } catch (e1) {
-      lastError = e1;
+    // 1. If a valid payment record ID exists, update payment status in Payments collection
+    if (payId && payId !== idStr) {
+      const paymentEndpoints = [
+        '/api/admin/payment-status',
+        `/api/admin/payments/${payId}/status`,
+        `/api/payments/${payId}/status`
+      ];
+
+      for (const ep of paymentEndpoints) {
+        try {
+          await apiRequest(ep, {
+            method: 'POST',
+            body: JSON.stringify({
+              paymentId: payId,
+              status: normStatus,
+              paymentStatus: capStatus,
+              message: `Payment marked as ${normStatus}`
+            })
+          });
+          success = true;
+          break;
+        } catch (ePay) {
+          try {
+            await apiRequest(ep, {
+              method: 'PUT',
+              body: JSON.stringify({
+                paymentId: payId,
+                status: normStatus,
+                paymentStatus: capStatus,
+                message: `Payment marked as ${normStatus}`
+              })
+            });
+            success = true;
+            break;
+          } catch (ePay2) {
+            lastError = ePay2;
+          }
+        }
+      }
     }
 
-    // 2. If a payment record ID exists, call POST /api/admin/payment-status
-    if (payId) {
+    // 2. Update Registration document directly across standard REST endpoints
+    const regPayload = {
+      ...(regObj || {}),
+      paymentStatus: capStatus,
+      status: normStatus,
+      isApproved: isApp
+    };
+
+    const regEndpoints = [
+      `/api/admin/registrations/${idStr}`,
+      `/api/registrations/${idStr}`,
+      `/api/admin/registration/${idStr}`,
+      `/api/registration/${idStr}`,
+      `/api/registrations/${idStr}/payment-status`,
+      `/api/admin/registrations/${idStr}/payment-status`,
+      `/api/registrations/${idStr}/status`,
+      `/api/admin/registrations/${idStr}/status`
+    ];
+
+    for (const ep of regEndpoints) {
+      try {
+        await apiRequest(ep, {
+          method: 'PUT',
+          body: JSON.stringify(regPayload)
+        });
+        success = true;
+        break;
+      } catch (errPut) {
+        try {
+          await apiRequest(ep, {
+            method: 'PATCH',
+            body: JSON.stringify({ paymentStatus: capStatus, status: normStatus, isApproved: isApp })
+          });
+          success = true;
+          break;
+        } catch (errPatch) {
+          if (!success) lastError = errPatch;
+        }
+      }
+    }
+
+    // 3. Fallback: If still not updated and payId was not present, try payment-status endpoint with fallback payload
+    if (!success) {
       try {
         await apiRequest('/api/admin/payment-status', {
           method: 'POST',
           body: JSON.stringify({
-            paymentId: payId,
+            paymentId: idStr,
+            registrationId: idStr,
             status: normStatus,
+            paymentStatus: capStatus,
             message: `Payment marked as ${normStatus}`
           })
         });
-        return { success: true, paymentStatus: capStatus, status: normStatus };
-      } catch (ePay) {
-        lastError = ePay;
+        success = true;
+      } catch (eFallback) {
+        // If payment wasn't found, check if we can at least consider the local status changed
+        if (eFallback?.message?.toLowerCase().includes('payment record not found')) {
+          // Unpaid registrations without uploaded receipt - try editing registration directly
+          try {
+            await apiService.editRegistration(idStr, regPayload);
+            success = true;
+          } catch (errEdit) {
+            lastError = errEdit;
+          }
+        } else {
+          lastError = eFallback;
+        }
       }
     }
 
-    // 3. Try POST /api/admin/payment-status using registration ID
-    try {
-      await apiRequest('/api/admin/payment-status', {
-        method: 'POST',
-        body: JSON.stringify({
-          paymentId: id,
-          status: normStatus,
-          message: `Payment marked as ${normStatus}`
-        })
-      });
+    if (success) {
       return { success: true, paymentStatus: capStatus, status: normStatus };
-    } catch (e3) {
-      lastError = e3;
     }
 
-    throw lastError || new Error(`Failed to update registration payment status on backend server.`);
+    throw lastError || new Error('Failed to update registration payment status.');
   },
 
   // 7b. Registration & Payment Totals
@@ -1025,9 +1188,29 @@ export const apiService = {
   },
 
   deletePayment: async (paymentId) => {
-    return await apiRequest(`/api/admin/payments/${paymentId}`, {
-      method: 'DELETE'
-    });
+    const cleanId = String(paymentId || '').trim();
+    if (!cleanId) throw new Error('Payment ID is required');
+
+    const endpoints = [
+      `/api/admin/payments/${cleanId}`,
+      `/api/payments/${cleanId}`,
+      `/api/admin/payment/${cleanId}`,
+      `/api/payment/${cleanId}`,
+      `/api/admin/payments/delete/${cleanId}`,
+      `/api/admin/delete-payment/${cleanId}`
+    ];
+
+    let lastError = null;
+    for (const ep of endpoints) {
+      try {
+        const res = await apiRequest(ep, { method: 'DELETE' });
+        return res || { success: true, message: 'Payment record deleted successfully.' };
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Failed to delete payment record.');
   },
 
   // 9b. Backup Payments Vault

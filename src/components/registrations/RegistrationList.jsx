@@ -28,7 +28,9 @@ import {
   User,
   Tag,
   LayoutGrid,
-  List
+  List,
+  Trophy,
+  Crown
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { resolveImageUrl } from '../../services/apiConfig';
@@ -133,9 +135,14 @@ export const RegistrationList = () => {
   const handleDeleteConfirm = async () => {
     if (!deletingReg) return;
     const id = deletingReg._id || deletingReg.id;
+    const idStr = String(id || '');
     setActionLoading(true);
     try {
       const res = await apiService.deleteRegistration(id, deletingReg);
+      // Optimistically remove from state immediately
+      setRegistrations((prev) =>
+        prev.filter((r) => (r._id || r.id) !== id && String(r._id || r.id) !== idStr)
+      );
       showToast(res?.message || `Team "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
       await fetchRegistrations();
@@ -465,39 +472,73 @@ export const RegistrationList = () => {
               const eventName = reg.event || reg.eventName || 'General Event';
               const receiptImg = reg.imageUrl || reg.proofUrl;
               const membersCount = reg.participants ? reg.participants.length : (reg.membersCount || 1);
+              const teamDisplayName = reg.teamName || (reg.leaderName ? `Team ${reg.leaderName}` : 'Event Team');
+              const hasCustomTeam = reg.hasOfficialTeam || (reg.officialTeamName && reg.officialTeamName.trim().length > 0);
 
               return (
                 <TiltCard key={regId} maxTilt={4} glareOpacity={0.08} className="reg-card-tilt">
                   <div className="reg-card-content">
-                    {/* Card Top */}
+                    {/* Card Top: Team Identity & Payment Badge */}
                     <div className="reg-card-top">
                       <div className="reg-team-cell">
-                        <div className="reg-avatar">
-                          {reg.teamName ? reg.teamName.charAt(0).toUpperCase() : 'T'}
+                        <div className={`reg-avatar ${hasCustomTeam ? 'reg-avatar-official' : ''}`}>
+                          {hasCustomTeam ? <Crown size={15} /> : teamDisplayName.charAt(0).toUpperCase()}
                         </div>
                         <div className="reg-team-info">
-                          <h3 className="reg-team-name" title={reg.teamName || 'Solo Participant'}>
-                            {reg.teamName || 'Solo Participant'}
-                          </h3>
-                          <div className="reg-leader-sub" title={`Leader: ${reg.leaderName || 'Participant'}`}>
-                            <User size={11} className="sub-icon" />
-                            <span>{reg.leaderName || 'Lead Participant'}</span>
+                          <div className="reg-team-tag-row">
+                            <span className={`team-type-badge ${hasCustomTeam ? 'team-type-official' : 'team-type-standard'}`}>
+                              {hasCustomTeam ? 'OFFICIAL TEAM' : 'TEAM'}
+                            </span>
+                            {reg.teamCode && (
+                              <span className="team-code-badge" title="Official Team Code">
+                                <Tag size={9} /> {reg.teamCode}
+                              </span>
+                            )}
                           </div>
+                          <h3 className="reg-team-name" title={teamDisplayName}>
+                            {teamDisplayName}
+                          </h3>
                         </div>
                       </div>
 
-                      <div className="reg-badges-stack">
-                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting UPI receipt upload' : `Payment status: ${reg.paymentStatus}`}>
+                      <div className="reg-status-top">
+                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting payment' : `Payment status: ${reg.paymentStatus}`}>
                           {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
-                        </span>
-                        <span className="event-tag-pill" title={eventName}>
-                          {eventName}
                         </span>
                       </div>
                     </div>
 
+                    {/* Dedicated Full-Width Event Banner */}
+                    <div className="reg-event-banner" title={`Enrolled Event: ${eventName}`}>
+                      <Calendar size={13} className="event-banner-icon" />
+                      <span className="event-banner-label">EVENT:</span>
+                      <strong className="event-banner-title">{eventName}</strong>
+                    </div>
+
                     {/* Card Body Details */}
                     <div className="reg-card-body">
+                      {/* Team Leader Row */}
+                      <div className="reg-info-row">
+                        <span className="reg-info-label">
+                          <User size={12} className="info-icon" /> Leader:
+                        </span>
+                        <span className="reg-leader-name" title={reg.leaderName || 'Lead Participant'}>
+                          {reg.leaderName || 'Lead Participant'}
+                        </span>
+                      </div>
+
+                      {/* Participant Roster Row */}
+                      {reg.participants && reg.participants.length > 0 && (
+                        <div className="reg-roster-row">
+                          <span className="reg-info-label">
+                            <Users size={12} className="info-icon" /> Roster ({membersCount}):
+                          </span>
+                          <span className="reg-roster-names" title={reg.participants.map(p => p.name).join(', ')}>
+                            {reg.participants.map(p => p.name).filter(Boolean).join(', ') || reg.leaderName}
+                          </span>
+                        </div>
+                      )}
+
                       {/* College Row */}
                       <div className="reg-info-row">
                         <span className="reg-info-label">
@@ -508,9 +549,8 @@ export const RegistrationList = () => {
                         </span>
                       </div>
 
-                      {/* ID & Copy */}
+                      {/* ID & Quota Row */}
                       <div className="reg-info-row">
-                        <span className="reg-info-label">Reg ID:</span>
                         <div
                           className="reg-copyable-id"
                           onClick={() => {
@@ -519,18 +559,12 @@ export const RegistrationList = () => {
                           }}
                           title="Click to copy registration ID"
                         >
+                          <span className="reg-id-tag">Reg ID:</span>
                           <span className="code-font">{regId && regId.length > 10 ? `${regId.slice(0, 8)}...${regId.slice(-4)}` : regId}</span>
                           <Copy size={11} className="id-copy-icon" />
                         </div>
-                      </div>
 
-                      {/* Members & Quota Row */}
-                      <div className="reg-info-row">
-                        <div className="reg-meta-pill">
-                          <Users size={12} />
-                          <span>{membersCount} {membersCount === 1 ? 'Member' : 'Members'}</span>
-                        </div>
-                        <span className="quota-tag">
+                        <span className={`quota-tag ${reg.quotaStatus?.includes('1/1') ? 'quota-full' : ''}`}>
                           {reg.quotaStatus || 'Under Quota'}
                         </span>
                       </div>
@@ -591,7 +625,7 @@ export const RegistrationList = () => {
                       <button
                         onClick={() => setInspectingReg(reg)}
                         className="btn-reg-action btn-reg-view"
-                        title="View Full Registration Details"
+                        title="View Full Registration Details & Roster"
                       >
                         <Eye size={13} />
                         <span>Inspect</span>
