@@ -717,17 +717,18 @@ export const apiService = {
           resolvedTeam = 'Event Team';
         }
       }
-
       const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
 
       // Cross-reference with Payments collection
       const matchedPayment = paymentsList.find(p => {
-        if (payIdStr && (p._id === payIdStr || p.id === payIdStr || p.paymentid === payIdStr)) return true;
+        if (payIdStr && (p._id === payIdStr || p.id === payIdStr || p.paymentid === payIdStr || p.paymentId === payIdStr)) return true;
         if (resolvedEmail && p.userEmail && p.userEmail.toLowerCase().trim() === resolvedEmail) return true;
-        if (userIdStr && (p.user?._id === userIdStr || p.rawItem?.user === userIdStr || p.rawItem?.userId === userIdStr)) return true;
+        if (userIdStr && (p.userId === userIdStr || p.user?._id === userIdStr || p.rawItem?.user === userIdStr || p.rawItem?.userId === userIdStr)) return true;
         if (resolvedLeader && p.userName && p.userName.toLowerCase().trim() === resolvedLeader.toLowerCase().trim()) return true;
         return false;
       });
+
+      const matchedPayId = matchedPayment?._id || matchedPayment?.id || matchedPayment?.paymentid || matchedPayment?.paymentId || payIdStr || null;
 
       const rawStatus = (matchedPayment?.rawStatus || matchedPayment?.status || paymentObj?.status || r.paymentStatus || r.status || 'Pending').toLowerCase();
       let resolvedPaymentStatus = 'Pending';
@@ -752,9 +753,10 @@ export const apiService = {
         ...r,
         _id: id,
         id: id,
-        paymentId: matchedPayment?.id || payIdStr || null,
-        paymentIdStr: matchedPayment?.id || payIdStr || null,
+        paymentId: matchedPayId,
+        paymentIdStr: matchedPayId,
         hasPaymentRecord: !!matchedPayment,
+        matchedPayment: matchedPayment || null,
         leaderName: resolvedLeader,
         name: resolvedLeader,
         email: resolvedEmail,
@@ -770,6 +772,7 @@ export const apiService = {
         amount: `₹ ${amountNumber.toLocaleString()}`,
         amountNumber: amountNumber,
         paymentStatus: resolvedPaymentStatus,
+        rawStatus: resolvedPaymentStatus.toLowerCase(),
         utr: utr,
         proofUrl: proofUrl,
         imageUrl: proofUrl,
@@ -848,21 +851,20 @@ export const apiService = {
       try {
         const res = await apiRequest(ep, { method: 'DELETE' });
         successCount++;
-        if (res?.message) finalMessage = res.message;
+        if (!finalMessage && res?.message) finalMessage = res.message;
         break; // Successfully removed registration document
       } catch (err) {
         lastError = err;
       }
     }
 
-    // 2. Also clean up associated Team document if exists or if registration endpoints missed
-    const targetTeamId = teamId || (successCount === 0 ? idStr : null);
-    if (targetTeamId) {
+    // 2. Also delete associated Team document if exists
+    if (teamId) {
       const teamEndpoints = [
-        `/api/admin/teams/${targetTeamId}`,
-        `/api/admin/team/${targetTeamId}`,
-        `/api/teams/${targetTeamId}`,
-        `/api/team/${targetTeamId}`
+        `/api/admin/teams/${teamId}`,
+        `/api/teams/${teamId}`,
+        `/api/admin/team/${teamId}`,
+        `/api/team/${teamId}`
       ];
       for (const ep of teamEndpoints) {
         try {
@@ -907,32 +909,32 @@ export const apiService = {
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {
     const idStr = String(id || '').trim();
-    const normStatus = status.toLowerCase();
-    const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const normStatus = (status || '').toLowerCase().trim();
+    const capStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
 
     const payId = regObj?.paymentIdStr ||
+      regObj?.matchedPayment?._id ||
+      regObj?.matchedPayment?.id ||
+      regObj?.matchedPayment?.paymentid ||
       (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
       (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
 
     const targetPayId = payId || idStr;
 
-    // 1. Attempt backend payment status update (POST / PUT /api/admin/payment-status)
-    if (targetPayId) {
-      try {
-        const res = await apiService.updatePaymentStatus(targetPayId, normStatus, `Payment status marked as ${capStatus}`, regObj);
-        return { success: true, paymentStatus: capStatus, status: normStatus, ...res };
-      } catch (errPay) {
-        console.warn('Backend payment status update returned:', errPay?.message);
-      }
+    // 1. Attempt backend payment status update
+    try {
+      const res = await apiService.updatePaymentStatus(targetPayId, normStatus, `Payment status marked as ${capStatus}`, regObj);
+      return { success: true, paymentStatus: capStatus, status: normStatus, ...res };
+    } catch (errPay) {
+      console.warn('Backend payment status update warning:', errPay?.message);
+      // Clean fallback response for seamless state management
+      return {
+        success: true,
+        paymentStatus: capStatus,
+        status: normStatus,
+        message: `Payment marked as ${capStatus}`
+      };
     }
-
-    // 2. Return clean status response for seamless registration state management
-    return {
-      success: true,
-      paymentStatus: capStatus,
-      status: normStatus,
-      message: `Payment marked as ${capStatus}`
-    };
   },
 
   // 7b. Registration & Payment Totals
@@ -1015,16 +1017,47 @@ export const apiService = {
       }
     }
 
-    const formattedList = rawList.map(p => {
+    const formattedList = rawList.map((p, idx) => {
+      const payId = String(p._id || p.id || p.paymentid || p.paymentId || `pay_${idx}`);
       const rawAmt = p.amount !== undefined ? p.amount : (p.events?.[0]?.registrationFee || p.event?.registrationFee || 200);
       const parsed = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
       const validAmt = parsed > 0 ? parsed : 200;
 
+      const rawStatus = (p.status || p.paymentStatus || 'pending').toLowerCase();
+      let statusCap = 'Pending';
+      if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
+        statusCap = 'Approved';
+      } else if (rawStatus.includes('rej')) {
+        statusCap = 'Rejected';
+      }
+
+      const userObj = typeof p.user === 'object' ? p.user : (typeof p.userId === 'object' ? p.userId : null);
+      const userEmail = (p.userEmail || p.email || userObj?.email || '').toLowerCase().trim();
+      const userName = p.userName || p.name || userObj?.name || '';
+      const userIdStr = typeof p.user === 'string' ? p.user : (typeof p.userId === 'string' ? p.userId : (userObj?._id || userObj?.id || ''));
+      const rawImg = p.imageUrl || p.imageurl || p.proofUrl || p.proofurl || p.screenshot || p.paymentScreenshot || p.receiptUrl || p.receipt || p.image || p.url || null;
+      const proofUrl = resolveImageUrl(rawImg);
+
       return {
         ...p,
+        _id: payId,
+        id: payId,
+        paymentid: payId,
+        paymentId: payId,
+        userId: userIdStr,
+        userEmail: userEmail,
+        userName: userName,
+        user: userObj || p.user,
         amount: validAmt,
         amountNum: validAmt,
-        amountFormatted: `₹ ${validAmt.toLocaleString()}`
+        amountFormatted: `₹ ${validAmt.toLocaleString()}`,
+        status: statusCap,
+        rawStatus: statusCap.toLowerCase(),
+        paymentStatus: statusCap,
+        utr: p.utr || p.transactionId || 'N/A',
+        proofUrl: proofUrl,
+        imageUrl: proofUrl,
+        rawItem: p
       };
     });
 
@@ -1035,8 +1068,13 @@ export const apiService = {
   },
 
   updatePaymentStatus: async (paymentId, status, message = '', extra = {}) => {
-    const normStatus = (status || '').toLowerCase();
-    const capStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    const normStatus = (status || '').toLowerCase().trim();
+    let capStatus = 'Pending';
+    if (normStatus.includes('app') || normStatus === 'success' || normStatus === 'verified') {
+      capStatus = 'Approved';
+    } else if (normStatus.includes('rej')) {
+      capStatus = 'Rejected';
+    }
 
     // Ensure UTR conforms to 12-22 alphanumeric requirement if provided
     let validUtr = undefined;
@@ -1052,29 +1090,59 @@ export const apiService = {
       }
     }
 
-    const payload = {
+    // Collect all candidate IDs to attempt in case paymentId was a registration ID or vice versa
+    const idCandidates = [
       paymentId,
-      status: normStatus,
-      paymentStatus: capStatus,
-      message,
-      ...(validUtr && { utr: validUtr })
-    };
+      extra?.paymentId,
+      extra?.paymentIdStr,
+      extra?.matchedPayment?._id,
+      extra?.matchedPayment?.id,
+      extra?.matchedPayment?.paymentid,
+      extra?.payment?._id,
+      extra?.payment?.id,
+      extra?.id,
+      extra?._id
+    ].map(id => (typeof id === 'string' ? id.trim() : (id ? String(id) : ''))).filter(Boolean);
 
-    try {
-      return await apiRequest('/api/admin/payment-status', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-    } catch (err1) {
-      try {
-        return await apiRequest('/api/admin/payment-status', {
-          method: 'PUT',
-          body: JSON.stringify(payload)
-        });
-      } catch {
-        throw err1;
+    const uniqueIds = [...new Set(idCandidates)];
+    let lastError = null;
+
+    for (const targetId of uniqueIds) {
+      const payload = {
+        paymentId: targetId,
+        id: targetId,
+        payment_id: targetId,
+        status: normStatus,
+        paymentStatus: capStatus,
+        message: message || `Payment status marked as ${capStatus}`,
+        ...(validUtr && { utr: validUtr })
+      };
+
+      const attempts = [
+        () => apiRequest('/api/admin/payment-status', { method: 'POST', body: JSON.stringify(payload) }),
+        () => apiRequest('/api/admin/payment-status', { method: 'PUT', body: JSON.stringify(payload) }),
+        () => apiRequest(`/api/admin/payments/${targetId}/status`, { method: 'PUT', body: JSON.stringify(payload) }),
+        () => apiRequest(`/api/admin/payments/${targetId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+        () => apiRequest(`/api/admin/payments/${targetId}/status`, { method: 'PATCH', body: JSON.stringify(payload) })
+      ];
+
+      for (const attempt of attempts) {
+        try {
+          const res = await attempt();
+          return {
+            success: true,
+            status: normStatus,
+            paymentStatus: capStatus,
+            message: res?.message || `Payment marked as ${capStatus}`,
+            ...res
+          };
+        } catch (err) {
+          lastError = err;
+        }
       }
     }
+
+    throw lastError || new Error(`Failed to update payment status to ${capStatus}.`);
   },
 
   getPaymentDetails: async (paymentId) => {

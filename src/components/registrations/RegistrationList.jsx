@@ -90,19 +90,26 @@ export const RegistrationList = () => {
   // 1. Approve / Change Payment Status
   const handleApprovePayment = async (reg, newStatus = 'Approved') => {
     const id = reg._id || reg.id;
+    const teamTitle = reg.teamName || 'Team';
+    const normStatus = newStatus.toLowerCase();
+    const capStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
+
     setActionLoading(true);
+    // 1. Instant optimistic UI update
+    setRegistrations((prev) =>
+      prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: capStatus, rawStatus: normStatus } : r))
+    );
+    if (inspectingReg && (inspectingReg._id === id || inspectingReg.id === id)) {
+      setInspectingReg((prev) => ({ ...prev, paymentStatus: capStatus, rawStatus: normStatus }));
+    }
+
     try {
-      await apiService.approveRegistrationPayment(id, newStatus, reg);
-      setRegistrations((prev) =>
-        prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: newStatus } : r))
-      );
-      if (inspectingReg && (inspectingReg._id === id || inspectingReg.id === id)) {
-        setInspectingReg((prev) => ({ ...prev, paymentStatus: newStatus }));
-      }
-      showToast(`Payment for team "${reg.teamName}" marked as ${newStatus}!`);
+      const res = await apiService.approveRegistrationPayment(id, capStatus, reg);
+      showToast(res?.message || `Payment for team "${teamTitle}" marked as ${capStatus}!`);
       await fetchRegistrations();
     } catch (err) {
       showToast(err.message || 'Failed to update payment status.', true);
+      await fetchRegistrations();
     } finally {
       setActionLoading(false);
     }
