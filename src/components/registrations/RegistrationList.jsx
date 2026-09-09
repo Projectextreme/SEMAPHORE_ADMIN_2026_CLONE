@@ -888,7 +888,8 @@ export const RegistrationList = () => {
           ) : (
             filteredRegistrations.map((reg) => {
               const regId = reg.id || reg._id;
-              const isApproved = reg.paymentStatus === 'Approved';
+              const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
+              const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
 
               return (
                 <div key={regId} className="mobile-data-card">
