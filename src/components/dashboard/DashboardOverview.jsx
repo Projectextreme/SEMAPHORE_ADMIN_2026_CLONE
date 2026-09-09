@@ -168,9 +168,12 @@ export const DashboardOverview = () => {
 
   // Payment Handlers
   const handleOpenPaymentActionModal = (payment, status) => {
-    const defaultMsg = status === 'approved'
-      ? 'Payment verified via UTR bank statement'
-      : 'Invalid UTR transaction reference';
+    let defaultMsg = 'Payment verified via UTR bank statement';
+    if (status === 'rejected') {
+      defaultMsg = 'Invalid UTR transaction reference';
+    } else if (status === 'pending') {
+      defaultMsg = 'Payment status reset to Pending for re-verification';
+    }
     setPaymentActionModal({
       payment,
       status,
@@ -182,7 +185,7 @@ export const DashboardOverview = () => {
     e.preventDefault();
     if (!paymentActionModal) return;
     const { payment, status, message } = paymentActionModal;
-    const paymentId = payment._id || payment.paymentid;
+    const paymentId = payment._id || payment.paymentid || payment.id;
 
     setActionLoading(true);
     try {
@@ -633,6 +636,18 @@ export const DashboardOverview = () => {
                         </button>
                       )}
 
+                      {rawStatus !== 'pending' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-warning"
+                          onClick={() => handleOpenPaymentActionModal(p, 'pending')}
+                          disabled={actionLoading}
+                          title="Revert payment to Pending"
+                        >
+                          <Clock size={13} /> Set Pending
+                        </button>
+                      )}
+
                       {rawStatus !== 'rejected' && (
                         <button
                           type="button"
@@ -839,13 +854,19 @@ export const DashboardOverview = () => {
         >
           <div className="modal-header">
             <h3>
-              {paymentActionModal.status === 'approved' ? (
+              {paymentActionModal.status === 'approved' && (
                 <span className="text-success flex-align">
                   <CheckCircle2 size={20} /> Approve Payment
                 </span>
-              ) : (
+              )}
+              {paymentActionModal.status === 'rejected' && (
                 <span className="text-danger flex-align">
                   <XCircle size={20} /> Reject Payment
+                </span>
+              )}
+              {paymentActionModal.status === 'pending' && (
+                <span className="text-warning flex-align" style={{ color: 'var(--warning, #f59e0b)' }}>
+                  <Clock size={20} /> Revert to Pending
                 </span>
               )}
             </h3>
@@ -859,7 +880,7 @@ export const DashboardOverview = () => {
           <form onSubmit={handleSubmitPaymentStatus} className="modal-form">
             <div className="form-group">
               <label className="form-label">
-                {paymentActionModal.status === 'approved' ? 'Approval Message / Verification Note' : 'Rejection Reason'} *
+                {paymentActionModal.status === 'approved' ? 'Approval Message / Verification Note' : (paymentActionModal.status === 'rejected' ? 'Rejection Reason' : 'Pending Status Note')} *
               </label>
               <textarea
                 className="form-input"
@@ -869,7 +890,7 @@ export const DashboardOverview = () => {
                 placeholder={
                   paymentActionModal.status === 'approved'
                     ? 'e.g. Payment verified via UTR bank statement'
-                    : 'e.g. Invalid UTR transaction reference code'
+                    : (paymentActionModal.status === 'rejected' ? 'e.g. Invalid UTR transaction reference code' : 'e.g. Payment status reset to Pending for verification')
                 }
                 required
               />
@@ -881,14 +902,14 @@ export const DashboardOverview = () => {
               </button>
               <button
                 type="submit"
-                className={`btn ${paymentActionModal.status === 'approved' ? 'btn-success' : 'btn-danger'}`}
+                className={`btn ${paymentActionModal.status === 'approved' ? 'btn-success' : (paymentActionModal.status === 'rejected' ? 'btn-danger' : 'btn-warning')}`}
                 disabled={actionLoading}
               >
                 {actionLoading
                   ? 'Updating...'
                   : paymentActionModal.status === 'approved'
                   ? 'Confirm Approval'
-                  : 'Confirm Rejection'}
+                  : (paymentActionModal.status === 'rejected' ? 'Confirm Rejection' : 'Confirm Set Pending')}
               </button>
             </div>
           </form>

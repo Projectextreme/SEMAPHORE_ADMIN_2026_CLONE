@@ -30,7 +30,9 @@ import {
   LayoutGrid,
   List,
   Trophy,
-  Crown
+  Crown,
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { resolveImageUrl } from '../../services/apiConfig';
@@ -88,19 +90,26 @@ export const RegistrationList = () => {
   // 1. Approve / Change Payment Status
   const handleApprovePayment = async (reg, newStatus = 'Approved') => {
     const id = reg._id || reg.id;
+    const teamTitle = reg.teamName || 'Team';
+    const normStatus = newStatus.toLowerCase();
+    const capStatus = normStatus.charAt(0).toUpperCase() + normStatus.slice(1);
+
     setActionLoading(true);
+    // 1. Instant optimistic UI update
+    setRegistrations((prev) =>
+      prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: capStatus, rawStatus: normStatus } : r))
+    );
+    if (inspectingReg && (inspectingReg._id === id || inspectingReg.id === id)) {
+      setInspectingReg((prev) => ({ ...prev, paymentStatus: capStatus, rawStatus: normStatus }));
+    }
+
     try {
-      await apiService.approveRegistrationPayment(id, newStatus, reg);
-      setRegistrations((prev) =>
-        prev.map((r) => ((r._id === id || r.id === id) ? { ...r, paymentStatus: newStatus } : r))
-      );
-      if (inspectingReg && (inspectingReg._id === id || inspectingReg.id === id)) {
-        setInspectingReg((prev) => ({ ...prev, paymentStatus: newStatus }));
-      }
-      showToast(`Payment for team "${reg.teamName}" marked as ${newStatus}!`);
+      const res = await apiService.approveRegistrationPayment(id, capStatus, reg);
+      showToast(res?.message || `Payment for team "${teamTitle}" marked as ${capStatus}!`);
       await fetchRegistrations();
     } catch (err) {
       showToast(err.message || 'Failed to update payment status.', true);
+      await fetchRegistrations();
     } finally {
       setActionLoading(false);
     }
@@ -232,12 +241,26 @@ export const RegistrationList = () => {
 
   // Filtering Logic
   const collegesList = ['All', ...new Set(registrations.map((r) => r.collegeName).filter(Boolean))];
-  const eventsList = ['All', ...new Set(registrations.map((r) => r.event).filter(Boolean))];
+  
+  // Extract all distinct individual event titles across all teams
+  const allEventsSet = new Set();
+  registrations.forEach(r => {
+    if (Array.isArray(r.events)) {
+      r.events.forEach(e => { if (e.eventName) allEventsSet.add(e.eventName); });
+    } else if (r.event) {
+      allEventsSet.add(r.event);
+    }
+  });
+  const eventsList = ['All', ...Array.from(allEventsSet)];
 
   const filteredRegistrations = registrations.filter((r) => {
     const matchesCollege = selectedCollege === 'All' || r.collegeName === selectedCollege;
     const matchesStatus = selectedPaymentStatus === 'All' || r.paymentStatus === selectedPaymentStatus;
-    const matchesEvent = selectedEventFilter === 'All' || r.event === selectedEventFilter;
+    const matchesEvent = selectedEventFilter === 'All' || (
+      Array.isArray(r.events)
+        ? r.events.some(e => e.eventName === selectedEventFilter)
+        : (r.event && r.event.includes(selectedEventFilter))
+    );
     
     const term = searchTerm.toLowerCase();
     const matchesSearch =
@@ -247,7 +270,8 @@ export const RegistrationList = () => {
       (r.email || '').toLowerCase().includes(term) ||
       (r.event || '').toLowerCase().includes(term) ||
       (r.utr || '').toLowerCase().includes(term) ||
-      (r.id || r._id || '').toLowerCase().includes(term);
+      (r.id || r._id || '').toLowerCase().includes(term) ||
+      (Array.isArray(r.participants) && r.participants.some(p => (p.name || '').toLowerCase().includes(term)));
 
     return matchesCollege && matchesStatus && matchesEvent && matchesSearch;
   });
@@ -442,7 +466,7 @@ export const RegistrationList = () => {
         {loading ? (
           <div className="loading-state" style={{ padding: '3.5rem', textAlign: 'center' }}>
             <div className="spinner"></div>
-            <span>Loading event registrations from live database...</span>
+            <span>Loading teams and registrations from live database...</span>
           </div>
         ) : filteredRegistrations.length === 0 ? (
           <EmptyState 
@@ -467,13 +491,14 @@ export const RegistrationList = () => {
           <div className="registration-cards-grid">
             {filteredRegistrations.map((reg) => {
               const regId = reg.id || reg._id;
-              const isApproved = (reg.paymentStatus || '').toLowerCase() === 'approved';
               const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
-              const eventName = reg.event || reg.eventName || 'General Event';
               const receiptImg = reg.imageUrl || reg.proofUrl;
               const membersCount = reg.participants ? reg.participants.length : (reg.membersCount || 1);
               const teamDisplayName = reg.teamName || (reg.leaderName ? `Team ${reg.leaderName}` : 'Event Team');
               const hasCustomTeam = reg.hasOfficialTeam || (reg.officialTeamName && reg.officialTeamName.trim().length > 0);
+              const teamEvents = Array.isArray(reg.events) && reg.events.length > 0
+                ? reg.events
+                : [{ eventName: reg.event || reg.eventName || 'General Event', membersCount: membersCount }];
 
               return (
                 <TiltCard key={regId} maxTilt={4} glareOpacity={0.08} className="reg-card-tilt">
@@ -502,17 +527,27 @@ export const RegistrationList = () => {
                       </div>
 
                       <div className="reg-status-top">
-                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting payment' : `Payment status: ${reg.paymentStatus}`}>
+                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Team registered, awaiting fee verification' : `Team payment status: ${reg.paymentStatus}`}>
                           {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
                         </span>
                       </div>
                     </div>
 
-                    {/* Dedicated Full-Width Event Banner */}
-                    <div className="reg-event-banner" title={`Enrolled Event: ${eventName}`}>
-                      <Calendar size={13} className="event-banner-icon" />
-                      <span className="event-banner-label">EVENT:</span>
-                      <strong className="event-banner-title">{eventName}</strong>
+                    {/* Dedicated Enrolled Events Cluster */}
+                    <div className="reg-events-cluster">
+                      <div className="reg-events-header">
+                        <Calendar size={12} className="text-cyan" />
+                        <span className="reg-events-title">ENROLLED EVENTS ({teamEvents.length}):</span>
+                      </div>
+                      <div className="reg-events-pills-list">
+                        {teamEvents.map((evt, eIdx) => (
+                          <span key={eIdx} className="reg-event-pill" title={`${evt.eventName} (${evt.membersCount || 1} participant(s))`}>
+                            <Tag size={10} className="text-cyan" />
+                            <span className="event-pill-name">{evt.eventName}</span>
+                            <span className="event-pill-count">({evt.membersCount || (evt.participants ? evt.participants.length : 1)})</span>
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Card Body Details */}
@@ -531,7 +566,7 @@ export const RegistrationList = () => {
                       {reg.participants && reg.participants.length > 0 && (
                         <div className="reg-roster-row">
                           <span className="reg-info-label">
-                            <Users size={12} className="info-icon" /> Roster ({membersCount}):
+                            <Users size={12} className="info-icon" /> Team Roster ({membersCount}):
                           </span>
                           <span className="reg-roster-names" title={reg.participants.map(p => p.name).join(', ')}>
                             {reg.participants.map(p => p.name).filter(Boolean).join(', ') || reg.leaderName}
@@ -549,17 +584,25 @@ export const RegistrationList = () => {
                         </span>
                       </div>
 
+                      {/* Unified Team Fee Row */}
+                      <div className="reg-fee-badge-row">
+                        <span className="reg-info-label">
+                          <CreditCard size={12} className="info-icon text-success" /> Team Fee:
+                        </span>
+                        <strong className="reg-fee-amount">{reg.amount || '₹ 200'}</strong>
+                      </div>
+
                       {/* ID & Quota Row */}
                       <div className="reg-info-row">
                         <div
                           className="reg-copyable-id"
                           onClick={() => {
                             navigator.clipboard.writeText(regId);
-                            showSuccess('Registration ID copied!');
+                            showSuccess('Team ID copied!');
                           }}
-                          title="Click to copy registration ID"
+                          title="Click to copy team ID"
                         >
-                          <span className="reg-id-tag">Reg ID:</span>
+                          <span className="reg-id-tag">ID:</span>
                           <span className="code-font">{regId && regId.length > 10 ? `${regId.slice(0, 8)}...${regId.slice(-4)}` : regId}</span>
                           <Copy size={11} className="id-copy-icon" />
                         </div>
@@ -610,45 +653,106 @@ export const RegistrationList = () => {
 
                     {/* Card Footer Actions */}
                     <div className="reg-card-footer">
-                      {!isApproved && (
+                      <div className="reg-footer-status-btns">
+                        {rawStatus === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn-reg-action btn-reg-approve"
+                              title="Approve Team Payment"
+                              disabled={actionLoading}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-reg-action btn-reg-reject"
+                              title="Reject Team Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {rawStatus === 'approved' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-reg-action btn-reg-pending"
+                              title="Revert Team Payment to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={13} />
+                              <span>Set Pending</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-reg-action btn-reg-reject"
+                              title="Reject Team Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={13} />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {rawStatus === 'rejected' && (
+                          <>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Approved')}
+                              className="btn-reg-action btn-reg-approve"
+                              title="Approve Team Payment"
+                              disabled={actionLoading}
+                            >
+                              <Check size={13} />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-reg-action btn-reg-pending"
+                              title="Revert Team Payment to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={13} />
+                              <span>Set Pending</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <div className="reg-footer-tool-btns">
                         <button
-                          onClick={() => handleApprovePayment(reg, 'Approved')}
-                          className="btn-reg-action btn-reg-approve"
-                          title="Quick Approve Registration"
+                          onClick={() => setInspectingReg(reg)}
+                          className="btn-reg-action btn-reg-view"
+                          title="View Full Team Details & Enrolled Events"
+                        >
+                          <Eye size={13} />
+                          <span>Inspect</span>
+                        </button>
+
+                        <button
+                          onClick={() => setEditingReg(reg)}
+                          className="btn-reg-action btn-reg-edit"
+                          title="Edit Team Details"
+                        >
+                          <Edit2 size={13} />
+                          <span>Edit</span>
+                        </button>
+
+                        <button
+                          onClick={() => setDeletingReg(reg)}
+                          className="btn-reg-action btn-reg-delete"
+                          title="Delete Team & Registrations"
                           disabled={actionLoading}
                         >
-                          <Check size={13} />
-                          <span>Approve</span>
+                          <Trash2 size={13} />
+                          <span>Delete</span>
                         </button>
-                      )}
-
-                      <button
-                        onClick={() => setInspectingReg(reg)}
-                        className="btn-reg-action btn-reg-view"
-                        title="View Full Registration Details & Roster"
-                      >
-                        <Eye size={13} />
-                        <span>Inspect</span>
-                      </button>
-
-                      <button
-                        onClick={() => setEditingReg(reg)}
-                        className="btn-reg-action btn-reg-edit"
-                        title="Edit Registration Details"
-                      >
-                        <Edit2 size={13} />
-                        <span>Edit</span>
-                      </button>
-
-                      <button
-                        onClick={() => setDeletingReg(reg)}
-                        className="btn-reg-action btn-reg-delete"
-                        title="Delete Team"
-                        disabled={actionLoading}
-                      >
-                        <Trash2 size={13} />
-                        <span>Delete</span>
-                      </button>
+                      </div>
                     </div>
                   </div>
                 </TiltCard>
@@ -663,10 +767,10 @@ export const RegistrationList = () => {
             <table className="registrations-table">
               <thead>
                 <tr>
-                  <th>REG ID</th>
+                  <th>TEAM ID</th>
                   <th>TEAM & LEADER</th>
                   <th>COLLEGE NAME</th>
-                  <th>EVENT</th>
+                  <th>ENROLLED EVENTS</th>
                   <th>MEMBERS</th>
                   <th>QUOTA</th>
                   <th>PAYMENT</th>
@@ -678,14 +782,16 @@ export const RegistrationList = () => {
                   const regId = reg.id || reg._id;
                   const isApproved = (reg.paymentStatus || '').toLowerCase() === 'approved';
                   const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
-                  const eventName = reg.event || reg.eventName || 'General Event';
                   const receiptImg = reg.imageUrl || reg.proofUrl;
+                  const teamEvents = Array.isArray(reg.events) && reg.events.length > 0
+                    ? reg.events
+                    : [{ eventName: reg.event || reg.eventName || 'General Event', membersCount: reg.membersCount || 1 }];
 
                   return (
                     <tr key={regId}>
                       <td className="code-font" title={`Click to copy: ${regId}`} onClick={() => {
                         navigator.clipboard.writeText(regId);
-                        showSuccess('Registration ID copied!');
+                        showSuccess('Team ID copied!');
                       }} style={{ cursor: 'pointer' }}>
                         {regId && regId.length > 10 ? `${regId.slice(0, 6)}...${regId.slice(-4)}` : regId}
                       </td>
@@ -734,9 +840,13 @@ export const RegistrationList = () => {
                         </span>
                       </td>
                       <td>
-                        <span className="event-tag-pill" title={eventName}>
-                          {eventName}
-                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', maxWidth: '280px' }}>
+                          {teamEvents.map((evt, eIdx) => (
+                            <span key={eIdx} className="event-tag-pill" title={evt.eventName}>
+                              {evt.eventName}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="center-cell">
                         <span className="member-count-badge">
@@ -749,27 +859,61 @@ export const RegistrationList = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting UPI receipt upload' : `Payment status: ${reg.paymentStatus}`}>
-                          {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
-                        </span>
+                        <div>
+                          <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Team registered, awaiting fee upload' : `Payment status: ${reg.paymentStatus}`}>
+                            {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
+                          </span>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{reg.amount || '₹ 200'}</div>
+                        </div>
                       </td>
                       <td>
                         <div className="table-actions">
-                          {!isApproved && (
+                          {!isApproved ? (
                             <button
                               onClick={() => handleApprovePayment(reg, 'Approved')}
                               className="btn-icon btn-approve"
-                              title="Quick Approve Registration"
+                              title="Approve Team Payment"
                               disabled={actionLoading}
                             >
                               <Check size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-pending"
+                              title="Revert Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+
+                          {rawStatus !== 'rejected' && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-icon btn-reject"
+                              title="Reject Registration Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          )}
+
+                          {rawStatus === 'rejected' && !isApproved && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-pending"
+                              title="Revert Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={14} />
                             </button>
                           )}
 
                           <button
                             onClick={() => setInspectingReg(reg)}
                             className="btn-icon btn-view"
-                            title="View Full Registration Details"
+                            title="View Full Team Details"
                           >
                             <Eye size={14} />
                           </button>
@@ -777,7 +921,7 @@ export const RegistrationList = () => {
                           <button
                             onClick={() => setEditingReg(reg)}
                             className="btn-icon btn-edit"
-                            title="Edit Registration Details"
+                            title="Edit Team Details"
                           >
                             <Edit2 size={14} />
                           </button>
@@ -785,7 +929,7 @@ export const RegistrationList = () => {
                           <button
                             onClick={() => setDeletingReg(reg)}
                             className="btn-icon btn-delete"
-                            title="Delete Team"
+                            title="Delete Team & Registrations"
                             disabled={actionLoading}
                           >
                             <Trash2 size={14} />
@@ -821,7 +965,11 @@ export const RegistrationList = () => {
           ) : (
             filteredRegistrations.map((reg) => {
               const regId = reg.id || reg._id;
-              const isApproved = reg.paymentStatus === 'Approved';
+              const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
+              const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
+              const teamEvents = Array.isArray(reg.events) && reg.events.length > 0
+                ? reg.events
+                : [{ eventName: reg.event || reg.eventName || 'General Event', membersCount: reg.membersCount || 1 }];
 
               return (
                 <div key={regId} className="mobile-data-card">
@@ -831,7 +979,7 @@ export const RegistrationList = () => {
                       <strong className="team-highlight" style={{ fontSize: '1rem' }}>{reg.teamName}</strong>
                       <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Lead: {reg.leaderName}</div>
                     </div>
-                    <span className={`status-badge status-${(reg.paymentStatus || 'pending').toLowerCase()}`}>
+                    <span className={`status-badge status-${rawStatus}`}>
                       {reg.paymentStatus || 'Pending'}
                     </span>
                   </div>
@@ -839,26 +987,30 @@ export const RegistrationList = () => {
                 {/* Body Details */}
                 <div className="mobile-card-body">
                   <div className="mobile-card-row">
-                    <span className="mobile-card-label">Registration ID:</span>
+                    <span className="mobile-card-label">Team ID:</span>
                     <div className="mobile-id-badge">
                       <span className="code-font">{regId}</span>
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(regId);
-                          showToast('Registration ID copied!');
+                          showToast('Team ID copied!');
                         }}
                         className="btn-copy-mini"
-                        title="Copy Reg ID"
-                        aria-label="Copy Reg ID"
+                        title="Copy Team ID"
+                        aria-label="Copy Team ID"
                       >
                         <Copy size={11} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="mobile-card-row">
-                    <span className="mobile-card-label">Event:</span>
-                    <span className="event-tag">{reg.event}</span>
+                  <div className="mobile-card-row" style={{ alignItems: 'flex-start' }}>
+                    <span className="mobile-card-label">Events ({teamEvents.length}):</span>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', justifyContent: 'flex-end', maxWidth: '65%' }}>
+                      {teamEvents.map((evt, eIdx) => (
+                        <span key={eIdx} className="event-tag" style={{ fontSize: '0.72rem' }}>{evt.eventName}</span>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="mobile-card-row">
@@ -873,7 +1025,12 @@ export const RegistrationList = () => {
                     </span>
                   </div>
 
-                  {reg.utr && (
+                  <div className="mobile-card-row">
+                    <span className="mobile-card-label">Team Fee:</span>
+                    <strong style={{ color: 'var(--success)' }}>{reg.amount || '₹ 200'}</strong>
+                  </div>
+
+                  {reg.utr && reg.utr !== 'N/A' && (
                     <div className="mobile-card-row">
                       <span className="mobile-card-label">UTR Ref:</span>
                       <div className="mobile-id-badge">
@@ -908,13 +1065,36 @@ export const RegistrationList = () => {
                   ) : (
                     <button
                       onClick={() => handleApprovePayment(reg, 'Pending')}
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-warning btn-sm"
                       style={{ flex: 1, justifyContent: 'center' }}
                       disabled={actionLoading}
                     >
-                      <CheckCircle2 size={13} className="text-success" /> Approved
+                      <RotateCcw size={13} /> Set Pending
                     </button>
                   )}
+
+                  {rawStatus !== 'rejected' && (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Rejected')}
+                      className="btn btn-outline-danger btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <XCircle size={13} /> Reject
+                    </button>
+                  )}
+
+                  {rawStatus === 'rejected' && !isApproved && (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Pending')}
+                      className="btn btn-warning btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <RotateCcw size={13} /> Set Pending
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setInspectingReg(reg)}
                     className="btn btn-secondary btn-sm"
@@ -948,11 +1128,11 @@ export const RegistrationList = () => {
       {inspectingReg && (
         <Modal isOpen={!!inspectingReg} onClose={() => setInspectingReg(null)} maxWidth="740px">
           <div className="modal-header">
-            <h3><Receipt size={19} /> Registration & Payment Details</h3>
+            <h3><Receipt size={19} /> Team Registration & Payment Details</h3>
             <button className="modal-close" onClick={() => setInspectingReg(null)}>&times;</button>
           </div>
           <p className="modal-subtitle">
-            Registration Reference: <code>{inspectingReg.id || inspectingReg._id}</code>
+            Team Reference: <code>{inspectingReg.id || inspectingReg._id}</code>
           </p>
 
           <div className="inspect-grid">
@@ -982,10 +1162,6 @@ export const RegistrationList = () => {
                   <span>{inspectingReg.collegeName || 'N/A'}</span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">Enrolled Event</span>
-                  <span className="event-tag">{inspectingReg.event || inspectingReg.eventName || 'General Event'}</span>
-                </div>
-                <div className="detail-row">
                   <span className="detail-label">Registration Date</span>
                   <span className="date-text">
                     {(() => {
@@ -1002,8 +1178,28 @@ export const RegistrationList = () => {
                 </div>
               </div>
 
+              {/* Enrolled Events Breakdown */}
+              <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}>
+                <Calendar size={15} /> Enrolled Events ({inspectingReg.events?.length || 1})
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {(inspectingReg.events || [{ eventName: inspectingReg.event, participants: inspectingReg.participants }]).map((evt, eIdx) => (
+                  <div key={eIdx} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                      <strong style={{ fontSize: '0.84rem', color: 'var(--text-heading)' }}>{evt.eventName}</strong>
+                      <span className="event-tag" style={{ fontSize: '0.7rem' }}>{evt.participants?.length || evt.membersCount || 1} Participant(s)</span>
+                    </div>
+                    {evt.participants && evt.participants.length > 0 && (
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        Roster: {evt.participants.map(p => (typeof p === 'object' ? p.name : p)).filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
               {/* Team Members List */}
-              <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Team Members Roster</h4>
+              <h4 className="inspect-section-title" style={{ marginTop: '1rem' }}><Users size={15} /> Combined Team Roster</h4>
               <div className="members-roster-box">
                 {(() => {
                   const membersList = (Array.isArray(inspectingReg.participants) && inspectingReg.participants.length > 0)
@@ -1046,7 +1242,7 @@ export const RegistrationList = () => {
 
             {/* Right Column: Payment Verification */}
             <div className="inspect-col">
-              <h4 className="inspect-section-title"><CreditCard size={15} /> Payment Verification Details</h4>
+              <h4 className="inspect-section-title"><CreditCard size={15} /> Team Payment Verification</h4>
 
               <div className="user-detail-card">
                 <div className="detail-row">
@@ -1056,9 +1252,9 @@ export const RegistrationList = () => {
                   </span>
                 </div>
                 <div className="detail-row">
-                  <span className="detail-label">Amount Billed</span>
+                  <span className="detail-label">Amount Billed (Whole Team)</span>
                   <strong className="font-bold text-success" style={{ fontSize: '1.05rem' }}>
-                    {typeof inspectingReg.amount === 'number' ? `₹ ${inspectingReg.amount}` : (inspectingReg.amount || '₹ 0')}
+                    {typeof inspectingReg.amount === 'number' ? `₹ ${inspectingReg.amount}` : (inspectingReg.amount || '₹ 200')}
                   </strong>
                 </div>
                 <div className="detail-row">
@@ -1136,15 +1332,15 @@ export const RegistrationList = () => {
                     <AlertCircle size={14} /> No UPI Receipt Uploaded
                   </div>
                   <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                    This participant registered on the portal but has not uploaded a UPI screenshot or UTR number yet (hence no entry in Payment Approvals). You can mark it <strong>Approved</strong> below if payment was received in cash or offline at the desk.
+                    This team registered on the portal but has not uploaded a UPI screenshot or UTR number yet. You can mark it <strong>Approved</strong> below if payment was received in cash or offline at the desk.
                   </p>
                 </div>
               )}
 
               {/* Quick Status Action inside Modal */}
               <div className="modal-status-actions" style={{ marginTop: '1rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Status:</span>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Payment Status:</span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
                   {inspectingReg.paymentStatus?.toLowerCase() !== 'approved' && (
                     <button 
                       onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
@@ -1152,6 +1348,15 @@ export const RegistrationList = () => {
                       disabled={actionLoading}
                     >
                       <CheckCircle2 size={13} /> Mark Approved
+                    </button>
+                  )}
+                  {inspectingReg.paymentStatus?.toLowerCase() !== 'pending' && (
+                    <button 
+                      onClick={() => handleApprovePayment(inspectingReg, 'Pending')}
+                      className="btn btn-warning btn-sm"
+                      disabled={actionLoading}
+                    >
+                      <RotateCcw size={13} /> Revert to Pending
                     </button>
                   )}
                   {inspectingReg.paymentStatus?.toLowerCase() !== 'rejected' && (
