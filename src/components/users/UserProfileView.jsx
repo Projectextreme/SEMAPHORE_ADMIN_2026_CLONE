@@ -109,7 +109,7 @@ export const UserProfileView = () => {
       <div className="user-profile-container">
         <div className="profile-loading-state">
           <RefreshCw size={28} className="spin-icon text-cyan" />
-          <span>Fetching comprehensive user profile from <code>/api/admin/user-full-details/{userId}</code>...</span>
+          <span>Loading user profile...</span>
         </div>
       </div>
     );
