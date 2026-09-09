@@ -566,14 +566,15 @@ export const EventManagement = () => {
 
   const handleDeleteEvent = async (id) => {
     setSubmitting(true);
-    setEvents((prev) => prev.filter((e) => (e._id || e.id) !== id));
     setDeletingEvent(null);
     try {
       await apiService.deleteEvent(id);
-      showAlert('success', 'Event removed successfully.');
+      showAlert('success', 'Event deleted successfully.');
+      await fetchEvents();
     } catch (err) {
-      console.warn('Backend warning on event deletion:', err);
-      showAlert('success', 'Event removed from festival roster.');
+      console.error('Error on event deletion:', err);
+      showAlert('error', err.message || 'Failed to delete event. Please try again.');
+      await fetchEvents();
     } finally {
       setSubmitting(false);
     }

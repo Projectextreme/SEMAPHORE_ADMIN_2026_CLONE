@@ -26,7 +26,9 @@ import {
   CreditCard,
   UserCheck,
   User,
-  Tag
+  Tag,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { resolveImageUrl } from '../../services/apiConfig';
@@ -46,6 +48,7 @@ export const RegistrationList = () => {
   const [selectedCollege, setSelectedCollege] = useState('All');
   const [selectedPaymentStatus, setSelectedPaymentStatus] = useState('All');
   const [selectedEventFilter, setSelectedEventFilter] = useState('All');
+  const [viewMode, setViewMode] = useState('cards');
 
   // Modals
   const [inspectingReg, setInspectingReg] = useState(null);
@@ -118,8 +121,9 @@ export const RegistrationList = () => {
       );
       showToast(`Registration for team "${editingReg.teamName}" updated successfully!`);
       setEditingReg(null);
+      await fetchRegistrations();
     } catch (err) {
-      showToast('Failed to save registration changes.', true);
+      showToast(err.message || 'Failed to save registration changes.', true);
     } finally {
       setActionLoading(false);
     }
@@ -132,13 +136,11 @@ export const RegistrationList = () => {
     setActionLoading(true);
     try {
       const res = await apiService.deleteRegistration(id, deletingReg);
-      setRegistrations((prev) => 
-        prev.filter((r) => (r._id || r.id) !== id && String(r._id) !== String(id) && String(r.id) !== String(id))
-      );
-      showToast(res?.message || `Registration for "${deletingReg.teamName}" deleted successfully.`);
+      showToast(res?.message || `Team "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
+      await fetchRegistrations();
     } catch (err) {
-      showToast(err?.message || 'Failed to delete registration.', true);
+      showToast(err?.message || 'Failed to delete team.', true);
     } finally {
       setActionLoading(false);
     }
@@ -401,57 +403,244 @@ export const RegistrationList = () => {
               </select>
             </div>
 
+            {/* View Mode Toggle Switcher */}
+            <div className="view-mode-toggle">
+              <button
+                type="button"
+                className={`btn-view-toggle ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                title="Cards Grid View"
+                aria-label="Cards Grid View"
+              >
+                <LayoutGrid size={14} />
+                <span>Cards</span>
+              </button>
+              <button
+                type="button"
+                className={`btn-view-toggle ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Table View"
+                aria-label="Table View"
+              >
+                <List size={14} />
+                <span>Table</span>
+              </button>
+            </div>
+
             <span className="endpoint-badge">{filteredRegistrations.length} Teams</span>
           </div>
         </div>
 
-        {/* Desktop Table View */}
-        <div className="table-responsive desktop-only">
-          <table className="registrations-table">
-            <thead>
-              <tr>
-                <th>REG ID</th>
-                <th>TEAM & LEADER</th>
-                <th>COLLEGE NAME</th>
-                <th>EVENT</th>
-                <th>MEMBERS</th>
-                <th>QUOTA</th>
-                <th>PAYMENT</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-secondary)' }}>
-                      <Loader2 size={18} className="spin-icon" />
-                      <span>Loading event registrations from live database...</span>
+        {/* Main Content Area: Loading / Empty / Cards Grid / Table View */}
+        {loading ? (
+          <div className="loading-state" style={{ padding: '3.5rem', textAlign: 'center' }}>
+            <div className="spinner"></div>
+            <span>Loading event registrations from live database...</span>
+          </div>
+        ) : filteredRegistrations.length === 0 ? (
+          <EmptyState 
+            type="search"
+            title="No team registrations found"
+            description="No registrations match your search query or filter parameters."
+            primaryAction={{
+              label: 'Reset Filters',
+              onClick: () => {
+                setSearchTerm('');
+                setSelectedCollege('All');
+                setSelectedPaymentStatus('All');
+                setSelectedEventFilter('All');
+              }
+            }}
+            compact={true}
+          />
+        ) : viewMode === 'cards' ? (
+          /* ==========================================================================
+             Primary Responsive Cards Grid View
+             ========================================================================== */
+          <div className="registration-cards-grid">
+            {filteredRegistrations.map((reg) => {
+              const regId = reg.id || reg._id;
+              const isApproved = (reg.paymentStatus || '').toLowerCase() === 'approved';
+              const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
+              const eventName = reg.event || reg.eventName || 'General Event';
+              const receiptImg = reg.imageUrl || reg.proofUrl;
+              const membersCount = reg.participants ? reg.participants.length : (reg.membersCount || 1);
+
+              return (
+                <TiltCard key={regId} maxTilt={4} glareOpacity={0.08} className="reg-card-tilt">
+                  <div className="reg-card-content">
+                    {/* Card Top */}
+                    <div className="reg-card-top">
+                      <div className="reg-team-cell">
+                        <div className="reg-avatar">
+                          {reg.teamName ? reg.teamName.charAt(0).toUpperCase() : 'T'}
+                        </div>
+                        <div className="reg-team-info">
+                          <h3 className="reg-team-name" title={reg.teamName || 'Solo Participant'}>
+                            {reg.teamName || 'Solo Participant'}
+                          </h3>
+                          <div className="reg-leader-sub" title={`Leader: ${reg.leaderName || 'Participant'}`}>
+                            <User size={11} className="sub-icon" />
+                            <span>{reg.leaderName || 'Lead Participant'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="reg-badges-stack">
+                        <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Student registered for event, awaiting UPI receipt upload' : `Payment status: ${reg.paymentStatus}`}>
+                          {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
+                        </span>
+                        <span className="event-tag-pill" title={eventName}>
+                          {eventName}
+                        </span>
+                      </div>
                     </div>
-                  </td>
-                </tr>
-              ) : filteredRegistrations.length === 0 ? (
+
+                    {/* Card Body Details */}
+                    <div className="reg-card-body">
+                      {/* College Row */}
+                      <div className="reg-info-row">
+                        <span className="reg-info-label">
+                          <Building2 size={12} className="info-icon" /> College:
+                        </span>
+                        <span className="reg-college-text" title={reg.collegeName || 'N/A'}>
+                          {reg.collegeName || 'N/A'}
+                        </span>
+                      </div>
+
+                      {/* ID & Copy */}
+                      <div className="reg-info-row">
+                        <span className="reg-info-label">Reg ID:</span>
+                        <div
+                          className="reg-copyable-id"
+                          onClick={() => {
+                            navigator.clipboard.writeText(regId);
+                            showSuccess('Registration ID copied!');
+                          }}
+                          title="Click to copy registration ID"
+                        >
+                          <span className="code-font">{regId && regId.length > 10 ? `${regId.slice(0, 8)}...${regId.slice(-4)}` : regId}</span>
+                          <Copy size={11} className="id-copy-icon" />
+                        </div>
+                      </div>
+
+                      {/* Members & Quota Row */}
+                      <div className="reg-info-row">
+                        <div className="reg-meta-pill">
+                          <Users size={12} />
+                          <span>{membersCount} {membersCount === 1 ? 'Member' : 'Members'}</span>
+                        </div>
+                        <span className="quota-tag">
+                          {reg.quotaStatus || 'Under Quota'}
+                        </span>
+                      </div>
+
+                      {/* Contact Info & Receipt Thumbnail */}
+                      <div className="reg-contact-strip">
+                        <div className="reg-contact-details">
+                          {reg.email && (
+                            <div className="reg-contact-item" title={reg.email}>
+                              <Mail size={11} className="contact-icon" />
+                              <span className="contact-text">{reg.email}</span>
+                            </div>
+                          )}
+                          {reg.phone && (
+                            <div className="reg-contact-item" title={reg.phone}>
+                              <Phone size={11} className="contact-icon" />
+                              <span className="contact-text">{reg.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                        {receiptImg && (
+                          <div
+                            className="reg-receipt-thumb-wrap"
+                            onClick={() => setInspectingReg(reg)}
+                            title="View Uploaded UPI Receipt"
+                          >
+                            <img
+                              src={resolveImageUrl(receiptImg) || DEFAULT_RECEIPT_PLACEHOLDER}
+                              alt="Receipt"
+                              className="reg-receipt-thumb"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.style.display = 'none';
+                              }}
+                            />
+                            <div className="reg-receipt-zoom">
+                              <Eye size={10} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Card Footer Actions */}
+                    <div className="reg-card-footer">
+                      {!isApproved && (
+                        <button
+                          onClick={() => handleApprovePayment(reg, 'Approved')}
+                          className="btn-reg-action btn-reg-approve"
+                          title="Quick Approve Registration"
+                          disabled={actionLoading}
+                        >
+                          <Check size={13} />
+                          <span>Approve</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => setInspectingReg(reg)}
+                        className="btn-reg-action btn-reg-view"
+                        title="View Full Registration Details"
+                      >
+                        <Eye size={13} />
+                        <span>Inspect</span>
+                      </button>
+
+                      <button
+                        onClick={() => setEditingReg(reg)}
+                        className="btn-reg-action btn-reg-edit"
+                        title="Edit Registration Details"
+                      >
+                        <Edit2 size={13} />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        onClick={() => setDeletingReg(reg)}
+                        className="btn-reg-action btn-reg-delete"
+                        title="Delete Team"
+                        disabled={actionLoading}
+                      >
+                        <Trash2 size={13} />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </TiltCard>
+              );
+            })}
+          </div>
+        ) : (
+          /* ==========================================================================
+             Table View
+             ========================================================================== */
+          <div className="table-responsive">
+            <table className="registrations-table">
+              <thead>
                 <tr>
-                  <td colSpan="8" style={{ padding: '1rem' }}>
-                    <EmptyState 
-                      type="search"
-                      title="No team registrations found"
-                      description="No registrations match your search query or filter parameters."
-                      primaryAction={{
-                        label: 'Reset Filters',
-                        onClick: () => {
-                          setSearchTerm('');
-                          setSelectedCollege('All');
-                          setSelectedPaymentStatus('All');
-                          setSelectedEventFilter('All');
-                        }
-                      }}
-                      compact={true}
-                    />
-                  </td>
+                  <th>REG ID</th>
+                  <th>TEAM & LEADER</th>
+                  <th>COLLEGE NAME</th>
+                  <th>EVENT</th>
+                  <th>MEMBERS</th>
+                  <th>QUOTA</th>
+                  <th>PAYMENT</th>
+                  <th>ACTIONS</th>
                 </tr>
-              ) : (
-                filteredRegistrations.map((reg) => {
+              </thead>
+              <tbody>
+                {filteredRegistrations.map((reg) => {
                   const regId = reg.id || reg._id;
                   const isApproved = (reg.paymentStatus || '').toLowerCase() === 'approved';
                   const rawStatus = (reg.paymentStatus || 'pending').toLowerCase();
@@ -532,7 +721,6 @@ export const RegistrationList = () => {
                       </td>
                       <td>
                         <div className="table-actions">
-                          {/* Quick Approval Check */}
                           {!isApproved && (
                             <button
                               onClick={() => handleApprovePayment(reg, 'Approved')}
@@ -544,7 +732,6 @@ export const RegistrationList = () => {
                             </button>
                           )}
 
-                          {/* View Full Info */}
                           <button
                             onClick={() => setInspectingReg(reg)}
                             className="btn-icon btn-view"
@@ -553,7 +740,6 @@ export const RegistrationList = () => {
                             <Eye size={14} />
                           </button>
 
-                          {/* Edit Details */}
                           <button
                             onClick={() => setEditingReg(reg)}
                             className="btn-icon btn-edit"
@@ -562,11 +748,11 @@ export const RegistrationList = () => {
                             <Edit2 size={14} />
                           </button>
 
-                          {/* Delete Registration */}
                           <button
                             onClick={() => setDeletingReg(reg)}
                             className="btn-icon btn-delete"
-                            title="Delete Registration"
+                            title="Delete Team"
+                            disabled={actionLoading}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -574,11 +760,11 @@ export const RegistrationList = () => {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* Mobile Cards View */}
         <div className="mobile-cards-list mobile-only" style={{ padding: '0.5rem' }}>

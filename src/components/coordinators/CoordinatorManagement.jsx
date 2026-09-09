@@ -138,13 +138,10 @@ export const CoordinatorManagement = () => {
       setCoordinators(prev => prev.map(c => (c.id === editingCoord.id || c._id === editingCoord._id) ? updated : c));
       setEditingCoord(null);
       showToast(`Coordinator "${updated.name || editingCoord.name}" details updated!`);
-      const refreshed = await apiService.getCoordinators();
-      if (Array.isArray(refreshed)) {
-        setCoordinators(refreshed);
-      }
+      await loadData();
     } catch (err) {
       console.error('Error updating coordinator:', err);
-      showToast('Failed to update coordinator.', true);
+      showToast(err.message || 'Failed to update coordinator.', true);
     } finally {
       setActionLoading(false);
     }
@@ -156,11 +153,9 @@ export const CoordinatorManagement = () => {
     setActionLoading(true);
     try {
       await apiService.deleteCoordinator(id, coord);
-      setCoordinators(prev => prev.filter(c => (c.id !== id && c._id !== id && c.email !== coord.email)));
       setDeletingCoord(null);
       showToast(`Coordinator "${coord?.name || 'Entry'}" removed successfully.`);
-      const refreshed = await apiService.getCoordinators();
-      setCoordinators(refreshed);
+      await loadData();
     } catch (err) {
       console.error('Error deleting coordinator:', err);
       showToast(err.message || 'Failed to delete coordinator.', true);

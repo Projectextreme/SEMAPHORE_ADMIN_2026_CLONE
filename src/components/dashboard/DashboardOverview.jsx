@@ -128,23 +128,23 @@ export const DashboardOverview = () => {
         return 200; // Standard Semaphore event registration fee fallback
       };
 
-      // Extract pending & approved from registrations, fallback to paymentsList
-      const pendingRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase().includes('pend'));
-      const approvedRegs = regsList.filter((r) => (r.paymentStatus || '').toLowerCase().includes('app') || (r.paymentStatus || '').toLowerCase() === 'success');
+      // Extract pending & approved payment submissions strictly from live Payments collection
+      const pendingPayments = paymentsList.filter((p) => {
+        const s = (p.status || p.rawStatus || '').toLowerCase();
+        return s.includes('pend') || s === 'submitted' || s === 'under_review';
+      });
+      const approvedPayments = paymentsList.filter((p) => {
+        const s = (p.status || p.rawStatus || '').toLowerCase();
+        return s.includes('app') || s === 'success' || s === 'verified';
+      });
 
-      const pendingPayments = paymentsList.filter((p) => (p.status || '').toLowerCase().includes('pend') || (p.rawStatus || '').toLowerCase().includes('pend'));
-      const approvedPayments = paymentsList.filter((p) => (p.status || '').toLowerCase().includes('app') || (p.rawStatus || '').toLowerCase().includes('app') || (p.status || '').toLowerCase() === 'success');
-
-      const effectivePending = pendingRegs.length > 0 ? pendingRegs : pendingPayments;
-      const effectiveApproved = approvedRegs.length > 0 ? approvedRegs : approvedPayments;
-
-      const calcPendingAmt = effectivePending.reduce((sum, r) => sum + parseAmt(r), 0);
-      const calcApprovedAmt = effectiveApproved.reduce((sum, r) => sum + parseAmt(r), 0);
+      const calcPendingAmt = pendingPayments.reduce((sum, p) => sum + parseAmt(p), 0);
+      const calcApprovedAmt = approvedPayments.reduce((sum, p) => sum + parseAmt(p), 0);
 
       setStats({
-        pendingPayments: effectivePending.length,
+        pendingPayments: pendingPayments.length,
         pendingAmount: calcPendingAmt,
-        approvedPayments: effectiveApproved.length,
+        approvedPayments: approvedPayments.length,
         approvedAmount: calcApprovedAmt,
         totalUsers: usersList.length,
         totalTeams: regsList.length || paymentsList.length || 0
@@ -323,7 +323,7 @@ export const DashboardOverview = () => {
             <div className="sketch-kpi-header">
               <div className="sketch-kpi-title-wrap">
                 <CreditCard size={17} className="text-amber" />
-                <span className="sketch-kpi-title">Pending Payment</span>
+                <span className="sketch-kpi-title">Pending Approvals</span>
               </div>
               <span className="sketch-kpi-badge badge-amber">
                 <CountUp value={stats.pendingPayments} />

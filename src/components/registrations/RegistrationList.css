@@ -536,8 +536,319 @@
   display: block;
 }
 
-.modal-approval-controls {
-  margin-top: 0.65rem;
+/* ==========================================================================
+   Primary Responsive Cards Grid View
+   ========================================================================== */
+.registration-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 1.25rem;
+  padding: 0.25rem 0;
+  width: 100%;
+}
+
+.reg-card-tilt {
+  height: 100%;
+  display: flex;
+  border-radius: 16px;
+}
+
+.reg-card-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  box-shadow: var(--card-shadow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 1rem;
+}
+
+.reg-card-content:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: 0 12px 28px var(--glow-primary);
+}
+
+.reg-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.reg-team-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reg-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary), var(--cyan));
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px var(--glow-primary);
+}
+
+.reg-team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reg-team-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text-heading);
+  margin: 0;
+  line-height: 1.3;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reg-leader-sub {
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reg-badges-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.reg-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  background: var(--badge-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+}
+
+.reg-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.reg-info-label {
+  color: var(--text-dim);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+}
+
+.reg-college-text {
+  font-weight: 700;
+  color: var(--text-main);
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.reg-copyable-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reg-copyable-id:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--nav-hover-bg);
+}
+
+.reg-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+}
+
+.reg-contact-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.reg-contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reg-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.reg-contact-item .contact-icon {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.reg-contact-item .contact-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reg-receipt-thumb-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border-color);
+  background: var(--bg-input);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.reg-receipt-thumb-wrap:hover {
+  border-color: var(--cyan);
+  transform: scale(1.05);
+}
+
+.reg-receipt-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.reg-receipt-zoom {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.reg-receipt-thumb-wrap:hover .reg-receipt-zoom {
+  opacity: 1;
+}
+
+.reg-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.btn-reg-action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.45rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-reg-action:hover {
+  transform: translateY(-1px);
+}
+
+.btn-reg-approve:hover {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.btn-reg-view:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(6, 182, 212, 0.12);
+}
+
+.btn-reg-edit:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--nav-hover-bg);
+}
+
+.btn-reg-delete:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.12);
 }
 
 /* Responsive Media Queries */
@@ -577,6 +888,10 @@
     grid-template-columns: 1fr;
   }
 
+  .registration-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
   .filter-controls-group {
     flex-direction: column;
     align-items: stretch;
@@ -586,3 +901,4 @@
     width: 100%;
   }
 }
+

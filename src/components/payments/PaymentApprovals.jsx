@@ -155,6 +155,7 @@ export const PaymentApprovals = () => {
       await loadPayments();
     } catch (err) {
       showToast(err.message || 'Failed to update payment status.', true);
+      await loadPayments();
     } finally {
       setActionLoading(false);
     }

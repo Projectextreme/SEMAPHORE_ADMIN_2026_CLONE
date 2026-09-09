@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/apiService';
 
 const AuthContext = createContext(null);
@@ -35,6 +35,16 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  const logout = useCallback(() => {
+    localStorage.removeItem('semaphore_admin_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('admin_token');
+    localStorage.removeItem('jwt');
+    localStorage.removeItem('semaphore_admin_user');
+    setAdmin(null);
+    setAuthError(null);
+  }, []);
+
   // Listen for 401 unauthorized events to gracefully clear expired sessions
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -44,7 +54,7 @@ export const AuthProvider = ({ children }) => {
 
     window.addEventListener('semaphore:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('semaphore:unauthorized', handleUnauthorized);
-  }, []);
+  }, [logout]);
 
   const login = async (email, password) => {
     setAuthError(null);
@@ -66,16 +76,6 @@ export const AuthProvider = ({ children }) => {
       setAuthError(msg);
       throw new Error(msg);
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('semaphore_admin_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('jwt');
-    localStorage.removeItem('semaphore_admin_user');
-    setAdmin(null);
-    setAuthError(null);
   };
 
   const isSuperAdmin = admin?.role === 'superadmin';

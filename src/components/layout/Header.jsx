@@ -72,15 +72,15 @@ export const Header = ({ isMobileNavOpen, onToggleMobileNav }) => {
       <div className="header-center-info">
         <div 
           className={`api-status-badge status-${serverStatus}`}
-          title={serverStatus === 'online' ? `Live REST Backend Connected (${API_BASE_URL})` : (serverStatus === 'offline' ? 'Live Backend Unreachable (Local Fallback Active)' : 'Verifying Backend Server...')}
+          title={serverStatus === 'online' ? `Server Connected (${API_BASE_URL})` : (serverStatus === 'offline' ? 'Server Unreachable (Please check network connection)' : 'Verifying connection...')}
           onClick={pingServer}
           style={{ cursor: 'pointer' }}
         >
           <span className={`pulse-dot dot-${serverStatus}`}></span>
           <span className="status-text">
-            {serverStatus === 'online' && 'REST Engine Live'}
-            {serverStatus === 'offline' && 'Backend Offline'}
-            {serverStatus === 'checking' && 'Checking Server...'}
+            {serverStatus === 'online' && 'System Online'}
+            {serverStatus === 'offline' && 'Offline'}
+            {serverStatus === 'checking' && 'Connecting...'}
           </span>
         </div>
       </div>
