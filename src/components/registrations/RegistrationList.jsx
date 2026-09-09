@@ -135,9 +135,14 @@ export const RegistrationList = () => {
   const handleDeleteConfirm = async () => {
     if (!deletingReg) return;
     const id = deletingReg._id || deletingReg.id;
+    const idStr = String(id || '');
     setActionLoading(true);
     try {
       const res = await apiService.deleteRegistration(id, deletingReg);
+      // Optimistically remove from state immediately
+      setRegistrations((prev) =>
+        prev.filter((r) => (r._id || r.id) !== id && String(r._id || r.id) !== idStr)
+      );
       showToast(res?.message || `Team "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
       await fetchRegistrations();

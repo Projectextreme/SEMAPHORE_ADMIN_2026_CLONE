@@ -792,62 +792,92 @@ export const apiService = {
   },
 
   deleteRegistration: async (id, regObj = null) => {
-    const idStr = String(id || '');
-    const teamId = regObj?.userId?.teamid?._id || regObj?.userId?.teamid?.id || regObj?.teamId || regObj?.teamid || (typeof regObj?.team === 'object' ? (regObj.team._id || regObj.team.id) : null);
-    const targetTeamId = teamId || idStr;
+    const idStr = String(id || '').trim();
+    if (!idStr) throw new Error('Registration ID is required for deletion');
+
+    const teamId = regObj?.teamId || regObj?.teamid ||
+      (typeof regObj?.teamObj === 'object' ? (regObj.teamObj?._id || regObj.teamObj?.id) : null) ||
+      (typeof regObj?.team === 'object' ? (regObj.team?._id || regObj.team?.id) : null) ||
+      regObj?.userId?.teamid?._id || regObj?.userId?.teamid?.id || regObj?.userId?.teamId?._id || regObj?.userId?.teamId?.id ||
+      (typeof regObj?.userId?.team === 'object' ? (regObj.userId.team?._id || regObj.userId.team?.id) : null);
+
     const payId = regObj?.paymentIdStr ||
-      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null));
-    
+      (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
+      (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
+
+    let successCount = 0;
+    let finalMessage = '';
     let lastError = null;
 
-    // 1. Primary Backend Endpoint: DELETE /api/admin/teams/:id
-    try {
-      return await apiRequest(`/api/admin/teams/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e1) {
-      lastError = e1;
-    }
+    // 1. Delete from Registrations primary collection endpoints
+    const regEndpoints = [
+      `/api/admin/registrations/${idStr}`,
+      `/api/registrations/${idStr}`,
+      `/api/admin/registration/${idStr}`,
+      `/api/registration/${idStr}`,
+      `/api/registrations/delete/${idStr}`,
+      `/api/admin/registrations/delete/${idStr}`
+    ];
 
-    // 2. Backend Alias: DELETE /api/admin/team/:id
-    try {
-      return await apiRequest(`/api/admin/team/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e2) {
-      lastError = e2;
-    }
-
-    // 3. User Endpoint: DELETE /api/teams/:id
-    try {
-      return await apiRequest(`/api/teams/${targetTeamId}`, {
-        method: 'DELETE'
-      });
-    } catch (e3) {
-      lastError = e3;
-    }
-
-    // 4. If payment exists, also trigger payment removal
-    if (payId) {
+    for (const ep of regEndpoints) {
       try {
-        return await apiRequest(`/api/admin/payments/${payId}`, {
-          method: 'DELETE'
-        });
-      } catch (ePay) {
-        lastError = ePay;
+        const res = await apiRequest(ep, { method: 'DELETE' });
+        successCount++;
+        if (res?.message) finalMessage = res.message;
+        break; // Successfully removed registration document
+      } catch (err) {
+        lastError = err;
       }
     }
 
-    // 5. Fallback: DELETE /api/registrations/:id
-    try {
-      return await apiRequest(`/api/registrations/${idStr}`, {
-        method: 'DELETE'
-      });
-    } catch (eReg) {
-      lastError = eReg;
+    // 2. Also clean up associated Team document if exists or if registration endpoints missed
+    const targetTeamId = teamId || (successCount === 0 ? idStr : null);
+    if (targetTeamId) {
+      const teamEndpoints = [
+        `/api/admin/teams/${targetTeamId}`,
+        `/api/admin/team/${targetTeamId}`,
+        `/api/teams/${targetTeamId}`,
+        `/api/team/${targetTeamId}`
+      ];
+      for (const ep of teamEndpoints) {
+        try {
+          const res = await apiRequest(ep, { method: 'DELETE' });
+          successCount++;
+          if (!finalMessage && res?.message) finalMessage = res.message;
+          break;
+        } catch (err) {
+          if (successCount === 0) lastError = err;
+        }
+      }
     }
 
-    throw lastError;
+    // 3. Also purge associated Payment document if exists
+    if (payId && payId !== idStr) {
+      const payEndpoints = [
+        `/api/admin/payments/${payId}`,
+        `/api/payments/${payId}`,
+        `/api/admin/payment/${payId}`,
+        `/api/payment/${payId}`
+      ];
+      for (const ep of payEndpoints) {
+        try {
+          const res = await apiRequest(ep, { method: 'DELETE' });
+          successCount++;
+          break;
+        } catch {
+          // Silent non-blocking payment cleanup
+        }
+      }
+    }
+
+    if (successCount > 0) {
+      return {
+        success: true,
+        message: finalMessage || 'Team registration deleted successfully.'
+      };
+    }
+
+    throw lastError || new Error('Failed to delete registration from database.');
   },
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {
@@ -1057,9 +1087,29 @@ export const apiService = {
   },
 
   deletePayment: async (paymentId) => {
-    return await apiRequest(`/api/admin/payments/${paymentId}`, {
-      method: 'DELETE'
-    });
+    const cleanId = String(paymentId || '').trim();
+    if (!cleanId) throw new Error('Payment ID is required');
+
+    const endpoints = [
+      `/api/admin/payments/${cleanId}`,
+      `/api/payments/${cleanId}`,
+      `/api/admin/payment/${cleanId}`,
+      `/api/payment/${cleanId}`,
+      `/api/admin/payments/delete/${cleanId}`,
+      `/api/admin/delete-payment/${cleanId}`
+    ];
+
+    let lastError = null;
+    for (const ep of endpoints) {
+      try {
+        const res = await apiRequest(ep, { method: 'DELETE' });
+        return res || { success: true, message: 'Payment record deleted successfully.' };
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error('Failed to delete payment record.');
   },
 
   // 9b. Backup Payments Vault
