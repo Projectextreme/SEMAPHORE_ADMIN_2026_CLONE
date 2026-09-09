@@ -672,16 +672,17 @@ export const apiService = {
       rawList = [];
     }
 
-    // Format registration fields cleanly and cross-reference with live Payments collection
-    return rawList.map((r, idx) => {
-      const id = r._id || r.id || `reg_${idx}`;
+    // Group individual event registrations by Team / Contingent so that each Card represents one Team
+    const teamsMap = new Map();
+
+    rawList.forEach((r, idx) => {
+      const regId = r._id || r.id || `reg_${idx}`;
       const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : (typeof r.userid === 'object' ? r.userid : null));
       const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
       const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : (typeof r.eventid === 'object' ? r.eventid : null));
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
       const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');
 
-      // Correctly extract team object from userObj.teamid, userObj.teamId, r.teamid, r.teamId, r.team
       const teamObj = (userObj?.teamid && typeof userObj.teamid === 'object')
         ? userObj.teamid
         : ((userObj?.teamId && typeof userObj.teamId === 'object')
@@ -694,43 +695,127 @@ export const apiService = {
                 ? r.teamId
                 : ((r.team && typeof r.team === 'object') ? r.team : null)))));
 
+      const teamIdStr = teamObj?._id || teamObj?.id || teamObj?.teamid || teamObj?.teamId || r.teamId || r.teamid || '';
       const resolvedLeader = r.leaderName || r.name || userObj?.name || (typeof r.leader === 'string' ? r.leader : '') || '';
       const resolvedEmail = (r.email || r.leaderEmail || userObj?.email || '').toLowerCase().trim();
       const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '';
-      const resolvedCollege = r.collegeName || userObj?.collegeName || (typeof r.college === 'object' ? r.college?.collegeName : '') || '';
-      
+      const resolvedCollege = r.collegeName || userObj?.collegeName || (typeof r.college === 'object' ? r.college?.collegeName || r.college?.name : '') || '';
+
       const officialTeamName = teamObj?.name || teamObj?.teamName || r.teamName || '';
       const teamCode = teamObj?.teamid || teamObj?.teamId || teamObj?.teamCode || '';
 
       const participants = Array.isArray(r.participants) && r.participants.length > 0
         ? r.participants
-        : (Array.isArray(r.members) ? r.members : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
+        : (Array.isArray(r.members) && r.members.length > 0
+          ? r.members
+          : (resolvedLeader ? [{ name: resolvedLeader, email: resolvedEmail, phone: resolvedPhone }] : []));
 
-      // Resolve a prominent, human-readable team display name
-      let resolvedTeam = officialTeamName;
+      const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'General Event';
+
+      // Determine robust Team Grouping Key
+      const groupKey = teamIdStr
+        ? `team_${teamIdStr}`
+        : (userIdStr
+          ? `user_${userIdStr}`
+          : (resolvedEmail
+            ? `email_${resolvedEmail}`
+            : (resolvedLeader
+              ? `leader_${resolvedLeader.toLowerCase().trim()}`
+              : `reg_${regId}`)));
+
+      const eventItem = {
+        _id: regId,
+        id: regId,
+        registrationId: regId,
+        eventId: eventObj?._id || eventObj?.id || (typeof r.event === 'string' ? r.event : ''),
+        eventName: resolvedEvent,
+        event: resolvedEvent,
+        participants: participants,
+        membersCount: participants.length || 1,
+        registeredAt: r.registeredAt || r.createdAt || new Date().toISOString(),
+        paymentStatus: r.paymentStatus || r.status || 'Pending'
+      };
+
+      if (!teamsMap.has(groupKey)) {
+        teamsMap.set(groupKey, {
+          _id: teamIdStr || userIdStr || regId,
+          id: teamIdStr || userIdStr || regId,
+          teamId: teamIdStr || null,
+          userId: userIdStr || null,
+          userObj: userObj,
+          officialTeamName: officialTeamName,
+          hasOfficialTeam: !!officialTeamName,
+          teamCode: teamCode,
+          teamObj: teamObj,
+          leaderName: resolvedLeader,
+          name: resolvedLeader,
+          email: resolvedEmail,
+          phone: resolvedPhone,
+          collegeName: resolvedCollege,
+          quotaStatus: r.quotaStatus || 'Under Quota',
+          registeredAt: r.registeredAt || r.createdAt || new Date().toISOString(),
+          allRegistrationIds: [regId],
+          payIdCandidate: payIdStr,
+          events: [eventItem],
+          allParticipants: [...participants]
+        });
+      } else {
+        const teamGroup = teamsMap.get(groupKey);
+        teamGroup.allRegistrationIds.push(regId);
+        teamGroup.events.push(eventItem);
+        if (!teamGroup.officialTeamName && officialTeamName) {
+          teamGroup.officialTeamName = officialTeamName;
+          teamGroup.hasOfficialTeam = true;
+        }
+        if (!teamGroup.leaderName && resolvedLeader) teamGroup.leaderName = resolvedLeader;
+        if (!teamGroup.email && resolvedEmail) teamGroup.email = resolvedEmail;
+        if (!teamGroup.phone && resolvedPhone) teamGroup.phone = resolvedPhone;
+        if (!teamGroup.collegeName && resolvedCollege) teamGroup.collegeName = resolvedCollege;
+        if (!teamGroup.payIdCandidate && payIdStr) teamGroup.payIdCandidate = payIdStr;
+        teamGroup.allParticipants.push(...participants);
+      }
+    });
+
+    // Cross-reference each unified Team with live Payments collection
+    return Array.from(teamsMap.values()).map((team, idx) => {
+      const id = team._id || team.id || `team_${idx}`;
+
+      // De-duplicate team members across all events by name/email/phone
+      const uniqueParticipantsMap = new Map();
+      team.allParticipants.forEach((p, pIdx) => {
+        const pName = typeof p === 'object' ? (p.name || p.userName || p.studentName || p.fullName || `Member ${pIdx + 1}`) : String(p);
+        const pKey = pName.toLowerCase().trim() || `p_${pIdx}`;
+        if (!uniqueParticipantsMap.has(pKey)) {
+          uniqueParticipantsMap.set(pKey, typeof p === 'object' ? p : { name: pName });
+        }
+      });
+      const uniqueParticipants = Array.from(uniqueParticipantsMap.values());
+
+      // Resolve human-readable Team Name
+      let resolvedTeam = team.officialTeamName;
       if (!resolvedTeam) {
-        if (participants.length > 1 && participants[0]?.name) {
-          resolvedTeam = `Team ${participants[0].name}`;
-        } else if (resolvedLeader) {
-          resolvedTeam = `Team - ${resolvedLeader}`;
+        if (uniqueParticipants.length > 1 && uniqueParticipants[0]?.name) {
+          resolvedTeam = `Team ${uniqueParticipants[0].name}`;
+        } else if (team.leaderName) {
+          resolvedTeam = `Team - ${team.leaderName}`;
         } else {
           resolvedTeam = 'Event Team';
         }
       }
-      const resolvedEvent = r.eventName || r.eventTitle || eventObj?.title || (typeof r.event === 'string' ? r.event : '') || 'Event';
 
-      // Cross-reference with Payments collection
+      // Cross-reference whole Team with live Payments collection
       const matchedPayment = paymentsList.find(p => {
-        if (payIdStr && (p._id === payIdStr || p.id === payIdStr || p.paymentid === payIdStr || p.paymentId === payIdStr)) return true;
-        if (resolvedEmail && p.userEmail && p.userEmail.toLowerCase().trim() === resolvedEmail) return true;
-        if (userIdStr && (p.userId === userIdStr || p.user?._id === userIdStr || p.rawItem?.user === userIdStr || p.rawItem?.userId === userIdStr)) return true;
-        if (resolvedLeader && p.userName && p.userName.toLowerCase().trim() === resolvedLeader.toLowerCase().trim()) return true;
+        if (team.payIdCandidate && (p._id === team.payIdCandidate || p.id === team.payIdCandidate || p.paymentid === team.payIdCandidate || p.paymentId === team.payIdCandidate)) return true;
+        if (team.email && p.userEmail && p.userEmail.toLowerCase().trim() === team.email) return true;
+        if (team.userId && (p.userId === team.userId || p.user?._id === team.userId || p.rawItem?.user === team.userId || p.rawItem?.userId === team.userId)) return true;
+        if (team.leaderName && p.userName && p.userName.toLowerCase().trim() === team.leaderName.toLowerCase().trim()) return true;
+        if (team.officialTeamName && p.teamName && p.teamName.toLowerCase().trim() === team.officialTeamName.toLowerCase().trim()) return true;
         return false;
       });
 
-      const matchedPayId = matchedPayment?._id || matchedPayment?.id || matchedPayment?.paymentid || matchedPayment?.paymentId || payIdStr || null;
+      const matchedPayId = matchedPayment?._id || matchedPayment?.id || matchedPayment?.paymentid || matchedPayment?.paymentId || team.payIdCandidate || null;
 
-      const rawStatus = (matchedPayment?.rawStatus || matchedPayment?.status || paymentObj?.status || r.paymentStatus || r.status || 'Pending').toLowerCase();
+      const rawStatus = (matchedPayment?.rawStatus || matchedPayment?.status || team.events[0]?.paymentStatus || 'Pending').toLowerCase();
       let resolvedPaymentStatus = 'Pending';
       if (rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified') {
         resolvedPaymentStatus = 'Approved';
@@ -740,45 +825,54 @@ export const apiService = {
 
       const utr = (matchedPayment?.utr && matchedPayment.utr !== 'N/A')
         ? matchedPayment.utr
-        : (paymentObj?.utr || r.utr || r.transactionId || 'N/A');
+        : 'N/A';
 
-      const rawProof = matchedPayment?.proofUrl || paymentObj?.imageUrl || paymentObj?.proofUrl || r.imageUrl || r.proofUrl || '';
+      const rawProof = matchedPayment?.proofUrl || matchedPayment?.imageUrl || '';
       const proofUrl = resolveImageUrl(rawProof);
 
-      const rawAmt = matchedPayment?.amountNum || (paymentObj?.amount !== undefined ? paymentObj.amount : (r.amount !== undefined ? r.amount : (r.fee || eventObj?.registrationFee || eventObj?.fee || 200)));
-      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
-      const amountNumber = parsedAmt > 0 ? parsedAmt : (Number(eventObj?.registrationFee || eventObj?.fee || 200) || 200);
+      const rawAmt = matchedPayment?.amountNum || 200;
+      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 200);
+      const amountNumber = parsedAmt > 0 ? parsedAmt : 200;
+
+      const eventNamesList = team.events.map(e => e.eventName).filter(Boolean);
+      const eventSummary = eventNamesList.join(', ');
 
       return {
-        ...r,
         _id: id,
         id: id,
+        teamId: team.teamId,
+        userId: team.userId,
         paymentId: matchedPayId,
         paymentIdStr: matchedPayId,
         hasPaymentRecord: !!matchedPayment,
         matchedPayment: matchedPayment || null,
-        leaderName: resolvedLeader,
-        name: resolvedLeader,
-        email: resolvedEmail,
-        phone: resolvedPhone,
-        collegeName: resolvedCollege,
         teamName: resolvedTeam,
-        officialTeamName: officialTeamName,
-        hasOfficialTeam: !!officialTeamName,
-        teamCode: teamCode,
-        teamObj: teamObj,
-        event: resolvedEvent,
-        eventName: resolvedEvent,
+        officialTeamName: team.officialTeamName,
+        hasOfficialTeam: team.hasOfficialTeam,
+        teamCode: team.teamCode,
+        teamObj: team.teamObj,
+        leaderName: team.leaderName,
+        name: team.leaderName,
+        email: team.email,
+        phone: team.phone,
+        collegeName: team.collegeName,
+        quotaStatus: team.quotaStatus,
+        registeredAt: team.registeredAt,
+        events: team.events,
+        eventsCount: team.events.length,
+        event: eventSummary,
+        eventName: eventSummary,
+        eventNamesList: eventNamesList,
+        participants: uniqueParticipants,
+        membersCount: uniqueParticipants.length || 1,
+        allRegistrationIds: team.allRegistrationIds,
         amount: `₹ ${amountNumber.toLocaleString()}`,
         amountNumber: amountNumber,
         paymentStatus: resolvedPaymentStatus,
         rawStatus: resolvedPaymentStatus.toLowerCase(),
         utr: utr,
         proofUrl: proofUrl,
-        imageUrl: proofUrl,
-        participants: participants,
-        membersCount: participants.length || 1,
-        registeredAt: r.registeredAt || r.createdAt || new Date().toISOString()
+        imageUrl: proofUrl
       };
     });
   },
@@ -823,6 +917,10 @@ export const apiService = {
     const idStr = String(id || '').trim();
     if (!idStr) throw new Error('Registration ID is required for deletion');
 
+    const regIdsToDelete = Array.isArray(regObj?.allRegistrationIds) && regObj.allRegistrationIds.length > 0
+      ? regObj.allRegistrationIds
+      : [idStr];
+
     const teamId = regObj?.teamId || regObj?.teamid ||
       (typeof regObj?.teamObj === 'object' ? (regObj.teamObj?._id || regObj.teamObj?.id) : null) ||
       (typeof regObj?.team === 'object' ? (regObj.team?._id || regObj.team?.id) : null) ||
@@ -837,24 +935,25 @@ export const apiService = {
     let finalMessage = '';
     let lastError = null;
 
-    // 1. Delete from Registrations primary collection endpoints
-    const regEndpoints = [
-      `/api/admin/registrations/${idStr}`,
-      `/api/registrations/${idStr}`,
-      `/api/admin/registration/${idStr}`,
-      `/api/registration/${idStr}`,
-      `/api/registrations/delete/${idStr}`,
-      `/api/admin/registrations/delete/${idStr}`
-    ];
-
-    for (const ep of regEndpoints) {
-      try {
-        const res = await apiRequest(ep, { method: 'DELETE' });
-        successCount++;
-        if (!finalMessage && res?.message) finalMessage = res.message;
-        break; // Successfully removed registration document
-      } catch (err) {
-        lastError = err;
+    // 1. Delete all associated registration documents
+    for (const rId of regIdsToDelete) {
+      const regEndpoints = [
+        `/api/admin/registrations/${rId}`,
+        `/api/registrations/${rId}`,
+        `/api/admin/registration/${rId}`,
+        `/api/registration/${rId}`,
+        `/api/registrations/delete/${rId}`,
+        `/api/admin/registrations/delete/${rId}`
+      ];
+      for (const ep of regEndpoints) {
+        try {
+          const res = await apiRequest(ep, { method: 'DELETE' });
+          successCount++;
+          if (!finalMessage && res?.message) finalMessage = res.message;
+          break;
+        } catch (err) {
+          lastError = err;
+        }
       }
     }
 
@@ -900,7 +999,7 @@ export const apiService = {
     if (successCount > 0) {
       return {
         success: true,
-        message: finalMessage || 'Team registration deleted successfully.'
+        message: finalMessage || 'Team and all registered events deleted successfully.'
       };
     }
 
