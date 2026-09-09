@@ -30,7 +30,9 @@ import {
   LayoutGrid,
   List,
   Trophy,
-  Crown
+  Crown,
+  RotateCcw,
+  Clock
 } from 'lucide-react';
 import { apiService } from '../../services/apiService';
 import { resolveImageUrl } from '../../services/apiConfig';
@@ -610,7 +612,7 @@ export const RegistrationList = () => {
 
                     {/* Card Footer Actions */}
                     <div className="reg-card-footer">
-                      {!isApproved && (
+                      {!isApproved ? (
                         <button
                           onClick={() => handleApprovePayment(reg, 'Approved')}
                           className="btn-reg-action btn-reg-approve"
@@ -619,6 +621,40 @@ export const RegistrationList = () => {
                         >
                           <Check size={13} />
                           <span>Approve</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleApprovePayment(reg, 'Pending')}
+                          className="btn-reg-action btn-reg-pending"
+                          title="Revert Payment Status to Pending"
+                          disabled={actionLoading}
+                        >
+                          <RotateCcw size={13} />
+                          <span>Set Pending</span>
+                        </button>
+                      )}
+
+                      {rawStatus !== 'rejected' && (
+                        <button
+                          onClick={() => handleApprovePayment(reg, 'Rejected')}
+                          className="btn-reg-action btn-reg-reject"
+                          title="Reject Registration Payment"
+                          disabled={actionLoading}
+                        >
+                          <XCircle size={13} />
+                          <span>Reject</span>
+                        </button>
+                      )}
+
+                      {rawStatus === 'rejected' && !isApproved && (
+                        <button
+                          onClick={() => handleApprovePayment(reg, 'Pending')}
+                          className="btn-reg-action btn-reg-pending"
+                          title="Revert Payment Status to Pending"
+                          disabled={actionLoading}
+                        >
+                          <RotateCcw size={13} />
+                          <span>Set Pending</span>
                         </button>
                       )}
 
@@ -755,7 +791,7 @@ export const RegistrationList = () => {
                       </td>
                       <td>
                         <div className="table-actions">
-                          {!isApproved && (
+                          {!isApproved ? (
                             <button
                               onClick={() => handleApprovePayment(reg, 'Approved')}
                               className="btn-icon btn-approve"
@@ -763,6 +799,37 @@ export const RegistrationList = () => {
                               disabled={actionLoading}
                             >
                               <Check size={14} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-pending"
+                              title="Revert Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+
+                          {rawStatus !== 'rejected' && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Rejected')}
+                              className="btn-icon btn-reject"
+                              title="Reject Registration Payment"
+                              disabled={actionLoading}
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          )}
+
+                          {rawStatus === 'rejected' && !isApproved && (
+                            <button
+                              onClick={() => handleApprovePayment(reg, 'Pending')}
+                              className="btn-icon btn-pending"
+                              title="Revert Status to Pending"
+                              disabled={actionLoading}
+                            >
+                              <RotateCcw size={14} />
                             </button>
                           )}
 
@@ -908,13 +975,36 @@ export const RegistrationList = () => {
                   ) : (
                     <button
                       onClick={() => handleApprovePayment(reg, 'Pending')}
-                      className="btn btn-secondary btn-sm"
+                      className="btn btn-warning btn-sm"
                       style={{ flex: 1, justifyContent: 'center' }}
                       disabled={actionLoading}
                     >
-                      <CheckCircle2 size={13} className="text-success" /> Approved
+                      <RotateCcw size={13} /> Set Pending
                     </button>
                   )}
+
+                  {rawStatus !== 'rejected' && (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Rejected')}
+                      className="btn btn-outline-danger btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <XCircle size={13} /> Reject
+                    </button>
+                  )}
+
+                  {rawStatus === 'rejected' && !isApproved && (
+                    <button
+                      onClick={() => handleApprovePayment(reg, 'Pending')}
+                      className="btn btn-warning btn-sm"
+                      style={{ flex: 1, justifyContent: 'center' }}
+                      disabled={actionLoading}
+                    >
+                      <RotateCcw size={13} /> Set Pending
+                    </button>
+                  )}
+
                   <button
                     onClick={() => setInspectingReg(reg)}
                     className="btn btn-secondary btn-sm"
@@ -1143,8 +1233,8 @@ export const RegistrationList = () => {
 
               {/* Quick Status Action inside Modal */}
               <div className="modal-status-actions" style={{ marginTop: '1rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Status:</span>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>Change Payment Status:</span>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem', flexWrap: 'wrap' }}>
                   {inspectingReg.paymentStatus?.toLowerCase() !== 'approved' && (
                     <button 
                       onClick={() => handleApprovePayment(inspectingReg, 'Approved')}
@@ -1152,6 +1242,15 @@ export const RegistrationList = () => {
                       disabled={actionLoading}
                     >
                       <CheckCircle2 size={13} /> Mark Approved
+                    </button>
+                  )}
+                  {inspectingReg.paymentStatus?.toLowerCase() !== 'pending' && (
+                    <button 
+                      onClick={() => handleApprovePayment(inspectingReg, 'Pending')}
+                      className="btn btn-warning btn-sm"
+                      disabled={actionLoading}
+                    >
+                      <RotateCcw size={13} /> Revert to Pending
                     </button>
                   )}
                   {inspectingReg.paymentStatus?.toLowerCase() !== 'rejected' && (

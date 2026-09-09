@@ -962,6 +962,30 @@
   background: rgba(239, 68, 68, 0.12);
 }
 
+.btn-reg-pending:hover {
+  border-color: var(--warning, #f59e0b);
+  color: var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.btn-reg-reject:hover {
+  border-color: var(--danger, #ef4444);
+  color: var(--danger, #ef4444);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.btn-icon.btn-pending:hover {
+  border-color: var(--warning, #f59e0b);
+  color: var(--warning, #f59e0b);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.btn-icon.btn-reject:hover {
+  border-color: var(--danger, #ef4444);
+  color: var(--danger, #ef4444);
+  background: rgba(239, 68, 68, 0.12);
+}
+
 /* Responsive Media Queries */
 @media (max-width: 992px) {
   .inspect-grid {

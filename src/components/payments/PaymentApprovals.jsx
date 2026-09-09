@@ -112,9 +112,12 @@ export const PaymentApprovals = () => {
   }, [loadPayments]);
 
   const handleOpenActionModal = (p, status) => {
-    const defaultMsg = status === 'approved'
-      ? 'Payment verified via UTR bank statement'
-      : 'Invalid UTR transaction reference';
+    let defaultMsg = 'Payment verified via UTR bank statement';
+    if (status === 'rejected') {
+      defaultMsg = 'Invalid UTR transaction reference';
+    } else if (status === 'pending') {
+      defaultMsg = 'Payment status reset to Pending for re-verification';
+    }
     let cleanUtr = p.utr && p.utr !== 'N/A' ? p.utr.replace(/[^a-zA-Z0-9]/g, '') : '';
     if (cleanUtr && cleanUtr.length < 12) {
       cleanUtr = cleanUtr.padEnd(12, '0');
@@ -538,6 +541,20 @@ export const PaymentApprovals = () => {
                         </button>
                       )}
 
+                      {rawStatus !== 'pending' && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-outline-warning"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenActionModal(p, 'pending');
+                          }}
+                          title="Revert Payment to Pending Status"
+                        >
+                          <Clock size={12} /> Set Pending
+                        </button>
+                      )}
+
                       {rawStatus !== 'rejected' && (
                         <button
                           type="button"
@@ -593,13 +610,19 @@ export const PaymentApprovals = () => {
         >
           <div className="modal-header">
             <h3>
-              {actionModal.status === 'approved' ? (
+              {actionModal.status === 'approved' && (
                 <span className="text-success flex-align">
                   <CheckCircle2 size={20} /> Approve Payment
                 </span>
-              ) : (
+              )}
+              {actionModal.status === 'rejected' && (
                 <span className="text-danger flex-align">
                   <XCircle size={20} /> Reject Payment
+                </span>
+              )}
+              {actionModal.status === 'pending' && (
+                <span className="text-warning flex-align" style={{ color: 'var(--warning, #f59e0b)' }}>
+                  <Clock size={20} /> Revert to Pending
                 </span>
               )}
             </h3>
@@ -613,14 +636,14 @@ export const PaymentApprovals = () => {
           <form onSubmit={handleSubmitPaymentStatus} className="modal-form">
             <div className="form-group">
               <label className="form-label">
-                {actionModal.status === 'approved' ? 'Approval Message / Verification Note' : 'Rejection Reason'} *
+                {actionModal.status === 'approved' ? 'Approval Message / Verification Note' : (actionModal.status === 'rejected' ? 'Rejection Reason' : 'Pending Status Note')} *
               </label>
               <textarea
                 className="form-input"
                 rows={3}
                 value={actionModal.message}
                 onChange={(e) => setActionModal({ ...actionModal, message: e.target.value })}
-                placeholder={actionModal.status === 'approved' ? 'e.g. Payment verified via UTR bank statement' : 'e.g. Invalid UTR transaction reference'}
+                placeholder={actionModal.status === 'approved' ? 'e.g. Payment verified via UTR bank statement' : (actionModal.status === 'rejected' ? 'e.g. Invalid UTR transaction reference' : 'e.g. Payment status reset to Pending for verification')}
                 required
               />
             </div>
@@ -631,10 +654,10 @@ export const PaymentApprovals = () => {
               </button>
               <button
                 type="submit"
-                className={`btn ${actionModal.status === 'approved' ? 'btn-success' : 'btn-danger'}`}
+                className={`btn ${actionModal.status === 'approved' ? 'btn-success' : (actionModal.status === 'rejected' ? 'btn-danger' : 'btn-warning')}`}
                 disabled={actionLoading}
               >
-                {actionLoading ? 'Updating...' : actionModal.status === 'approved' ? 'Confirm Approval' : 'Confirm Rejection'}
+                {actionLoading ? 'Updating...' : (actionModal.status === 'approved' ? 'Confirm Approval' : (actionModal.status === 'rejected' ? 'Confirm Rejection' : 'Confirm Set Pending'))}
               </button>
             </div>
           </form>

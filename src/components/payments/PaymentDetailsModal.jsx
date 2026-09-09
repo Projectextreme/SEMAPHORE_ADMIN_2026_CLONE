@@ -523,6 +523,18 @@ export const PaymentDetailsModal = ({
                         <CheckCircle2 size={14} /> Approve
                       </button>
                     )}
+                    {rawStatus !== 'pending' && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-warning"
+                        onClick={() => {
+                          onClose();
+                          onOpenActionModal(payment, 'pending');
+                        }}
+                      >
+                        <Clock size={14} /> Set Pending
+                      </button>
+                    )}
                     {rawStatus !== 'rejected' && (
                       <button
                         type="button"
