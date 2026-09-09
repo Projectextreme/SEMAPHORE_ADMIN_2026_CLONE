@@ -20,7 +20,12 @@ import {
   Check,
   Trash2,
   Search,
-  X
+  X,
+  LayoutGrid,
+  List,
+  Calendar,
+  Shield,
+  Lock
 } from 'lucide-react';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
@@ -34,7 +39,8 @@ export const AdminManagement = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [copiedId, setCopiedId] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [viewMode, setViewMode] = useState('cards');
 
   // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
@@ -79,10 +85,11 @@ export const AdminManagement = () => {
   }, [isSuperAdmin]);
 
   const handleCopyId = (id) => {
+    if (!id) return;
     navigator.clipboard.writeText(id);
-    setCopiedId(true);
+    setCopiedId(id);
     showSuccess('Admin ID copied to clipboard!');
-    setTimeout(() => setCopiedId(false), 2000);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   // Handle Add Admin Submit (POST /api/admin/addadmin)
@@ -238,16 +245,16 @@ export const AdminManagement = () => {
         </div>
       </TiltCard>
 
-      {/* All Admins Table */}
+      {/* All Admins Table / Cards */}
       <div className="card table-card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h3 className="card-title">
-              <Key size={17} /> System Administrators List
+              <Key size={17} /> System Administrators Directory
             </h3>
             <p className="card-subtitle">
               {isSuperAdmin
-                ? 'Authorized view of all system administrators and roles'
+                ? 'Authorized view of all system administrators, credentials, and access roles'
                 : 'Requires Superadmin privileges to view and manage full list'}
             </p>
           </div>
@@ -274,6 +281,31 @@ export const AdminManagement = () => {
                   </button>
                 )}
               </div>
+
+              {/* View Mode Toggle */}
+              <div className="view-mode-toggle">
+                <button
+                  type="button"
+                  className={`btn-view-toggle ${viewMode === 'cards' ? 'active' : ''}`}
+                  onClick={() => setViewMode('cards')}
+                  title="Cards Grid View"
+                  aria-label="Cards Grid View"
+                >
+                  <LayoutGrid size={14} />
+                  <span>Cards</span>
+                </button>
+                <button
+                  type="button"
+                  className={`btn-view-toggle ${viewMode === 'table' ? 'active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  title="Table View"
+                  aria-label="Table View"
+                >
+                  <List size={14} />
+                  <span>Table</span>
+                </button>
+              </div>
+
               <span className="endpoint-badge">{filteredAdminsList.length} Admins</span>
             </div>
           )}
@@ -290,7 +322,7 @@ export const AdminManagement = () => {
         ) : loading ? (
           <div className="loading-state">
             <div className="spinner"></div>
-            <span>Loading admin accounts...</span>
+            <span>Loading admin accounts from database...</span>
           </div>
         ) : filteredAdminsList.length === 0 ? (
           <EmptyState
@@ -302,137 +334,181 @@ export const AdminManagement = () => {
               onClick: () => setShowAddModal(true)
             }}
             secondaryAction={searchTerm ? {
-              label: 'Clear Search',
+              label: 'Reset Filters',
               onClick: () => setSearchTerm('')
             } : null}
             compact={true}
           />
-        ) : (
-          <>
-            {/* Desktop Table View */}
-            <div className="table-responsive desktop-only">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>ADMIN USER</th>
-                    <th>ID</th>
-                    <th>ROLE</th>
-                    <th>CREATED AT</th>
-                    <th>ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAdminsList.map((adm) => (
-                    <tr key={adm._id} className={adm._id === currentAdmin?._id ? 'highlight-row' : ''}>
-                      <td>
-                        <div className="admin-user-cell">
-                          <div className="admin-avatar">
-                            {adm.name?.charAt(0).toUpperCase() || 'A'}
-                          </div>
-                          <div className="admin-user-info">
-                            <span className="admin-user-name">
-                              {adm.name} {adm._id === currentAdmin?._id && <span className="you-tag">(You)</span>}
-                            </span>
-                            <span className="admin-user-email">{adm.email}</span>
-                          </div>
+        ) : viewMode === 'cards' ? (
+          /* ==========================================================================
+             Primary Responsive Cards Grid View
+             ========================================================================== */
+          <div className="admin-cards-grid">
+            {filteredAdminsList.map((adm) => {
+              const isSuper = adm.role === 'superadmin';
+              const isCurrent = adm._id === currentAdmin?._id;
+              const isCopied = copiedId === adm._id;
+
+              return (
+                <TiltCard key={adm._id} maxTilt={4} glareOpacity={0.08} className="admin-card-tilt">
+                  <div className={`admin-card-content ${isCurrent ? 'admin-card-active-session' : ''}`}>
+                    {/* Card Top / Header */}
+                    <div className="admin-card-top">
+                      <div className="admin-user-cell">
+                        <div className={`admin-avatar ${isSuper ? 'avatar-superadmin' : ''}`}>
+                          {adm.name?.charAt(0).toUpperCase() || 'A'}
                         </div>
-                      </td>
-                      <td className="code-font">{adm._id}</td>
-                      <td>
-                        <span className={`role-badge ${adm.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-                          {adm.role === 'superadmin' ? <Crown size={12} /> : null}
-                          {adm.role}
-                        </span>
-                      </td>
-                      <td className="date-text">{new Date(adm.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                      <td>
-                        {adm.role === 'superadmin' ? (
-                          <span className="protected-badge" title="Super Admin accounts are protected and cannot be deleted or modified">
-                            <Crown size={12} className="crown-icon" /> Superadmin (Protected)
+                        <div className="admin-user-info">
+                          <span className="admin-card-name" title={adm.name}>
+                            {adm.name}
+                            {isCurrent && <span className="you-tag">(You)</span>}
                           </span>
-                        ) : (
-                          <div className="table-actions-cell">
-                            <button
-                              onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
-                              className="btn btn-xs btn-outline-danger"
-                              title="Remove Standard Admin Account"
-                            >
-                              <Trash2 size={12} /> Remove
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <span className="admin-card-email" title={adm.email}>
+                            <Mail size={11} className="email-icon" />
+                            <span className="email-text">{adm.email}</span>
+                          </span>
+                        </div>
+                      </div>
 
-            {/* Mobile Cards View */}
-            <div className="mobile-cards-list mobile-only" style={{ padding: '0.75rem 0.5rem' }}>
-              {filteredAdminsList.map((adm) => (
-                <div key={adm._id} className={`mobile-data-card ${adm._id === currentAdmin?._id ? 'highlight-row' : ''}`}>
-                  <div className="mobile-card-header">
-                    <div className="admin-user-cell">
-                      <div className="admin-avatar">
-                        {adm.name?.charAt(0).toUpperCase() || 'A'}
-                      </div>
-                      <div className="admin-user-info">
-                        <span className="admin-user-name">
-                          {adm.name} {adm._id === currentAdmin?._id && <span className="you-tag">(You)</span>}
-                        </span>
-                        <span className="admin-user-email">{adm.email}</span>
-                      </div>
+                      <span className={`role-badge ${isSuper ? 'badge-superadmin' : 'badge-admin'}`}>
+                        {isSuper ? <Crown size={12} /> : <Shield size={12} />}
+                        {adm.role}
+                      </span>
                     </div>
-                    <span className={`role-badge ${adm.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
-                      {adm.role === 'superadmin' ? <Crown size={12} /> : null}
-                      {adm.role}
-                    </span>
-                  </div>
 
-                  <div className="mobile-card-body">
-                    <div className="mobile-card-row">
-                      <span className="mobile-card-label">Admin ID:</span>
-                      <div className="mobile-id-badge">
-                        <span className="code-font">{adm._id}</span>
-                        <button
+                    {/* Card Body Details */}
+                    <div className="admin-card-body">
+                      {/* Admin ID Row */}
+                      <div className="admin-info-row">
+                        <span className="admin-info-label">Admin ID:</span>
+                        <div
+                          className="admin-copyable-id"
                           onClick={() => handleCopyId(adm._id)}
-                          className="btn-copy-mini"
-                          title="Copy ID"
-                          aria-label="Copy ID"
+                          title="Click to copy Admin ID"
                         >
-                          {copiedId ? <Check size={11} className="text-success" /> : <Copy size={11} />}
-                        </button>
+                          <span className="code-font">{adm._id}</span>
+                          {isCopied ? (
+                            <Check size={12} className="text-success" />
+                          ) : (
+                            <Copy size={12} className="copy-icon" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Created At Row */}
+                      <div className="admin-info-row">
+                        <span className="admin-info-label">
+                          <Calendar size={12} /> Created:
+                        </span>
+                        <span className="admin-info-value">
+                          {new Date(adm.createdAt).toLocaleDateString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Privilege Access Summary */}
+                      <div className={`admin-privilege-box ${isSuper ? 'privilege-super' : 'privilege-standard'}`}>
+                        <div className="privilege-header">
+                          {isSuper ? <Lock size={12} className="text-amber" /> : <ShieldCheck size={12} className="text-cyan" />}
+                          <span>{isSuper ? 'Full System Privileges' : 'Standard Moderator Access'}</span>
+                        </div>
+                        <p className="privilege-desc">
+                          {isSuper
+                            ? 'Full authorization: administrator provisioning, role modification, rule adjustments, and system control.'
+                            : 'Operations access: event registration verification, payment reviews, and coordinator directory.'}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mobile-card-row">
-                      <span className="mobile-card-label">Created:</span>
-                      <span className="mobile-card-value" style={{ fontSize: '0.8rem' }}>
-                        {new Date(adm.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </span>
+                    {/* Card Footer Actions */}
+                    <div className="admin-card-footer">
+                      {isSuper ? (
+                        <div className="protected-badge" title="Super Admin accounts are protected from deletion">
+                          <Crown size={12} className="crown-icon" /> Superadmin (Protected)
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
+                          className="btn-admin-remove"
+                          title="Remove Standard Admin Account"
+                          disabled={actionLoading}
+                        >
+                          <Trash2 size={13} />
+                          <span>Remove Admin</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  <div className="mobile-card-actions">
-                    {adm.role === 'superadmin' ? (
-                      <span className="protected-badge" style={{ width: '100%', justifyContent: 'center' }}>
-                        <Crown size={12} className="crown-icon" /> Superadmin (Protected)
+                </TiltCard>
+              );
+            })}
+          </div>
+        ) : (
+          /* ==========================================================================
+             Table View
+             ========================================================================== */
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>ADMIN USER</th>
+                  <th>ID</th>
+                  <th>ROLE</th>
+                  <th>CREATED AT</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAdminsList.map((adm) => (
+                  <tr key={adm._id} className={adm._id === currentAdmin?._id ? 'highlight-row' : ''}>
+                    <td>
+                      <div className="admin-user-cell">
+                        <div className={`admin-avatar ${adm.role === 'superadmin' ? 'avatar-superadmin' : ''}`}>
+                          {adm.name?.charAt(0).toUpperCase() || 'A'}
+                        </div>
+                        <div className="admin-user-info">
+                          <span className="admin-user-name">
+                            {adm.name} {adm._id === currentAdmin?._id && <span className="you-tag">(You)</span>}
+                          </span>
+                          <span className="admin-user-email">{adm.email}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="code-font">{adm._id}</td>
+                    <td>
+                      <span className={`role-badge ${adm.role === 'superadmin' ? 'badge-superadmin' : 'badge-admin'}`}>
+                        {adm.role === 'superadmin' ? <Crown size={12} /> : <Shield size={12} />}
+                        {adm.role}
                       </span>
-                    ) : (
-                      <button
-                        onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
-                        className="btn btn-danger btn-sm"
-                        style={{ width: '100%', justifyContent: 'center' }}
-                      >
-                        <Trash2 size={13} /> Remove Admin
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+                    </td>
+                    <td className="date-text">{new Date(adm.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td>
+                      {adm.role === 'superadmin' ? (
+                        <span className="protected-badge" title="Super Admin accounts are protected and cannot be deleted or modified">
+                          <Crown size={12} className="crown-icon" /> Superadmin (Protected)
+                        </span>
+                      ) : (
+                        <div className="table-actions-cell">
+                          <button
+                            onClick={() => handleDeleteAdmin(adm._id, adm.name, adm.email)}
+                            className="btn btn-xs btn-outline-danger"
+                            title="Remove Standard Admin Account"
+                          >
+                            <Trash2 size={12} /> Remove
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
