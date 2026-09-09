@@ -145,7 +145,7 @@ export const ReportsHub = () => {
       }
     } catch (err) {
       console.error(`Error loading report tab ${tabName}:`, err);
-      showError(`Failed to load ${tabName} report data. Please check backend connection.`);
+      showError(`Failed to load ${tabName} report data. Please try again.`);
     } finally {
       setIsLoadingData(false);
     }
@@ -612,7 +612,7 @@ export const ReportsHub = () => {
           {isLoadingData ? (
             <div className="report-loading-state">
               <div className="spinner"></div>
-              <span>Fetching Teams Report from Backend...</span>
+              <span>Fetching Teams Report...</span>
             </div>
           ) : filteredTeams.length === 0 ? (
             <div className="report-empty-state">

@@ -30,7 +30,8 @@ export const LoginView = () => {
     setLoading(true);
     try {
       const res = await login(email, password);
-      setSuccessMsg(`Welcome back, ${res.name}! Redirecting...`);
+      const adminName = res?.name || res?.user?.name || res?.admin?.name || 'Admin';
+      setSuccessMsg(`Welcome back, ${adminName}! Redirecting...`);
       
       const rawPath = location.state?.from?.pathname || '/dashboard';
       const safeTargetPath = (typeof rawPath === 'string' && rawPath.startsWith('/') && !rawPath.startsWith('//') && !rawPath.includes('\\') && !rawPath.includes(':')) 

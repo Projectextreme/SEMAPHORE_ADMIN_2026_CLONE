@@ -111,8 +111,9 @@ export const SlotManagement = () => {
       if (titles.length > 0 && !newSlot.eventName) {
         setNewSlot((prev) => ({ ...prev, eventName: titles[0] }));
       }
-    } catch {
-      console.warn('Timetable fetch fallback mode');
+    } catch (err) {
+      console.error('Timetable fetch error:', err);
+      showToast(err.message || 'Failed to fetch timetable slots from database.', true);
     } finally {
       setIsRefreshing(false);
     }
@@ -219,8 +220,8 @@ export const SlotManagement = () => {
     setActionLoading(true);
     try {
       await apiService.deleteTimetableSlot(targetId);
-      setSlots((prev) => prev.filter((s) => s.id !== id && s._id !== id));
-      showToast('Schedule slot removed.');
+      showToast('Schedule slot removed successfully.');
+      await fetchSlots();
     } catch (err) {
       console.error('Error deleting slot:', err);
       showToast(err.message || 'Failed to delete slot.', true);

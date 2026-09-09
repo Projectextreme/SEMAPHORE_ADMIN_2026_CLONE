@@ -65,15 +65,8 @@ export const TeamRulesManagement = () => {
   const [saving, setSaving] = useState(false);
   
   // Auto-Save feature state (default ON)
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
-    try {
-      const saved = localStorage.getItem('semaphore_rules_autosave');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-  const [syncStatus, setSyncStatus] = useState('synced'); // 'synced' | 'saving' | 'unsaved' | 'local_only'
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [syncStatus, setSyncStatus] = useState('synced'); // 'synced' | 'saving' | 'unsaved'
 
   // Current editing form state
   const [formData, setFormData] = useState({
@@ -104,23 +97,7 @@ export const TeamRulesManagement = () => {
   const autoSaveTimerRef = useRef(null);
   const rulesListBottomRef = useRef(null);
 
-  // Helper to persist draft locally
-  const persistDraftLocally = (updatedData) => {
-    try {
-      localStorage.setItem('semaphore_team_rules_cache', JSON.stringify(updatedData));
-      const customSets = JSON.parse(localStorage.getItem('semaphore_custom_team_rules') || '[]');
-      const targetId = updatedData.id || 'default_rules_set';
-      const exists = customSets.some(s => (s._id || s.id) === targetId);
-      const updatedCustom = exists
-        ? customSets.map(s => ((s._id || s.id) === targetId ? { ...s, ...updatedData } : s))
-        : [updatedData, ...customSets];
-      localStorage.setItem('semaphore_custom_team_rules', JSON.stringify(updatedCustom));
-    } catch (e) {
-      console.warn('Failed to persist rules locally:', e);
-    }
-  };
-
-  // Perform background server sync
+  // Perform backend server sync
   const performSave = useCallback(async (dataToSave, isAuto = false) => {
     if (!dataToSave.title.trim()) return;
     if (dataToSave.rules.length === 0) return;
@@ -136,9 +113,6 @@ export const TeamRulesManagement = () => {
         rules: dataToSave.rules.map(r => r.trim()).filter(Boolean),
         isActive: dataToSave.isActive !== undefined ? dataToSave.isActive : true
       };
-
-      // Always ensure local persistence
-      persistDraftLocally({ ...dataToSave, ...payload });
 
       const result = await apiService.updateTeamRules(dataToSave.id, payload);
 
@@ -165,11 +139,11 @@ export const TeamRulesManagement = () => {
       }).catch(() => null);
 
     } catch (err) {
-      console.error('Backend save failed:', err);
+      console.error('Save failed:', err);
       setSyncStatus('unsaved');
       setHasUnsavedChanges(true);
       if (!isAuto) {
-        showError(err.message || 'Failed to save rules to backend database.');
+        showError(err.message || 'Failed to save rules. Please try again.');
       } else {
         showWarning(`Auto-save failed: ${err.message || 'Server error'}`);
       }
@@ -180,7 +154,6 @@ export const TeamRulesManagement = () => {
 
   // Trigger auto-save debounce
   const triggerAutoSave = useCallback((updatedForm) => {
-    persistDraftLocally(updatedForm);
     if (!autoSaveEnabled) {
       setHasUnsavedChanges(true);
       setSyncStatus('unsaved');
@@ -194,18 +167,15 @@ export const TeamRulesManagement = () => {
 
     autoSaveTimerRef.current = setTimeout(() => {
       performSave(updatedForm, true);
-    }, 700);
+    }, 800);
   }, [autoSaveEnabled, performSave]);
 
   // Toggle Auto-save
   const handleToggleAutoSave = (checked) => {
     setAutoSaveEnabled(checked);
-    try {
-      localStorage.setItem('semaphore_rules_autosave', String(checked));
-    } catch {}
     if (checked && hasUnsavedChanges) {
       performSave(formData, true);
-      showInfo('Auto-Save enabled: changes synchronized.');
+      showInfo('Auto-Save enabled: changes will sync automatically.');
     } else {
       showInfo(checked ? 'Auto-Save is now active.' : 'Auto-Save turned off. Use "Save & Publish" manually.');
     }
@@ -224,7 +194,7 @@ export const TeamRulesManagement = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges, autoSaveEnabled]);
 
-  // Fetch Team Rules from Backend / Cache
+  // Fetch Team Rules directly from Backend
   const fetchRules = async () => {
     setLoading(true);
     try {
@@ -239,32 +209,19 @@ export const TeamRulesManagement = () => {
           setRuleSets([single]);
           loadRuleSetIntoForm(single);
         } else {
-          // Check local cache
-          const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
-          if (cached && Array.isArray(cached.rules) && cached.rules.length > 0) {
-            setRuleSets([cached]);
-            loadRuleSetIntoForm(cached);
-          } else {
-            setFormData({
-              id: null,
-              title: 'Semaphore 2026 - Team Rules & Guidelines',
-              description: 'Official pointwise rules and guidelines for all participating teams and college contingents.',
-              category: 'general',
-              rules: [...DEFAULT_SEMAPHORE_RULES],
-              isActive: true
-            });
-          }
+          setFormData({
+            id: null,
+            title: 'Semaphore 2026 - Team Rules & Guidelines',
+            description: 'Official pointwise rules and guidelines for all participating teams and college contingents.',
+            category: 'general',
+            rules: [...DEFAULT_SEMAPHORE_RULES],
+            isActive: true
+          });
         }
       }
     } catch (err) {
-      console.warn('Could not fetch rules from backend, using local defaults:', err);
-      // Fallback to local cache if present
-      const cached = JSON.parse(localStorage.getItem('semaphore_team_rules_cache') || 'null');
-      if (cached) {
-        setRuleSets([cached]);
-        loadRuleSetIntoForm(cached);
-      }
-      showError(err.message || 'Failed to fetch rules from backend server.');
+      console.error('Could not fetch rules:', err);
+      showError(err.message || 'Failed to fetch team rules. Please try again.');
     } finally {
       setLoading(false);
       setHasUnsavedChanges(false);

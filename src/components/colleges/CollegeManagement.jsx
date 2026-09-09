@@ -388,7 +388,7 @@ export const CollegeManagement = () => {
               <div className="policy-title-row">
                 <h3 className="policy-title">Global College Team Registration Limit</h3>
                 <span className="policy-status-pill">
-                  <Zap size={11} /> Live Backend Policy
+                  <Zap size={11} /> Active Policy
                 </span>
               </div>
               <p className="policy-desc">

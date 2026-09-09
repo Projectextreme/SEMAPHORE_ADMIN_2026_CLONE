@@ -106,10 +106,10 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
           <div className="sidebar-system-card">
             <div className="system-card-top">
               <Database size={14} className="db-icon" />
-              <span className="system-title">API REST Backend</span>
+              <span className="system-title">Production Server</span>
               <span className="system-live-pill">LIVE</span>
             </div>
-            <span className="system-desc">JWT Auth & Admin Guard Active</span>
+            <span className="system-desc">Encrypted Session & Guard Active</span>
           </div>
         </div>
       </aside>

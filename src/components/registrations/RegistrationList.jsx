@@ -118,8 +118,9 @@ export const RegistrationList = () => {
       );
       showToast(`Registration for team "${editingReg.teamName}" updated successfully!`);
       setEditingReg(null);
+      await fetchRegistrations();
     } catch (err) {
-      showToast('Failed to save registration changes.', true);
+      showToast(err.message || 'Failed to save registration changes.', true);
     } finally {
       setActionLoading(false);
     }
@@ -132,13 +133,11 @@ export const RegistrationList = () => {
     setActionLoading(true);
     try {
       const res = await apiService.deleteRegistration(id, deletingReg);
-      setRegistrations((prev) => 
-        prev.filter((r) => (r._id || r.id) !== id && String(r._id) !== String(id) && String(r.id) !== String(id))
-      );
-      showToast(res?.message || `Registration for "${deletingReg.teamName}" deleted successfully.`);
+      showToast(res?.message || `Team "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
+      await fetchRegistrations();
     } catch (err) {
-      showToast(err?.message || 'Failed to delete registration.', true);
+      showToast(err?.message || 'Failed to delete team.', true);
     } finally {
       setActionLoading(false);
     }
