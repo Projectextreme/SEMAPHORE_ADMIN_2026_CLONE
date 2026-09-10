@@ -702,6 +702,16 @@ export const apiService = {
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
       const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');
 
+      const rawTeamStr = (typeof r.team === 'string' && r.team.trim()) ||
+        (typeof r.teamId === 'string' && r.teamId.trim()) ||
+        (typeof r.teamid === 'string' && r.teamid.trim()) ||
+        (typeof r.team_id === 'string' && r.team_id.trim()) ||
+        (typeof userObj?.team === 'string' && userObj.team.trim()) ||
+        (typeof userObj?.teamId === 'string' && userObj.teamId.trim()) ||
+        (typeof userObj?.teamid === 'string' && userObj.teamid.trim()) ||
+        (typeof userObj?.team_id === 'string' && userObj.team_id.trim()) ||
+        '';
+
       const teamObj = (userObj?.teamid && typeof userObj.teamid === 'object')
         ? userObj.teamid
         : ((userObj?.teamId && typeof userObj.teamId === 'object')
@@ -714,7 +724,7 @@ export const apiService = {
                 ? r.teamId
                 : ((r.team && typeof r.team === 'object') ? r.team : null)))));
 
-      const teamIdStr = teamObj?._id || teamObj?.id || teamObj?.teamid || teamObj?.teamId || r.teamId || r.teamid || '';
+      const teamIdStr = teamObj?._id || teamObj?.id || teamObj?.teamid || teamObj?.teamId || rawTeamStr || '';
       const resolvedLeader = r.leaderName || r.name || userObj?.name || (typeof r.leader === 'string' ? r.leader : '') || '';
       const resolvedEmail = (r.email || r.leaderEmail || userObj?.email || '').toLowerCase().trim();
       const resolvedPhone = r.phone || r.contactNumber || userObj?.phone || '';
@@ -749,10 +759,13 @@ export const apiService = {
         eventId: eventObj?._id || eventObj?.id || (typeof r.event === 'string' ? r.event : ''),
         eventName: resolvedEvent,
         event: resolvedEvent,
+        teamId: teamIdStr || null,
+        team: r.team || null,
         participants: participants,
         membersCount: participants.length || 1,
         registeredAt: r.registeredAt || r.createdAt || new Date().toISOString(),
-        paymentStatus: r.paymentStatus || r.status || 'Pending'
+        paymentStatus: r.paymentStatus || r.status || 'Pending',
+        rawRegistration: r
       };
 
       if (!teamsMap.has(groupKey)) {
@@ -760,6 +773,7 @@ export const apiService = {
           _id: teamIdStr || userIdStr || regId,
           id: teamIdStr || userIdStr || regId,
           teamId: teamIdStr || null,
+          allTeamIds: teamIdStr ? [teamIdStr] : [],
           userId: userIdStr || null,
           userObj: userObj,
           officialTeamName: officialTeamName,
@@ -782,6 +796,12 @@ export const apiService = {
         const teamGroup = teamsMap.get(groupKey);
         teamGroup.allRegistrationIds.push(regId);
         teamGroup.events.push(eventItem);
+        if (teamIdStr && !teamGroup.allTeamIds.includes(teamIdStr)) {
+          teamGroup.allTeamIds.push(teamIdStr);
+        }
+        if (!teamGroup.teamId && teamIdStr) {
+          teamGroup.teamId = teamIdStr;
+        }
         if (!teamGroup.officialTeamName && officialTeamName) {
           teamGroup.officialTeamName = officialTeamName;
           teamGroup.hasOfficialTeam = true;
@@ -885,6 +905,7 @@ export const apiService = {
         participants: uniqueParticipants,
         membersCount: uniqueParticipants.length || 1,
         allRegistrationIds: team.allRegistrationIds,
+        allTeamIds: team.allTeamIds || (team.teamId ? [team.teamId] : []),
         amount: `₹ ${amountNumber.toLocaleString()}`,
         amountNumber: amountNumber,
         paymentStatus: resolvedPaymentStatus,
@@ -932,72 +953,146 @@ export const apiService = {
     throw lastError || new Error('Failed to save registration changes.');
   },
 
+  deleteTeam: async (id) => {
+    const idStr = String(id || '').trim();
+    if (!idStr) throw new Error('Team ID is required for deletion');
+    const teamEndpoints = [
+      `/api/admin/teams/${idStr}`,
+      `/api/admin/teams/delete-team/${idStr}`,
+      `/api/admin/team/${idStr}`,
+      `/api/teams/${idStr}`
+    ];
+    let lastError = null;
+    for (const ep of teamEndpoints) {
+      try {
+        return await apiRequest(ep, { method: 'DELETE' });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError || new Error('Failed to delete team.');
+  },
+
   deleteRegistration: async (id, regObj = null) => {
     const idStr = String(id || '').trim();
-    if (!idStr) throw new Error('Registration ID is required for deletion');
+    if (!idStr && !regObj) throw new Error('Registration or Team ID is required for deletion');
 
     const regIdsToDelete = Array.isArray(regObj?.allRegistrationIds) && regObj.allRegistrationIds.length > 0
       ? regObj.allRegistrationIds
-      : [idStr];
+      : (idStr ? [idStr] : []);
 
-    const teamId = regObj?.teamId || regObj?.teamid ||
+    const teamId = regObj?.teamId || regObj?.teamid || regObj?.team_id ||
       (typeof regObj?.teamObj === 'object' ? (regObj.teamObj?._id || regObj.teamObj?.id) : null) ||
       (typeof regObj?.team === 'object' ? (regObj.team?._id || regObj.team?.id) : null) ||
+      (typeof regObj?.team === 'string' ? regObj.team : null) ||
       regObj?.userId?.teamid?._id || regObj?.userId?.teamid?.id || regObj?.userId?.teamId?._id || regObj?.userId?.teamId?.id ||
-      (typeof regObj?.userId?.team === 'object' ? (regObj.userId.team?._id || regObj.userId.team?.id) : null);
+      (typeof regObj?.userId?.team === 'object' ? (regObj.userId.team?._id || regObj.userId.team?.id) : null) ||
+      (typeof regObj?.userId?.team === 'string' ? regObj.userId.team : null);
 
     const payId = regObj?.paymentIdStr ||
       (regObj?.paymentId && typeof regObj.paymentId === 'object' ? (regObj.paymentId._id || regObj.paymentId.id || regObj.paymentId.paymentid) : (typeof regObj?.paymentId === 'string' ? regObj.paymentId : null)) ||
       (regObj?.payment && typeof regObj.payment === 'object' ? (regObj.payment._id || regObj.payment.id) : null);
 
-    let successCount = 0;
+    // Collect all candidate Team IDs (prioritize official admin endpoint /api/admin/teams/:id)
+    const eventTeamIds = Array.isArray(regObj?.events)
+      ? regObj.events.map(e => e.teamId || (typeof e.team === 'string' ? e.team : (e.team?._id || e.team?.id))).filter(Boolean)
+      : [];
+
+    const candidateTeamIds = Array.from(new Set([
+      teamId,
+      ...(Array.isArray(regObj?.allTeamIds) ? regObj.allTeamIds : []),
+      ...eventTeamIds,
+      regObj?.teamId,
+      regObj?.teamid,
+      regObj?.team_id,
+      typeof regObj?.team === 'string' ? regObj.team : null,
+      regObj?.teamObj?._id,
+      regObj?.teamObj?.id,
+      idStr,
+      regObj?._id,
+      regObj?.id
+    ].filter(Boolean)));
+
+    const isMongoId = (s) => typeof s === 'string' && /^[0-9a-fA-F]{24}$/.test(s.trim());
+
+    // Prioritize valid 24-char hex MongoDB ObjectIds before string codes
+    const sortedTeamIds = [...candidateTeamIds].sort((a, b) => {
+      const aMongo = isMongoId(a) ? 1 : 0;
+      const bMongo = isMongoId(b) ? 1 : 0;
+      return bMongo - aMongo;
+    });
+
+    console.log('[deleteRegistration] Initiating delete with candidate IDs (prioritized):', {
+      idStr,
+      sortedTeamIds,
+      regIdsToDelete,
+      payId
+    });
+
+    let teamDeletedSuccess = false;
+    let regDeletedSuccess = false;
     let finalMessage = '';
     let lastError = null;
 
-    // 1. Delete all associated registration documents
-    for (const rId of regIdsToDelete) {
-      const regEndpoints = [
-        `/api/admin/registrations/${rId}`,
-        `/api/registrations/${rId}`,
-        `/api/admin/registration/${rId}`,
-        `/api/registration/${rId}`,
-        `/api/registrations/delete/${rId}`,
-        `/api/admin/registrations/delete/${rId}`
-      ];
-      for (const ep of regEndpoints) {
-        try {
-          const res = await apiRequest(ep, { method: 'DELETE' });
-          successCount++;
-          if (!finalMessage && res?.message) finalMessage = res.message;
-          break;
-        } catch (err) {
-          lastError = err;
-        }
-      }
-    }
-
-    // 2. Also delete associated Team document if exists
-    if (teamId) {
+    // 1. Primary: Delete team using Admin Endpoint (/api/admin/teams/:id and aliases)
+    for (const tId of sortedTeamIds) {
       const teamEndpoints = [
-        `/api/admin/teams/${teamId}`,
-        `/api/teams/${teamId}`,
-        `/api/admin/team/${teamId}`,
-        `/api/team/${teamId}`
+        `/api/admin/teams/${tId}`,
+        `/api/admin/teams/delete-team/${tId}`,
+        `/api/admin/team/${tId}`,
+        `/api/teams/${tId}`
       ];
       for (const ep of teamEndpoints) {
         try {
+          console.log('[deleteRegistration] Trying team endpoint:', ep);
           const res = await apiRequest(ep, { method: 'DELETE' });
-          successCount++;
-          if (!finalMessage && res?.message) finalMessage = res.message;
+          console.log('[deleteRegistration] Team deletion successful via:', ep, res);
+          teamDeletedSuccess = true;
+          if (!finalMessage && (res?.message || res?.msg)) finalMessage = res.message || res.msg;
           break;
         } catch (err) {
-          if (successCount === 0) lastError = err;
+          console.warn('[deleteRegistration] Team endpoint failed:', ep, err?.message || err);
+          lastError = err;
+        }
+      }
+      if (teamDeletedSuccess) break;
+    }
+
+    // 2. Secondary/Fallback: If team deletion route was not matched, try individual registration deletion
+    if (!teamDeletedSuccess) {
+      for (const rId of regIdsToDelete) {
+        const regEndpoints = [
+          `/api/admin/registrations/${rId}`,
+          `/api/registrations/${rId}`,
+          `/api/admin/registration/${rId}`,
+          `/api/registration/${rId}`,
+          `/api/registrations/delete/${rId}`,
+          `/api/admin/registrations/delete/${rId}`
+        ];
+        for (const ep of regEndpoints) {
+          try {
+            console.log('[deleteRegistration] Trying registration endpoint:', ep);
+            const res = await apiRequest(ep, { method: 'DELETE' });
+            console.log('[deleteRegistration] Registration deletion successful via:', ep, res);
+            regDeletedSuccess = true;
+            if (!finalMessage && (res?.message || res?.msg)) finalMessage = res.message || res.msg;
+            break;
+          } catch (err) {
+            console.warn('[deleteRegistration] Registration endpoint failed:', ep, err?.message || err);
+            lastError = err;
+          }
         }
       }
     }
 
-    // 3. Also purge associated Payment document if exists
-    if (payId && payId !== idStr) {
+    // If neither team nor registration document could be deleted, DO NOT succeed!
+    if (!teamDeletedSuccess && !regDeletedSuccess) {
+      console.error('[deleteRegistration] Deletion completely failed. Last error:', lastError);
+      throw lastError || new Error('Failed to delete team from database.');
+    }
+
+    // 3. Purge associated Payment document if exists (silent background cleanup)
+    if (payId && !candidateTeamIds.includes(payId)) {
       const payEndpoints = [
         `/api/admin/payments/${payId}`,
         `/api/payments/${payId}`,
@@ -1006,8 +1101,8 @@ export const apiService = {
       ];
       for (const ep of payEndpoints) {
         try {
-          const res = await apiRequest(ep, { method: 'DELETE' });
-          successCount++;
+          await apiRequest(ep, { method: 'DELETE' });
+          console.log('[deleteRegistration] Cleaned up payment record:', ep);
           break;
         } catch {
           // Silent non-blocking payment cleanup
@@ -1015,14 +1110,10 @@ export const apiService = {
       }
     }
 
-    if (successCount > 0) {
-      return {
-        success: true,
-        message: finalMessage || 'Team and all registered events deleted successfully.'
-      };
-    }
-
-    throw lastError || new Error('Failed to delete registration from database.');
+    return {
+      success: true,
+      message: finalMessage || 'Team and all registered events deleted successfully.'
+    };
   },
 
   approveRegistrationPayment: async (id, status = 'Approved', regObj = null) => {

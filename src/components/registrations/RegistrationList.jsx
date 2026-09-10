@@ -145,17 +145,29 @@ export const RegistrationList = () => {
     if (!deletingReg) return;
     const id = deletingReg._id || deletingReg.id;
     const idStr = String(id || '');
+    const teamId = deletingReg.teamId;
+    const allRegIds = new Set(Array.isArray(deletingReg.allRegistrationIds) ? deletingReg.allRegistrationIds.map(String) : []);
+    allRegIds.add(idStr);
+
     setActionLoading(true);
     try {
       const res = await apiService.deleteRegistration(id, deletingReg);
       // Optimistically remove from state immediately
       setRegistrations((prev) =>
-        prev.filter((r) => (r._id || r.id) !== id && String(r._id || r.id) !== idStr)
+        prev.filter((r) => {
+          const rId = String(r._id || r.id || '');
+          const rTeamId = String(r.teamId || '');
+          if (rId === idStr || (teamId && rId === String(teamId))) return false;
+          if (teamId && rTeamId === String(teamId)) return false;
+          if (Array.isArray(r.allRegistrationIds) && r.allRegistrationIds.some(regId => allRegIds.has(String(regId)))) return false;
+          return true;
+        })
       );
       showToast(res?.message || `Team "${deletingReg.teamName}" deleted successfully.`);
       setDeletingReg(null);
       await fetchRegistrations();
     } catch (err) {
+      console.error('[RegistrationList] Delete failed:', err);
       showToast(err?.message || 'Failed to delete team.', true);
     } finally {
       setActionLoading(false);
