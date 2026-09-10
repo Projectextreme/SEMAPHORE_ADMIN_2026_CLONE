@@ -23,6 +23,8 @@ import './LogsManagement.css';
 
 export const LogsManagement = () => {
   const { showSuccess, showError } = useToast();
+  const PAGE_SIZE_OPTIONS = [10, 50, 100, 200, 500];
+  const [pageSize, setPageSize] = useState(50);
   const [logs, setLogs] = useState([]);
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -44,7 +46,8 @@ export const LogsManagement = () => {
   const [autoRefresh, setAutoRefresh] = useState(false);
 
   // Fetch logs function (isLoadMore flag determines if appending or resetting)
-  const fetchLogs = useCallback(async (pageNumber = 1, isLoadMore = false) => {
+  const fetchLogs = useCallback(async (pageNumber = 1, isLoadMore = false, customLimit = null) => {
+    const limitToUse = customLimit != null ? customLimit : pageSize;
     if (isLoadMore) {
       setLoadingMore(true);
     } else {
@@ -52,14 +55,14 @@ export const LogsManagement = () => {
     }
 
     try {
-      const response = await apiService.getAdminLogs(pageNumber, 50);
+      const response = await apiService.getAdminLogs(pageNumber, limitToUse);
       
       const newLogs = response.logs || [];
       const newPagination = response.pagination || {
         currentPage: pageNumber,
         totalPages: 1,
         totalLogs: newLogs.length,
-        limit: 50,
+        limit: limitToUse,
         hasNextPage: false,
         hasPrevPage: false
       };
@@ -82,31 +85,39 @@ export const LogsManagement = () => {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [showError]);
+  }, [pageSize, showError]);
 
   // Initial load
   useEffect(() => {
-    fetchLogs(1, false);
-  }, [fetchLogs]);
+    fetchLogs(1, false, pageSize);
+  }, [fetchLogs, pageSize]);
 
   // Auto-refresh timer (every 30 seconds if enabled)
   useEffect(() => {
     let interval = null;
     if (autoRefresh) {
       interval = setInterval(() => {
-        fetchLogs(1, false);
+        fetchLogs(1, false, pageSize);
       }, 30000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [autoRefresh, fetchLogs]);
+  }, [autoRefresh, fetchLogs, pageSize]);
+
+  // Handle Page Size change
+  const handlePageSizeChange = (newSize) => {
+    const sizeNum = Number(newSize);
+    if (sizeNum === pageSize) return;
+    setPageSize(sizeNum);
+    fetchLogs(1, false, sizeNum);
+  };
 
   // Handle Load More button click
   const handleLoadMore = () => {
     if (pagination.hasNextPage && !loadingMore) {
       const nextPage = (pagination.currentPage || 1) + 1;
-      fetchLogs(nextPage, true);
+      fetchLogs(nextPage, true, pageSize);
     }
   };
 
@@ -322,6 +333,20 @@ export const LogsManagement = () => {
             <option value="4XX">4xx (Client Errors)</option>
             <option value="5XX">5xx (Server Errors)</option>
           </select>
+
+          {/* Page Size / Limit Filter */}
+          <select 
+            value={pageSize} 
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+            className="logs-filter-select logs-limit-select"
+            title="Logs per page limit"
+          >
+            <option value={10}>10 Logs / Page</option>
+            <option value={50}>50 Logs / Page (Default)</option>
+            <option value={100}>100 Logs / Page</option>
+            <option value={200}>200 Logs / Page</option>
+            <option value={500}>500 Logs / Page</option>
+          </select>
         </div>
       </div>
 
@@ -330,18 +355,34 @@ export const LogsManagement = () => {
         <div className="console-header">
           <div className="console-title">
             <Terminal size={14} className="text-cyan" />
-            <span>Server Audit Output Stream (50 Logs / Page)</span>
+            <span>Server Audit Output Stream ({pageSize} Logs / Page)</span>
             <span className="badge badge-info-subtle">Read-Only</span>
           </div>
           <div className="console-info-actions">
+            {/* Quick Limit Pills */}
+            <div className="page-size-pill-group">
+              <span className="page-size-label">Limit:</span>
+              {PAGE_SIZE_OPTIONS.map((sz) => (
+                <button
+                  key={sz}
+                  type="button"
+                  className={`btn-page-size-pill ${pageSize === sz ? 'active' : ''}`}
+                  onClick={() => handlePageSizeChange(sz)}
+                  title={`Show ${sz} logs per request`}
+                >
+                  {sz}
+                </button>
+              ))}
+            </div>
+
             <span className="console-info-text">
               Showing {filteredLogs.length} of {logs.length} loaded records
             </span>
             <button 
-              onClick={() => fetchLogs(1, false)} 
+              onClick={() => fetchLogs(1, false, pageSize)} 
               className="btn btn-secondary btn-sm"
               disabled={loading}
-              title="Refresh Logs (Page 1)"
+              title="Refresh Stream (Page 1)"
             >
               <RefreshCw size={13} className={loading ? 'spin-icon' : ''} /> Refresh Stream
             </button>
@@ -528,11 +569,11 @@ export const LogsManagement = () => {
             >
               {loadingMore ? (
                 <>
-                  <RefreshCw size={14} className="spin-icon" /> Requesting Server Page {(pagination.currentPage || 1) + 1}...
+                  <RefreshCw size={14} className="spin-icon" /> Requesting Server Page {(pagination.currentPage || 1) + 1} ({pageSize} logs)...
                 </>
               ) : (
                 <>
-                  <ChevronDown size={15} /> View More Logs (Fetch Page {(pagination.currentPage || 1) + 1} of {pagination.totalPages || 1})
+                  <ChevronDown size={15} /> Load Next {pageSize} Logs (Page {(pagination.currentPage || 1) + 1} of {pagination.totalPages || 1})
                 </>
               )}
             </button>
