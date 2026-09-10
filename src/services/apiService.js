@@ -113,6 +113,25 @@ export const apiService = {
     }
   },
 
+  // 3. System & Transaction Audit Logs
+  getAdminLogs: async (page = 1, limit = 50) => {
+    const res = await apiRequest(`/api/admin/logs?page=${page}&limit=${limit}`, {
+      method: 'GET'
+    });
+    return {
+      success: res?.success ?? true,
+      pagination: res?.pagination || {
+        currentPage: Number(page),
+        totalPages: 1,
+        totalLogs: Array.isArray(res?.logs) ? res.logs.length : 0,
+        limit: Number(limit),
+        hasNextPage: false,
+        hasPrevPage: Number(page) > 1
+      },
+      logs: Array.isArray(res?.logs) ? res.logs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
+    };
+  },
+
   getAllAdmins: async () => {
     let admins = [];
     try {

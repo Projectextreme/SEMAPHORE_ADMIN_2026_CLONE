@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { EmptyState } from '../common/EmptyState';
@@ -25,7 +26,8 @@ import {
   List,
   Calendar,
   Shield,
-  Lock
+  Lock,
+  Terminal
 } from 'lucide-react';
 import { CountUp } from '../common/CountUp';
 import { TiltCard } from '../common/TiltCard';
@@ -183,6 +185,9 @@ export const AdminManagement = () => {
         </div>
 
         <div className="header-button-group">
+          <Link to="/logs" className="btn btn-secondary" title="View System & Audit Logs">
+            <Terminal size={15} className="text-cyan" /> Audit Logs
+          </Link>
           <button onClick={fetchAdminData} className="btn btn-secondary" title="Refresh Data">
             <RefreshCw size={15} className={loading ? 'spin-icon' : ''} /> Refresh
           </button>

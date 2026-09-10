@@ -14,7 +14,8 @@ import {
   Building2,
   BookOpen,
   Archive,
-  BarChart3
+  BarChart3,
+  Terminal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -49,7 +50,8 @@ export const Sidebar = ({ isMobileNavOpen, onCloseMobileNav }) => {
       title: 'SECURITY & USERS',
       items: [
         { id: 'users', path: '/users', label: 'User Directory', icon: Users },
-        ...(isSuperAdmin ? [{ id: 'admins', path: '/admins', label: 'Admin Management', icon: ShieldCheck, badge: 'Super' }] : [])
+        ...(isSuperAdmin ? [{ id: 'admins', path: '/admins', label: 'Admin Management', icon: ShieldCheck, badge: 'Super' }] : []),
+        { id: 'logs', path: '/logs', label: 'Logs', icon: Terminal, badge: 'Live' }
       ]
     }
   ];
