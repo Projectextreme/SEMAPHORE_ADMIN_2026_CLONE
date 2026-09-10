@@ -338,7 +338,7 @@ export const TeamRulesManagement = () => {
     const lines = bulkText
       .split('\n')
       .map(line => line.trim())
-      .map(line => line.replace(/^(\d+[\.\)]|\-|\*|•)\s*/, '').trim())
+      .map(line => line.replace(/^(\d+[.)]|-|\*|•)\s*/, '').trim())
       .filter(line => line.length > 0);
 
     if (lines.length === 0) {

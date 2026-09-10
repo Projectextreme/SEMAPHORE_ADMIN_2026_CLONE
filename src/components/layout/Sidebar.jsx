@@ -8,14 +8,13 @@ import {
   UserCheck, 
   Clock, 
   FileSpreadsheet,
-  CheckCircle,
-  Database,
   X,
   Building2,
   BookOpen,
   Archive,
   BarChart3,
-  Terminal
+  Terminal,
+  Database
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';

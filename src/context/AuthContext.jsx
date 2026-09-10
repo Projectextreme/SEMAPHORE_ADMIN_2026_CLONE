@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       const msg = err.message || 'Login failed';
       setAuthError(msg);
-      throw new Error(msg);
+      throw new Error(msg, { cause: err });
     }
   };
 
