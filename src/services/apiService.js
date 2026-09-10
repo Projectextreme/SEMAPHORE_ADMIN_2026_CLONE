@@ -114,7 +114,7 @@ export const apiService = {
   },
 
   // 3. System & Transaction Audit Logs
-  getAdminLogs: async (page = 1, limit = 20) => {
+  getAdminLogs: async (page = 1, limit = 50) => {
     const res = await apiRequest(`/api/admin/logs?page=${page}&limit=${limit}`, {
       method: 'GET'
     });
