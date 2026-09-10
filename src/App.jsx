@@ -22,6 +22,7 @@ import { CollegeManagement } from './components/colleges/CollegeManagement';
 import { ReportsHub } from './components/reports/ReportsHub';
 import { VisualAnalyticsHub } from './components/analytics/VisualAnalyticsHub';
 import { TeamRulesManagement } from './components/rules/TeamRulesManagement';
+import { LogsManagement } from './components/logs/LogsManagement';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import './App.css';
 
@@ -149,6 +150,7 @@ export default function App() {
                 <Route path="/analytics" element={<VisualAnalyticsHub />} />
                 <Route path="/charts" element={<VisualAnalyticsHub />} />
                 <Route path="/users" element={<UserManagement />} />
+                <Route path="/logs" element={<LogsManagement />} />
 
                 <Route path="/user/:userId" element={<UserProfileView />} />
                 <Route
