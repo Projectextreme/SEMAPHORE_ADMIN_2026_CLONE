@@ -57,6 +57,7 @@ export const ReportsHub = () => {
   const [teamsData, setTeamsData] = useState({ count: 0, teams: [] });
   const [eventsData, setEventsData] = useState({ eventsCount: 0, totalParticipantsCount: 0, events: [] });
   const [collegesData, setCollegesData] = useState({ collegesCount: 0, colleges: [] });
+  const [allowedPolicy, setAllowedPolicy] = useState({ defaultLimit: 1, allowedColleges: [] });
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -137,11 +138,20 @@ export const ReportsHub = () => {
           events: res?.events || (Array.isArray(res) ? res : [])
         });
       } else if (tabName === 'colleges') {
-        const res = await apiService.getCollegesReport();
+        const [res, allowedData] = await Promise.all([
+          apiService.getCollegesReport().catch(() => null),
+          apiService.getAllowedCollegesData().catch(() => null)
+        ]);
         setCollegesData({
           collegesCount: res?.collegesCount || (res?.colleges ? res.colleges.length : 0),
           colleges: res?.colleges || (Array.isArray(res) ? res : [])
         });
+        if (allowedData) {
+          setAllowedPolicy({
+            defaultLimit: Number(allowedData?.config?.defaultMaxTeamsPerCollege) || 1,
+            allowedColleges: Array.isArray(allowedData?.allowedColleges) ? allowedData.allowedColleges : []
+          });
+        }
       }
     } catch (err) {
       console.error(`Error loading report tab ${tabName}:`, err);
@@ -222,17 +232,55 @@ export const ReportsHub = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Dynamic College Quota & Slots Resolution
+  const getCollegeQuotaInfo = useCallback((col) => {
+    const cName = (col?.collegeName || '').toLowerCase().trim();
+    const defaultMax = Number(allowedPolicy.defaultLimit) || 1;
+
+    let quota = defaultMax;
+    let isOverride = false;
+
+    if (cName && Array.isArray(allowedPolicy.allowedColleges)) {
+      const match = allowedPolicy.allowedColleges.find(
+        (a) => a.collegeName && a.collegeName.toLowerCase().trim() === cName && a.isActive !== false
+      );
+      if (match && match.maxTeams != null) {
+        quota = Math.max(1, Number(match.maxTeams));
+        isOverride = true;
+      }
+    }
+
+    // Extract all registered teams for this college
+    let registeredTeams = [];
+    if (Array.isArray(col?.teams) && col.teams.length > 0) {
+      registeredTeams = col.teams;
+    } else {
+      if (col?.team1) registeredTeams.push(col.team1);
+      if (col?.team2) registeredTeams.push(col.team2);
+    }
+
+    const registeredCount = Math.max(registeredTeams.length, Number(col?.registeredTeamsCount) || 0);
+    const totalSlots = Math.max(quota, registeredTeams.length);
+
+    return {
+      quota,
+      isOverride,
+      registeredTeams,
+      totalSlots,
+      slotsFilledCount: registeredCount
+    };
+  }, [allowedPolicy]);
+
   // Filtered Colleges List
   const filteredColleges = (collegesData.colleges || []).filter((college) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
-    return (
-      (college.collegeName || '').toLowerCase().includes(q) ||
-      (college.team1?.teamName || '').toLowerCase().includes(q) ||
-      (college.team1?.teamId || '').toLowerCase().includes(q) ||
-      (college.team2?.teamName || '').toLowerCase().includes(q) ||
-      (college.team2?.teamId || '').toLowerCase().includes(q)
+    const { registeredTeams } = getCollegeQuotaInfo(college);
+    const matchesCollege = (college.collegeName || '').toLowerCase().includes(q);
+    const matchesTeams = registeredTeams.some(
+      t => (t.teamName || '').toLowerCase().includes(q) || (t.teamId || '').toLowerCase().includes(q)
     );
+    return matchesCollege || matchesTeams;
   });
 
   // Expandable Registered Events State
@@ -913,18 +961,27 @@ export const ReportsHub = () => {
                               </td>
 
                               <td>
-                                <div className="events-cell-list">
+                                <div className="events-cell-wrapper">
                                   {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 ? (
-                                    team.registeredEvents.map((ev, evIdx) => (
-                                      <span key={evIdx} className="event-pill">
-                                        {typeof ev === 'object' ? ev.title : ev}
-                                        {typeof ev === 'object' && ev.registrationFee !== undefined && (
-                                          <strong className="fee-tag">₹{ev.registrationFee}</strong>
-                                        )}
+                                    <>
+                                      <span className="events-cell-header">
+                                        <Tag size={11} /> {team.registeredEvents.length} Event{team.registeredEvents.length > 1 ? 's' : ''}
                                       </span>
-                                    ))
+                                      <div className="events-cell-list">
+                                        {team.registeredEvents.map((ev, evIdx) => {
+                                          const evTitle = typeof ev === 'object' ? (ev.title || ev.name || 'Event') : ev;
+                                          const evFee = typeof ev === 'object' && ev.registrationFee != null ? Number(ev.registrationFee) : null;
+                                          return (
+                                            <span key={evIdx} className="event-pill" title={evTitle}>
+                                              <span className="event-pill-text">{evTitle}</span>
+                                              {evFee > 0 && <strong className="fee-tag">₹{evFee}</strong>}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </>
                                   ) : (
-                                    <span className="text-muted">No events listed</span>
+                                    <span className="text-muted text-xs">No events listed</span>
                                   )}
                                 </div>
                               </td>
@@ -1213,8 +1270,7 @@ export const ReportsHub = () => {
           ) : (
             <div className="colleges-matrix-grid">
               {filteredColleges.map((col, idx) => {
-                const team1 = col.team1;
-                const team2 = col.team2;
+                const { quota, isOverride, registeredTeams, totalSlots, slotsFilledCount } = getCollegeQuotaInfo(col);
 
                 return (
                   <div key={idx} className="college-matrix-card">
@@ -1222,106 +1278,83 @@ export const ReportsHub = () => {
                       <div className="col-header-left">
                         <Building2 size={18} className="col-icon" />
                         <div>
-                          <h3 className="col-name">{col.collegeName || 'Unknown College'}</h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                            <h3 className="col-name">{col.collegeName || 'Unknown College'}</h3>
+                            {isOverride && (
+                              <span className="override-limit-badge" style={{ fontSize: '0.68rem', padding: '0.12rem 0.45rem', borderRadius: '4px', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700, border: '1px solid var(--primary-border)' }}>
+                                Quota: {quota} Teams
+                              </span>
+                            )}
+                          </div>
                           <span className="col-slots-tag">
-                            Slots Filled: <strong>{col.registeredTeamsCount ?? (team1 ? 1 : 0)} / {col.maxAllowedTeams ?? 1}</strong>
+                            Slots Filled: <strong>{slotsFilledCount} / {quota}</strong>
                           </span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="teams-slots-container">
-                      {/* Team 1 Slot */}
-                      {team1 ? (
-                        <div className="team-slot-card active-slot">
-                          <div className="slot-badge-row">
-                            <span className="slot-badge slot-1">{team1.slot || 'Team 1'}</span>
-                            <span className={`status-pill mini-pill ${(team1.paymentStatus || '').toLowerCase().includes('app') ? 'status-approved' : 'status-pending'}`}>
-                              {team1.paymentStatus || 'Pending'}
-                            </span>
-                          </div>
+                    <div className={`teams-slots-container ${totalSlots === 1 ? 'single-slot-layout' : ''}`}>
+                      {Array.from({ length: totalSlots }).map((_, slotIdx) => {
+                        const team = registeredTeams[slotIdx];
+                        const slotNum = slotIdx + 1;
 
-                          <h4 className="slot-team-name">{team1.teamName || 'Team 1'}</h4>
-                          {team1.teamId && (
-                            <div className="slot-team-id" onClick={() => handleCopy(team1.teamId, 'Team ID')}>
-                              <span>{team1.teamId}</span>
-                              <Copy size={10} />
-                            </div>
-                          )}
+                        if (team) {
+                          const rawStatus = (team.paymentStatus || '').toLowerCase();
+                          const isApproved = rawStatus.includes('app') || rawStatus === 'success' || rawStatus === 'verified';
 
-                          {team1.leader && (
-                            <div className="slot-leader-box">
-                              <span className="slot-leader-title">Leader</span>
-                              <span className="slot-leader-name">{team1.leader.name || 'N/A'}</span>
-                              {team1.leader.email && <span className="slot-leader-email">{team1.leader.email}</span>}
-                            </div>
-                          )}
-
-                          {Array.isArray(team1.registeredEvents) && team1.registeredEvents.length > 0 && (
-                            <div className="slot-events-box">
-                              <span className="slot-events-title">Registered Events</span>
-                              <div className="slot-events-pills">
-                                {team1.registeredEvents.map((ev, eIdx) => (
-                                  <span key={eIdx} className="slot-ev-pill">
-                                    {typeof ev === 'object' ? ev.title : ev}
-                                  </span>
-                                ))}
+                          return (
+                            <div key={team.teamId || slotIdx} className="team-slot-card active-slot">
+                              <div className="slot-badge-row">
+                                <span className={`slot-badge slot-${slotNum}`}>{team.slot || `Team ${slotNum}`}</span>
+                                <span className={`status-pill mini-pill ${isApproved ? 'status-approved' : 'status-pending'}`}>
+                                  {team.paymentStatus || 'Pending'}
+                                </span>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="team-slot-card empty-slot">
-                          <span className="slot-badge slot-empty">Team 1 Slot</span>
-                          <p className="empty-slot-text">No team registered in Slot 1</p>
-                        </div>
-                      )}
 
-                      {/* Team 2 Slot */}
-                      {team2 ? (
-                        <div className="team-slot-card active-slot">
-                          <div className="slot-badge-row">
-                            <span className="slot-badge slot-2">{team2.slot || 'Team 2'}</span>
-                            <span className={`status-pill mini-pill ${(team2.paymentStatus || '').toLowerCase().includes('app') ? 'status-approved' : 'status-pending'}`}>
-                              {team2.paymentStatus || 'Pending'}
+                              <h4 className="slot-team-name">{team.teamName || `Team ${slotNum}`}</h4>
+                              {team.teamId && (
+                                <div className="slot-team-id" onClick={() => handleCopy(team.teamId, 'Team ID')}>
+                                  <span>{team.teamId}</span>
+                                  <Copy size={10} />
+                                </div>
+                              )}
+
+                              {team.leader && (
+                                <div className="slot-leader-box">
+                                  <span className="slot-leader-title">Leader</span>
+                                  <span className="slot-leader-name">{team.leader.name || 'N/A'}</span>
+                                  {team.leader.email && <span className="slot-leader-email">{team.leader.email}</span>}
+                                  {team.leader.phone && <span className="slot-leader-phone"><Phone size={10} /> {team.leader.phone}</span>}
+                                </div>
+                              )}
+
+                              {Array.isArray(team.registeredEvents) && team.registeredEvents.length > 0 && (
+                                <div className="slot-events-box">
+                                  <span className="slot-events-title">Registered Events ({team.registeredEvents.length})</span>
+                                  <div className="slot-events-pills">
+                                    {team.registeredEvents.map((ev, eIdx) => (
+                                      <span key={eIdx} className="slot-ev-pill" title={typeof ev === 'object' ? ev.title : ev}>
+                                        {typeof ev === 'object' ? ev.title : ev}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={`empty_${slotIdx}`} className="team-slot-card empty-slot">
+                            <span className="slot-badge slot-empty">
+                              {totalSlots === 1 ? 'Team Slot' : `Team ${slotNum} Slot`}
                             </span>
+                            <p className="empty-slot-text">
+                              {totalSlots === 1 ? 'No team registered yet' : `No team registered in Slot ${slotNum}`}
+                            </p>
                           </div>
-
-                          <h4 className="slot-team-name">{team2.teamName || 'Team 2'}</h4>
-                          {team2.teamId && (
-                            <div className="slot-team-id" onClick={() => handleCopy(team2.teamId, 'Team ID')}>
-                              <span>{team2.teamId}</span>
-                              <Copy size={10} />
-                            </div>
-                          )}
-
-                          {team2.leader && (
-                            <div className="slot-leader-box">
-                              <span className="slot-leader-title">Leader</span>
-                              <span className="slot-leader-name">{team2.leader.name || 'N/A'}</span>
-                              {team2.leader.email && <span className="slot-leader-email">{team2.leader.email}</span>}
-                            </div>
-                          )}
-
-                          {Array.isArray(team2.registeredEvents) && team2.registeredEvents.length > 0 && (
-                            <div className="slot-events-box">
-                              <span className="slot-events-title">Registered Events</span>
-                              <div className="slot-events-pills">
-                                {team2.registeredEvents.map((ev, eIdx) => (
-                                  <span key={eIdx} className="slot-ev-pill">
-                                    {typeof ev === 'object' ? ev.title : ev}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="team-slot-card empty-slot">
-                          <span className="slot-badge slot-empty">Team 2 Slot</span>
-                          <p className="empty-slot-text">No team registered in Slot 2</p>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   </div>
                 );

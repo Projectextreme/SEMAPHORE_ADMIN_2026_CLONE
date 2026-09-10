@@ -34,6 +34,7 @@ export const UserProfileView = () => {
 
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [participantsByRegId, setParticipantsByRegId] = useState({});
 
   // Event registration status filter tab ('All', 'Confirmed', 'Unconfirmed')
   const [eventFilterTab, setEventFilterTab] = useState('All');
@@ -47,8 +48,37 @@ export const UserProfileView = () => {
   const loadUserDetails = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await apiService.getUserFullDetails(userId);
+      const [detailsRes, regsRes] = await Promise.allSettled([
+        apiService.getUserFullDetails(userId),
+        apiService.getRegistrations().catch(() => [])
+      ]);
+
+      const data = detailsRes.status === 'fulfilled' ? detailsRes.value : null;
       setUserData(data);
+
+      const allRegs = regsRes.status === 'fulfilled' && Array.isArray(regsRes.value) ? regsRes.value : [];
+      const partMap = {};
+
+      allRegs.forEach((teamGroup) => {
+        const isUserTeam = (data?.team?._id && String(teamGroup.teamId) === String(data.team._id)) ||
+                           (String(teamGroup.userId) === String(userId)) ||
+                           (teamGroup.email && data?.user?.email && teamGroup.email.toLowerCase() === data.user.email.toLowerCase());
+
+        if (Array.isArray(teamGroup.events)) {
+          teamGroup.events.forEach((e) => {
+            const regId = String(e._id || e.id || e.registrationId || '');
+            const evtId = String(e.eventId || '');
+            const members = Array.isArray(e.participants) && e.participants.length > 0
+              ? e.participants
+              : (isUserTeam && Array.isArray(teamGroup.participants) ? teamGroup.participants : []);
+
+            if (regId && members.length > 0) partMap[regId] = members;
+            if (isUserTeam && evtId && members.length > 0) partMap[evtId] = members;
+          });
+        }
+      });
+
+      setParticipantsByRegId(partMap);
     } catch {
       showError('Failed to load user details');
     } finally {
@@ -470,6 +500,42 @@ export const UserProfileView = () => {
                           <span className="pay-amt-tag">₹{matchingPay.amount}</span>
                         </div>
                       )}
+
+                      {/* Registered Event Members / Participants */}
+                      {(() => {
+                        const eventMembers = (Array.isArray(evt.participants) && evt.participants.length > 0 ? evt.participants : null) ||
+                                             (Array.isArray(evt.members) && evt.members.length > 0 ? evt.members : null) ||
+                                             participantsByRegId[String(evt.registrationId || '')] ||
+                                             participantsByRegId[String(evt.eventId || '')] ||
+                                             (teamMembers && teamMembers.length > 0 ? teamMembers : (user?.name ? [{ name: user.name, email: user.email }] : []));
+
+                        if (!eventMembers || eventMembers.length === 0) return null;
+
+                        return (
+                          <div className="evt-members-section">
+                            <div className="evt-members-header">
+                              <Users size={12} className="text-cyan" />
+                              <span className="evt-members-title">
+                                Registered Member{eventMembers.length > 1 ? 's' : ''} ({eventMembers.length}):
+                              </span>
+                            </div>
+                            <div className="evt-members-pills">
+                              {eventMembers.map((m, i) => {
+                                const mName = typeof m === 'object' ? (m.name || m.userName || m.studentName || m.fullName) : String(m);
+                                const mEmail = typeof m === 'object' ? (m.email || '') : '';
+                                const mPhone = typeof m === 'object' ? (m.phone || m.contactNumber || '') : '';
+                                return (
+                                  <span key={i} className="evt-member-pill" title={`${mEmail} ${mPhone}`.trim()}>
+                                    <User size={10} className="text-muted" />
+                                    <span className="evt-member-name">{mName || `Member ${i + 1}`}</span>
+                                    {mPhone && <span className="evt-member-phone">({mPhone})</span>}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {evt.coordinators && evt.coordinators.length > 0 && (
                         <div className="coordinators-list">

@@ -118,15 +118,27 @@ export const apiService = {
     const res = await apiRequest(`/api/admin/logs?page=${page}&limit=${limit}`, {
       method: 'GET'
     });
+    const rawPag = res?.pagination || {};
+    const pageNum = Number(rawPag.currentPage || rawPag.page || page || 1);
+    const limitNum = Number(rawPag.limit || limit || 50);
+    const totalLogs = Number(rawPag.totalLogs ?? rawPag.total ?? res?.total ?? (Array.isArray(res?.logs) ? res.logs.length : 0));
+    const totalPages = Number(rawPag.totalPages || rawPag.pages || (totalLogs > 0 ? Math.ceil(totalLogs / limitNum) : 1));
+    const hasNextPage = typeof rawPag.hasNextPage === 'boolean' 
+      ? rawPag.hasNextPage 
+      : (pageNum < totalPages);
+    const hasPrevPage = typeof rawPag.hasPrevPage === 'boolean'
+      ? rawPag.hasPrevPage
+      : (pageNum > 1);
+
     return {
       success: res?.success ?? true,
-      pagination: res?.pagination || {
-        currentPage: Number(page),
-        totalPages: 1,
-        totalLogs: Array.isArray(res?.logs) ? res.logs.length : 0,
-        limit: Number(limit),
-        hasNextPage: false,
-        hasPrevPage: Number(page) > 1
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalLogs,
+        limit: limitNum,
+        hasNextPage,
+        hasPrevPage
       },
       logs: Array.isArray(res?.logs) ? res.logs : (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []))
     };
@@ -152,30 +164,50 @@ export const apiService = {
     const idStr = String(id || '');
     const emailStr = String(adminInfo?.email || '').toLowerCase().trim();
 
-    // 1. Demote via PUT /api/admin/makeadmin (set role to 'user')
-    let demoteSuccess = false;
+    // 1. Primary: DELETE /api/admin/admins/:id
     try {
-      await apiRequest('/api/admin/makeadmin', {
-        method: 'PUT',
-        body: JSON.stringify({
-          adminId: idStr,
-          email: emailStr || undefined,
-          role: 'user'
-        })
-      });
-      demoteSuccess = true;
-    } catch (errMake) {
-      console.warn('PUT /api/admin/makeadmin demote attempt returned:', errMake?.message);
-    }
+      return await apiRequest(`/api/admin/admins/${idStr}`, { method: 'DELETE' });
+    } catch (err) {
+      // 2. Try alias: DELETE /api/admin/delete-admin/:id
+      try {
+        return await apiRequest(`/api/admin/delete-admin/${idStr}`, { method: 'DELETE' });
+      } catch (aliasErr) {
+        // If it's a specific validation (superadmin guard, self-delete guard), rethrow immediately
+        if (
+          err?.message?.includes('Superadmin') || 
+          err?.message?.includes('Access denied') || 
+          err?.message?.includes('own account') ||
+          aliasErr?.message?.includes('Superadmin')
+        ) {
+          throw err || aliasErr;
+        }
 
-    // 2. Try DELETE /api/admin/users/:id
-    try {
-      return await apiRequest(`/api/admin/users/${idStr}`, { method: 'DELETE' });
-    } catch (errUserDelete) {
-      if (demoteSuccess) {
-        return { success: true, message: 'Admin privileges revoked and account demoted to standard user.' };
+        // 3. Fallback: Demote via PUT /api/admin/makeadmin (set role to 'user')
+        let demoteSuccess = false;
+        try {
+          await apiRequest('/api/admin/makeadmin', {
+            method: 'PUT',
+            body: JSON.stringify({
+              adminId: idStr,
+              email: emailStr || undefined,
+              role: 'user'
+            })
+          });
+          demoteSuccess = true;
+        } catch (errMake) {
+          console.warn('PUT /api/admin/makeadmin demote attempt returned:', errMake?.message);
+        }
+
+        // 4. Fallback: DELETE /api/admin/users/:id
+        try {
+          return await apiRequest(`/api/admin/users/${idStr}`, { method: 'DELETE' });
+        } catch (errUserDelete) {
+          if (demoteSuccess) {
+            return { success: true, message: 'Admin privileges revoked and account demoted to standard user.' };
+          }
+          throw err || aliasErr || errUserDelete;
+        }
       }
-      throw errUserDelete;
     }
   },
 

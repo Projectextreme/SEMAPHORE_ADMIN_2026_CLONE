@@ -211,6 +211,57 @@
   font-weight: 500;
 }
 
+/* Page Size Limit Pills in Console Header */
+.page-size-pill-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  padding: 0.2rem 0.35rem;
+  border-radius: 8px;
+}
+
+.page-size-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 0.15rem;
+}
+
+.btn-page-size-pill {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.btn-page-size-pill:hover {
+  color: var(--cyan);
+  background: rgba(6, 182, 212, 0.12);
+}
+
+.btn-page-size-pill.active {
+  background: var(--cyan);
+  color: #0b1120;
+  font-weight: 800;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+}
+
+.logs-limit-select {
+  border-color: var(--cyan-border);
+  color: var(--cyan);
+  font-weight: 700;
+}
+
 /* Fluid layout for page scrolling */
 .logs-scroll-viewport {
   width: 100%;
