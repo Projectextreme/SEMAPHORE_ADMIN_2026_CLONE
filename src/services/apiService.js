@@ -229,9 +229,16 @@ export const apiService = {
     });
   },
 
-  deleteUser: async (id) => {
+  deleteUser: async (id, userObj = null) => {
     try {
-      return await apiRequest(`/api/admin/users/${id}`, { method: 'DELETE' });
+      const res = await apiRequest(`/api/admin/users/${id}`, { method: 'DELETE' });
+      // If user had an associated team, invoke team deletion as an extra safeguard
+      const teamId = userObj?.teamid?._id || userObj?.teamid || userObj?.team?._id || userObj?.team;
+      if (teamId && typeof teamId === 'string' && teamId.length > 5) {
+        apiRequest(`/api/teams/${teamId}`, { method: 'DELETE' }).catch(() => {});
+        apiRequest(`/api/admin/teams/${teamId}`, { method: 'DELETE' }).catch(() => {});
+      }
+      return res;
     } catch (err1) {
       try {
         return await apiRequest(`/api/users/${id}`, { method: 'DELETE' });
@@ -727,9 +734,12 @@ export const apiService = {
     const teamsMap = new Map();
 
     rawList.forEach((r, idx) => {
-      const regId = r._id || r.id || `reg_${idx}`;
+      // Guard: ignore registrations where associated user was deleted
+      if (r.userId === null || r.user === null) return;
       const userObj = typeof r.user === 'object' ? r.user : (typeof r.userId === 'object' ? r.userId : (typeof r.userid === 'object' ? r.userid : null));
       const userIdStr = typeof r.user === 'string' ? r.user : (typeof r.userId === 'string' ? r.userId : (userObj?._id || userObj?.id || ''));
+      if (!userObj && !userIdStr && !r.email && !r.leaderName) return;
+      const regId = r._id || r.id || `reg_${idx}`;
       const eventObj = typeof r.event === 'object' ? r.event : (typeof r.eventId === 'object' ? r.eventId : (typeof r.eventid === 'object' ? r.eventid : null));
       const paymentObj = typeof r.paymentId === 'object' ? r.paymentId : (typeof r.payment === 'object' ? r.payment : {});
       const payIdStr = typeof r.paymentId === 'string' ? r.paymentId : (paymentObj?._id || paymentObj?.id || paymentObj?.paymentid || '');

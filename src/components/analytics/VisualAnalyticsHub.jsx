@@ -113,6 +113,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
     const evKey2 = String(item?.eventName || item?.eventTitle || item?.events?.[0]?.title || item?.events?.[0]?._id || '').toLowerCase().trim();
     if (eventFeeMap.has(evKey1)) return eventFeeMap.get(evKey1);
     if (eventFeeMap.has(evKey2)) return eventFeeMap.get(evKey2);
+    return 200; // Standard Semaphore registration fee default
     return 2000; // Standard Semaphore team registration fee default (₹2,000 fixed per team)
   }, [eventFeeMap]);
 
@@ -142,6 +143,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
         id: e._id || e.id,
         count: 0,
         capacity: Number(e.capacity) || 50,
+        fee: Number(e.registrationFee) || 200,
         fee: Number(e.registrationFee) || 0,
         revenue: 0
       };
