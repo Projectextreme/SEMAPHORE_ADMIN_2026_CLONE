@@ -601,7 +601,7 @@ export const RegistrationList = () => {
                         <span className="reg-info-label">
                           <CreditCard size={12} className="info-icon text-success" /> Team Fee:
                         </span>
-                        <strong className="reg-fee-amount">{reg.amount || '₹ 200'}</strong>
+                        <strong className="reg-fee-amount">{reg.amount || '₹ 2,000'}</strong>
                       </div>
 
                       {/* ID & Quota Row */}
@@ -875,7 +875,7 @@ export const RegistrationList = () => {
                           <span className={`status-badge status-${rawStatus}`} title={rawStatus === 'pending' ? 'Team registered, awaiting fee upload' : `Payment status: ${reg.paymentStatus}`}>
                             {rawStatus === 'pending' && !reg.hasPaymentRecord ? 'Pending (Unpaid)' : (reg.paymentStatus || 'Pending')}
                           </span>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{reg.amount || '₹ 200'}</div>
+                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{reg.amount || '₹ 2,000'}</div>
                         </div>
                       </td>
                       <td>
@@ -1039,7 +1039,7 @@ export const RegistrationList = () => {
 
                   <div className="mobile-card-row">
                     <span className="mobile-card-label">Team Fee:</span>
-                    <strong style={{ color: 'var(--success)' }}>{reg.amount || '₹ 200'}</strong>
+                    <strong style={{ color: 'var(--success)' }}>{reg.amount || '₹ 2,000'}</strong>
                   </div>
 
                   {reg.utr && reg.utr !== 'N/A' && (
@@ -1266,7 +1266,7 @@ export const RegistrationList = () => {
                 <div className="detail-row">
                   <span className="detail-label">Amount Billed (Whole Team)</span>
                   <strong className="font-bold text-success" style={{ fontSize: '1.05rem' }}>
-                    {typeof inspectingReg.amount === 'number' ? `₹ ${inspectingReg.amount}` : (inspectingReg.amount || '₹ 200')}
+                    {typeof inspectingReg.amount === 'number' ? `₹ ${inspectingReg.amount.toLocaleString()}` : (inspectingReg.amount || '₹ 2,000')}
                   </strong>
                 </div>
                 <div className="detail-row">

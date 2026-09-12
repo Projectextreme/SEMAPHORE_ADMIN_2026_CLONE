@@ -65,7 +65,7 @@ export const PaymentApprovals = () => {
       const rawList = data?.payments || (Array.isArray(data) ? data : []);
       const formatted = rawList.map(p => {
         const amtParsed = typeof p.amount === 'number' && p.amount > 0 ? p.amount : Number(String(p.amount || 0).replace(/[^0-9.]/g, ''));
-        const eventFee = Number(p.events?.[0]?.registrationFee || p.event?.registrationFee || 200) || 200;
+        const eventFee = Number(p.amount || p.events?.[0]?.registrationFee || p.event?.registrationFee || 2000) || 2000;
         const validAmt = amtParsed > 0 ? amtParsed : eventFee;
 
         return {

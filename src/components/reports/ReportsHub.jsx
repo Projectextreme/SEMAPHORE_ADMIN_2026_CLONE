@@ -98,7 +98,7 @@ export const ReportsHub = () => {
           ? rList.filter(r => (r.paymentStatus || '').toLowerCase().includes('pend'))
           : pList.filter(p => (p.status || '').toLowerCase().includes('pend') || (p.rawStatus || '').toLowerCase().includes('pend'));
 
-        const rev = approved.reduce((sum, r) => sum + (r.amountNumber || r.amountNum || 200), 0);
+        const rev = approved.reduce((sum, r) => sum + (r.amountNumber || r.amountNum || 2000), 0);
 
         setSummaryData({
           totalUsers: uList.length,

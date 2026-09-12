@@ -901,9 +901,11 @@ export const apiService = {
       const rawProof = matchedPayment?.proofUrl || matchedPayment?.imageUrl || '';
       const proofUrl = resolveImageUrl(rawProof);
 
-      const rawAmt = matchedPayment?.amountNum || 200;
-      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 200);
-      const amountNumber = parsedAmt > 0 ? parsedAmt : 200;
+      const rawAmt = (matchedPayment?.amountNum !== undefined && matchedPayment?.amountNum > 0)
+        ? matchedPayment.amountNum
+        : ((matchedPayment?.amount !== undefined && matchedPayment?.amount > 0) ? matchedPayment.amount : 2000);
+      const parsedAmt = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 2000);
+      const amountNumber = parsedAmt > 0 ? parsedAmt : 2000;
 
       const eventNamesList = team.events.map(e => e.eventName).filter(Boolean);
       const eventSummary = eventNamesList.join(', ');
@@ -1260,9 +1262,11 @@ export const apiService = {
 
     const formattedList = rawList.map((p, idx) => {
       const payId = String(p._id || p.id || p.paymentid || p.paymentId || `pay_${idx}`);
-      const rawAmt = p.amount !== undefined ? p.amount : (p.events?.[0]?.registrationFee || p.event?.registrationFee || 200);
+      const rawAmt = (p.amount !== undefined && p.amount > 0)
+        ? p.amount
+        : ((p.events?.[0]?.registrationFee && p.events[0].registrationFee > 0) ? p.events[0].registrationFee : 2000);
       const parsed = typeof rawAmt === 'number' ? rawAmt : (Number(String(rawAmt).replace(/[^0-9.]/g, '')) || 0);
-      const validAmt = parsed > 0 ? parsed : 200;
+      const validAmt = parsed > 0 ? parsed : 2000;
 
       const rawStatus = (p.status || p.paymentStatus || 'pending').toLowerCase();
       let statusCap = 'Pending';

@@ -113,7 +113,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
     const evKey2 = String(item?.eventName || item?.eventTitle || item?.events?.[0]?.title || item?.events?.[0]?._id || '').toLowerCase().trim();
     if (eventFeeMap.has(evKey1)) return eventFeeMap.get(evKey1);
     if (eventFeeMap.has(evKey2)) return eventFeeMap.get(evKey2);
-    return 200; // Standard Semaphore registration fee default
+    return 2000; // Standard Semaphore team registration fee default (₹2,000 fixed per team)
   }, [eventFeeMap]);
 
   // Derived Analytics Aggregations
@@ -142,7 +142,7 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
         id: e._id || e.id,
         count: 0,
         capacity: Number(e.capacity) || 50,
-        fee: Number(e.registrationFee) || 200,
+        fee: Number(e.registrationFee) || 0,
         revenue: 0
       };
     });
@@ -248,10 +248,10 @@ export const VisualAnalyticsHub = ({ isEmbedded = false }) => {
     const totalCount = effectiveTeams.length;
     const dayLabels = ['Day -6', 'Day -5', 'Day -4', 'Day -3', 'Day -2', 'Yesterday', 'Today'];
     const distributionSteps = totalCount > 0 ? [0.08, 0.14, 0.22, 0.38, 0.58, 0.82, 1.0] : [0, 0, 0, 0, 0, 0, 0];
-    const avgEventFee = rawEvents.length > 0 ? (Number(rawEvents[0]?.registrationFee) || 200) : 200;
+    const avgTeamFee = 2000; // Flat ₹2,000 per team
     const trendPoints = dayLabels.map((day, idx) => {
       const cumulativeTeams = Math.round(totalCount * distributionSteps[idx]);
-      const dailyVolume = cumulativeTeams * avgEventFee;
+      const dailyVolume = cumulativeTeams * avgTeamFee;
       return {
         label: day,
         teams: cumulativeTeams,
