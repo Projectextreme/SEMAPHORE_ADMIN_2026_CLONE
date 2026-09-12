@@ -322,6 +322,7 @@ export const UserProfileView = () => {
                       <div className="amount-group">
                         <Receipt size={16} className="text-cyan" />
                         <span className="amount-val">₹{p.amount}</span>
+                        <span className="amount-val">₹{p.amount ? Number(p.amount).toLocaleString() : '2,000'}</span>
                       </div>
                       <span className={`payment-status-badge status-${rawStatus}`}>
                         {rawStatus.toUpperCase()}
@@ -498,6 +499,7 @@ export const UserProfileView = () => {
                           <span className="meta-lbl">UTR Reference:</span>
                           <code className="utr-code">{matchingPay.utr}</code>
                           <span className="pay-amt-tag">₹{matchingPay.amount}</span>
+                          <span className="pay-amt-tag">₹{matchingPay.amount ? Number(matchingPay.amount).toLocaleString() : '2,000'}</span>
                         </div>
                       )}
 

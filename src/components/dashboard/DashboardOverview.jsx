@@ -126,6 +126,7 @@ export const DashboardOverview = () => {
         if (eventFeeMap.has(evKey1)) return eventFeeMap.get(evKey1);
         if (eventFeeMap.has(evKey2)) return eventFeeMap.get(evKey2);
         return 200; // Standard Semaphore event registration fee fallback
+        return 2000; // Standard Semaphore team registration fee fallback (₹2,000 fixed per team)
       };
 
       // Extract pending & approved payment submissions strictly from live Payments collection

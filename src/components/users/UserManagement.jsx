@@ -108,7 +108,7 @@ export const UserManagement = () => {
     if (!deleteUserObj) return;
     setActionLoading(true);
     try {
-      const res = await apiService.deleteUser(deleteUserObj._id);
+      const res = await apiService.deleteUser(deleteUserObj._id, deleteUserObj);
       showSuccess(res.message || `User "${deleteUserObj.name}" deleted successfully.`);
       setDeleteUserObj(null);
       fetchUsers();
