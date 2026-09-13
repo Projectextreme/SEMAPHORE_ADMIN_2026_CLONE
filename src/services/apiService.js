@@ -1270,7 +1270,20 @@ export const apiService = {
       }
     }
 
-    const formattedList = rawList.map((p, idx) => {
+    // Filter out orphaned payments and deduplicate same user/UTR submissions
+    const seenUtrs = new Set();
+    const deduplicatedList = [];
+    rawList.forEach((p) => {
+      if (p.user === null && !p.userName && !p.name && !p.userEmail) return;
+      const uId = (typeof p.user === 'object' ? (p.user?._id || p.user?.id) : p.user) || p.userId || '';
+      const utrClean = (p.utr || '').toUpperCase().trim();
+      const dedupeKey = utrClean && utrClean !== 'N/A' ? `${uId}_${utrClean}` : (p._id || p.id || p.paymentid);
+      if (seenUtrs.has(dedupeKey)) return;
+      seenUtrs.add(dedupeKey);
+      deduplicatedList.push(p);
+    });
+
+    const formattedList = deduplicatedList.map((p, idx) => {
       const payId = String(p._id || p.id || p.paymentid || p.paymentId || `pay_${idx}`);
       const rawAmt = (p.amount !== undefined && p.amount > 0)
         ? p.amount
